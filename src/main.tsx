@@ -1,10 +1,28 @@
 import { Buffer } from 'buffer';
 
 // Polyfill Buffer, global, and process
-window.Buffer = Buffer;
-(window as any).global = window;
+const safeDefine = (obj: any, prop: string, value: any) => {
+  try {
+    Object.defineProperty(obj, prop, {
+      value: value,
+      writable: true,
+      configurable: true,
+      enumerable: true
+    });
+  } catch (e) {
+    try {
+      obj[prop] = value;
+    } catch (e2) {
+      console.warn(`Could not define ${prop} on`, obj, e2);
+    }
+  }
+};
+
+safeDefine(window, 'Buffer', Buffer);
+safeDefine(window, 'global', window);
+
 if (!(window as any).process) {
-  (window as any).process = {
+  const processMock = {
     env: { NODE_ENV: 'development' },
     nextTick: (fn: any, ...args: any[]) => setTimeout(() => fn(...args), 0),
     browser: true,
@@ -17,6 +35,7 @@ if (!(window as any).process) {
     emit: () => {},
     listeners: () => []
   };
+  safeDefine(window, 'process', processMock);
 }
 
 // Safety for fetch being read-only
