@@ -89,10 +89,10 @@ export default function CommunityTab({ user }: CommunityTabProps) {
           </div>
           <div className="flex items-center justify-between pt-4 border-t border-white/5">
             <div className="flex items-center gap-2">
-              <button className="p-2 hover:bg-white/5 rounded-lg text-blue-500 transition-all">
+              <button className="p-2 hover:bg-white/5 rounded-lg text-orange-500 transition-all">
                 <ImageIcon className="w-5 h-5" />
               </button>
-              <button className="p-2 hover:bg-white/5 rounded-lg text-blue-500 transition-all">
+              <button className="p-2 hover:bg-white/5 rounded-lg text-orange-500 transition-all">
                 <TrendingUp className="w-5 h-5" />
               </button>
             </div>
@@ -100,7 +100,7 @@ export default function CommunityTab({ user }: CommunityTabProps) {
               onClick={handleCreatePost}
               disabled={isPosting || !newPostContent.trim()}
               className={cn(
-                "px-8 py-2 bg-blue-600 rounded-full font-bold text-sm transition-all active:scale-95 shadow-lg shadow-blue-600/20",
+                "px-8 py-2 bg-orange-600 rounded-full font-bold text-sm transition-all active:scale-95 shadow-lg shadow-orange-600/20",
                 (isPosting || !newPostContent.trim()) && "opacity-50 cursor-not-allowed"
               )}
             >
@@ -148,8 +148,8 @@ export default function CommunityTab({ user }: CommunityTabProps) {
                     </div>
                     <span className="text-xs font-bold">{post.likeCount}</span>
                   </button>
-                  <button className="flex items-center gap-2 text-white/40 hover:text-blue-500 transition-all group/btn">
-                    <div className="p-2 rounded-lg group-hover/btn:bg-blue-500/10 transition-all">
+                  <button className="flex items-center gap-2 text-white/40 hover:text-orange-500 transition-all group/btn">
+                    <div className="p-2 rounded-lg group-hover/btn:bg-orange-500/10 transition-all">
                       <MessageSquare className="w-5 h-5" />
                     </div>
                     <span className="text-xs font-bold">{post.commentCount}</span>
@@ -171,7 +171,7 @@ export default function CommunityTab({ user }: CommunityTabProps) {
         {/* Trending Topics */}
         <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5">
           <h3 className="font-bold text-lg uppercase tracking-tighter mb-6 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-blue-500" /> Trending
+            <TrendingUp className="w-5 h-5 text-orange-500" /> Trending
           </h3>
           <div className="space-y-4">
             {[
@@ -181,7 +181,7 @@ export default function CommunityTab({ user }: CommunityTabProps) {
               { tag: '#AutomatedTrading', posts: '3.5k' },
             ].map((topic, i) => (
               <div key={i} className="group cursor-pointer">
-                <p className="text-sm font-bold group-hover:text-blue-500 transition-colors">{topic.tag}</p>
+                <p className="text-sm font-bold group-hover:text-orange-500 transition-colors">{topic.tag}</p>
                 <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">{topic.posts} posts</p>
               </div>
             ))}
@@ -191,7 +191,7 @@ export default function CommunityTab({ user }: CommunityTabProps) {
         {/* Suggested Users */}
         <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5">
           <h3 className="font-bold text-lg uppercase tracking-tighter mb-6 flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-500" /> Suggested
+            <Users className="w-5 h-5 text-orange-500" /> Suggested
           </h3>
           <div className="space-y-4">
             {[1, 2, 3].map(i => (
@@ -203,7 +203,7 @@ export default function CommunityTab({ user }: CommunityTabProps) {
                     <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Elite</p>
                   </div>
                 </div>
-                <button className="px-4 py-1.5 bg-white text-black rounded-full font-bold text-[10px] hover:bg-blue-500 hover:text-white transition-all">
+                <button className="px-4 py-1.5 bg-white text-black rounded-full font-bold text-[10px] hover:bg-orange-500 hover:text-white transition-all">
                   Follow
                 </button>
               </div>

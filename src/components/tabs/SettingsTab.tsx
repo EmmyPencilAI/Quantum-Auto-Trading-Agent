@@ -29,7 +29,7 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
         updatedAt: serverTimestamp()
       });
       setUser({ ...user, username });
-      alert("Profile updated successfully!");
+      // alert("Profile updated successfully!");
     } catch (error) {
       console.error("Failed to update profile", error);
     } finally {
@@ -53,32 +53,32 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
 
   const handleResetDemoBalance = async () => {
     if (!user) return;
-    if (confirm("Are you sure you want to reset your demo balance to $10,000?")) {
+    // if (confirm("Are you sure you want to reset your demo balance to $10,000?")) {
       try {
         await updateDoc(doc(db, 'demo_wallets', user.uid), {
           demoBalance: 10000,
           updatedAt: serverTimestamp()
         });
-        alert("Demo balance reset!");
+        // alert("Demo balance reset!");
       } catch (error) {
         console.error("Failed to reset demo balance", error);
       }
-    }
+    // }
   };
 
   const handleEmptyDemoBalance = async () => {
     if (!user) return;
-    if (confirm("Are you sure you want to empty your demo wallet?")) {
+    // if (confirm("Are you sure you want to empty your demo wallet?")) {
       try {
         await updateDoc(doc(db, 'demo_wallets', user.uid), {
           demoBalance: 0,
           updatedAt: serverTimestamp()
         });
-        alert("Demo wallet emptied!");
+        // alert("Demo wallet emptied!");
       } catch (error) {
         console.error("Failed to empty demo wallet", error);
       }
-    }
+    // }
   };
 
   const handleLogout = async () => {
@@ -91,15 +91,15 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
       {/* Profile Section */}
       <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5">
         <h3 className="font-bold text-xl uppercase tracking-tighter mb-8 flex items-center gap-2">
-          <User className="w-5 h-5 text-blue-500" /> Profile Settings
+          <User className="w-5 h-5 text-orange-500" /> Profile Settings
         </h3>
 
         <div className="flex flex-col md:flex-row items-center gap-8">
           <div className="relative group">
-            <img src={user?.avatar} alt="Avatar" className="w-32 h-32 rounded-full border-4 border-white/10 group-hover:border-blue-500 transition-all" />
+            <img src={user?.avatar} alt="Avatar" className="w-32 h-32 rounded-full border-4 border-white/10 group-hover:border-orange-500 transition-all" />
             <button 
               onClick={() => setShowAvatarPicker(true)}
-              className="absolute bottom-0 right-0 p-3 bg-blue-600 rounded-full text-white shadow-lg hover:scale-110 transition-all"
+              className="absolute bottom-0 right-0 p-3 bg-orange-600 rounded-full text-white shadow-lg hover:scale-110 transition-all"
             >
               <Camera className="w-5 h-5" />
             </button>
@@ -112,7 +112,7 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
                 type="text" 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-black border border-white/10 rounded-xl p-4 text-sm font-bold focus:outline-none focus:border-blue-500 transition-all"
+                className="w-full bg-black border border-white/10 rounded-xl p-4 text-sm font-bold focus:outline-none focus:border-orange-500 transition-all"
               />
             </div>
             <div>
@@ -124,7 +124,7 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
             <button 
               onClick={handleUpdateProfile}
               disabled={isSaving}
-              className="px-8 py-3 bg-blue-600 rounded-xl font-bold text-sm hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50"
+              className="px-8 py-3 bg-orange-600 rounded-xl font-bold text-sm hover:bg-orange-700 transition-all active:scale-95 disabled:opacity-50"
             >
               {isSaving ? 'Saving...' : 'Save Profile'}
             </button>
@@ -135,17 +135,17 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
       {/* Demo Wallet Controls */}
       <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5">
         <h3 className="font-bold text-xl uppercase tracking-tighter mb-8 flex items-center gap-2">
-          <Wallet className="w-5 h-5 text-blue-500" /> Demo Wallet Controls
+          <Wallet className="w-5 h-5 text-orange-500" /> Demo Wallet Controls
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button 
             onClick={handleResetDemoBalance}
-            className="p-6 rounded-3xl bg-white/5 border border-white/5 flex items-center justify-between hover:bg-blue-500/10 hover:border-blue-500/30 transition-all group"
+            className="p-6 rounded-3xl bg-white/5 border border-white/5 flex items-center justify-between hover:bg-orange-500/10 hover:border-orange-500/30 transition-all group"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 transition-colors">
-                <RefreshCcw className="w-6 h-6 text-blue-500 group-hover:text-white" />
+              <div className="w-12 h-12 bg-orange-600/10 rounded-2xl flex items-center justify-center group-hover:bg-orange-600 transition-colors">
+                <RefreshCcw className="w-6 h-6 text-orange-500 group-hover:text-white" />
               </div>
               <div className="text-left">
                 <h4 className="font-bold">Reset Balance</h4>
@@ -176,7 +176,7 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
       {/* Security & Account */}
       <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5">
         <h3 className="font-bold text-xl uppercase tracking-tighter mb-8 flex items-center gap-2">
-          <Shield className="w-5 h-5 text-blue-500" /> Security & Account
+          <Shield className="w-5 h-5 text-orange-500" /> Security & Account
         </h3>
 
         <div className="space-y-4">
@@ -205,7 +205,7 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
                 <p className="text-[10px] text-white/40 uppercase tracking-widest">Trade Alerts & Updates</p>
               </div>
             </div>
-            <div className="w-12 h-6 bg-blue-600 rounded-full relative cursor-pointer">
+            <div className="w-12 h-6 bg-orange-600 rounded-full relative cursor-pointer">
               <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full" />
             </div>
           </div>
@@ -258,13 +258,13 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
                     onClick={() => handleUpdateAvatar(avatar)}
                     className={cn(
                       "relative aspect-square rounded-2xl overflow-hidden border-2 transition-all hover:scale-110",
-                      user?.avatar === avatar ? "border-blue-500 bg-blue-500/10" : "border-white/5 hover:border-white/20"
+                      user?.avatar === avatar ? "border-orange-500 bg-orange-500/10" : "border-white/5 hover:border-white/20"
                     )}
                   >
                     <img src={avatar} alt={`Avatar ${i}`} className="w-full h-full object-cover" />
                     {user?.avatar === avatar && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-blue-500/20">
-                        <Check className="w-6 h-6 text-blue-500" />
+                      <div className="absolute inset-0 flex items-center justify-center bg-orange-500/20">
+                        <Check className="w-6 h-6 text-orange-500" />
                       </div>
                     )}
                   </button>

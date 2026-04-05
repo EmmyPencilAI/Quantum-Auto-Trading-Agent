@@ -22,15 +22,15 @@ export default function MarketsTab() {
       "showFloatingTooltip": false,
       "width": "100%",
       "height": "600",
-      "plotLineColorGrowing": "rgba(41, 98, 255, 1)",
-      "plotLineColorFalling": "rgba(41, 98, 255, 1)",
+      "plotLineColorGrowing": "rgba(249, 115, 22, 1)",
+      "plotLineColorFalling": "rgba(249, 115, 22, 1)",
       "gridLineColor": "rgba(240, 243, 250, 0)",
       "scaleFontColor": "rgba(209, 212, 220, 1)",
-      "belowLineFillColorGrowing": "rgba(41, 98, 255, 0.12)",
-      "belowLineFillColorFalling": "rgba(41, 98, 255, 0.12)",
-      "belowLineFillColorGrowingBottom": "rgba(41, 98, 255, 0)",
-      "belowLineFillColorFallingBottom": "rgba(41, 98, 255, 0)",
-      "symbolActiveColor": "rgba(41, 98, 255, 0.12)",
+      "belowLineFillColorGrowing": "rgba(249, 115, 22, 0.12)",
+      "belowLineFillColorFalling": "rgba(249, 115, 22, 0.12)",
+      "belowLineFillColorGrowingBottom": "rgba(249, 115, 22, 0)",
+      "belowLineFillColorFallingBottom": "rgba(249, 115, 22, 0)",
+      "symbolActiveColor": "rgba(249, 115, 22, 0.12)",
       "tabs": [
         {
           "title": "Crypto",
@@ -69,10 +69,10 @@ export default function MarketsTab() {
       {/* Market Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, i) => (
-          <div key={i} className="p-6 rounded-3xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-all">
+          <div key={i} className="p-6 rounded-3xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-all group cursor-pointer">
             <div className="flex items-center gap-2 mb-2">
-              <stat.icon className="w-4 h-4 text-blue-500" />
-              <span className="text-xs font-bold text-white/40 uppercase tracking-widest">{stat.label}</span>
+              <stat.icon className="w-4 h-4 text-orange-500 group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-bold opacity-40 uppercase tracking-widest">{stat.label}</span>
             </div>
             <div className="flex items-end gap-2">
               <span className="text-2xl font-black tracking-tight">{stat.value}</span>
@@ -91,18 +91,18 @@ export default function MarketsTab() {
       <div className="p-6 rounded-[2.5rem] bg-white/[0.02] border border-white/5">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-blue-500" />
+            <div className="w-10 h-10 bg-orange-600/10 rounded-xl flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-orange-500" />
             </div>
             <h2 className="text-2xl font-black tracking-tight uppercase">Market Overview</h2>
           </div>
           
           <div className="relative w-full md:w-80">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-30" />
             <input 
               type="text" 
               placeholder="Search assets..." 
-              className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-blue-500/50 transition-all"
+              className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-orange-500/50 transition-all"
             />
           </div>
         </div>
@@ -115,7 +115,7 @@ export default function MarketsTab() {
       {/* Top Gainers/Losers (Mock) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5">
-          <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
+          <h3 className="font-bold text-lg mb-6 flex items-center gap-2 uppercase tracking-tighter">
             <TrendingUp className="w-5 h-5 text-green-500" /> Top Gainers
           </h3>
           <div className="space-y-4">
@@ -124,12 +124,12 @@ export default function MarketsTab() {
               { symbol: 'BNB', name: 'Binance Coin', price: '$582.12', change: '+8.2%' },
               { symbol: 'SUI', name: 'Sui', price: '$1.84', change: '+6.5%' },
             ].map((asset, i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all">
+              <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group cursor-pointer">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-xs">{asset.symbol[0]}</div>
+                  <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center font-bold text-xs text-white uppercase">{asset.symbol[0]}</div>
                   <div>
                     <h4 className="font-bold text-sm">{asset.symbol}</h4>
-                    <p className="text-[10px] text-white/40">{asset.name}</p>
+                    <p className="text-[10px] opacity-40">{asset.name}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -142,7 +142,7 @@ export default function MarketsTab() {
         </div>
 
         <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5">
-          <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
+          <h3 className="font-bold text-lg mb-6 flex items-center gap-2 uppercase tracking-tighter">
             <TrendingDown className="w-5 h-5 text-red-500" /> Top Losers
           </h3>
           <div className="space-y-4">
@@ -151,12 +151,12 @@ export default function MarketsTab() {
               { symbol: 'ADA', name: 'Cardano', price: '$0.45', change: '-3.8%' },
               { symbol: 'DOGE', name: 'Dogecoin', price: '$0.16', change: '-2.5%' },
             ].map((asset, i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all">
+              <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group cursor-pointer">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-xs">{asset.symbol[0]}</div>
+                  <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center font-bold text-xs text-white uppercase">{asset.symbol[0]}</div>
                   <div>
                     <h4 className="font-bold text-sm">{asset.symbol}</h4>
-                    <p className="text-[10px] text-white/40">{asset.name}</p>
+                    <p className="text-[10px] opacity-40">{asset.name}</p>
                   </div>
                 </div>
                 <div className="text-right">

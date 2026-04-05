@@ -272,7 +272,7 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
             disabled={isTrading}
             className={cn(
               "px-6 py-3 rounded-xl font-bold text-sm transition-all uppercase tracking-widest",
-              mode === 'real' ? "bg-red-600 text-white shadow-[0_0_20px_rgba(239,68,68,0.3)]" : "text-white/40 hover:text-white",
+              mode === 'real' ? "bg-orange-600 text-white shadow-[0_0_20px_rgba(249,115,22,0.3)]" : "text-white/40 hover:text-white",
               isTrading && "opacity-50 cursor-not-allowed"
             )}
           >
@@ -309,7 +309,7 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
         <div className="lg:col-span-1 space-y-6">
           <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 space-y-6">
             <h3 className="font-bold text-xl uppercase tracking-tighter flex items-center gap-2">
-              <Zap className="w-5 h-5 text-blue-500" /> Trading Setup
+              <Zap className="w-5 h-5 text-orange-500" /> Trading Setup
             </h3>
 
             <div className="space-y-4">
@@ -319,7 +319,7 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
                   value={selectedPair}
                   onChange={(e) => setSelectedPair(e.target.value)}
                   disabled={isTrading}
-                  className="w-full bg-black border border-white/10 rounded-xl p-4 text-sm font-bold focus:outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
+                  className="w-full bg-black border border-white/10 rounded-xl p-4 text-sm font-bold focus:outline-none focus:border-orange-500 transition-all appearance-none cursor-pointer"
                 >
                   {APP_CONFIG.SUPPORTED_PAIRS.map(pair => (
                     <option key={pair} value={pair}>{pair}</option>
@@ -338,7 +338,7 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
                       className={cn(
                         "p-3 rounded-xl text-xs font-bold border transition-all",
                         selectedStrategy === strat 
-                          ? "bg-blue-600/10 border-blue-600 text-blue-500" 
+                          ? "bg-orange-600/10 border-orange-600 text-orange-500" 
                           : "bg-white/5 border-white/5 text-white/40 hover:border-white/20"
                       )}
                     >
@@ -356,7 +356,7 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
                     value={tradeAmount}
                     onChange={(e) => setTradeAmount(Number(e.target.value))}
                     disabled={isTrading}
-                    className="w-full bg-black border border-white/10 rounded-xl p-4 text-sm font-bold focus:outline-none focus:border-blue-500 transition-all"
+                    className="w-full bg-black border border-white/10 rounded-xl p-4 text-sm font-bold focus:outline-none focus:border-orange-500 transition-all"
                   />
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2">
                     {[100, 500, 1000].map(val => (
@@ -381,7 +381,7 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
                 "w-full py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg",
                 isTrading 
                   ? "bg-red-600 hover:bg-red-700 shadow-red-600/20" 
-                  : "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20",
+                  : "bg-orange-600 hover:bg-orange-700 shadow-orange-600/20",
                 (isBlockchainSyncing || !isOnline) && "opacity-50 cursor-not-allowed"
               )}
             >
@@ -416,14 +416,19 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
           {/* Active Trade Panel */}
           <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 relative overflow-hidden">
             {isTrading && (
-              <div className="absolute top-0 left-0 w-full h-1 bg-blue-600 animate-pulse" />
+              <div className={cn(
+                "absolute top-0 left-0 w-full h-1 animate-pulse",
+                mode === 'real' ? "bg-orange-600" : "bg-blue-600"
+              )} />
             )}
             
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
                 <div className={cn(
                   "w-12 h-12 rounded-2xl flex items-center justify-center",
-                  isTrading ? "bg-blue-600 animate-pulse" : "bg-white/5"
+                  isTrading 
+                    ? mode === 'real' ? "bg-orange-600 animate-pulse" : "bg-blue-600 animate-pulse"
+                    : "bg-white/5"
                 )}>
                   <Activity className="w-6 h-6 text-white" />
                 </div>
@@ -436,7 +441,10 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
               {isTrading && (
                 <div className="text-right">
                   <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Elapsed Time</p>
-                  <div className="flex items-center gap-2 font-mono text-xl font-bold text-blue-500">
+                  <div className={cn(
+                    "flex items-center gap-2 font-mono text-xl font-bold",
+                    mode === 'real' ? "text-orange-500" : "text-blue-500"
+                  )}>
                     <Clock className="w-4 h-4" />
                     {formatTime(elapsedTime)}
                   </div>
@@ -465,10 +473,19 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
             </div>
 
             {isTrading && (
-              <div className="mt-8 p-6 rounded-3xl bg-blue-600/5 border border-blue-600/20">
+              <div className={cn(
+                "mt-8 p-6 rounded-3xl border",
+                mode === 'real' ? "bg-orange-600/5 border-orange-600/20" : "bg-blue-600/5 border-blue-600/20"
+              )}>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs font-bold uppercase tracking-widest text-blue-500">Execution Feed</span>
-                  <span className="flex items-center gap-1 text-[10px] text-blue-500/60 uppercase font-mono">
+                  <span className={cn(
+                    "text-xs font-bold uppercase tracking-widest",
+                    mode === 'real' ? "text-orange-500" : "text-blue-500"
+                  )}>Execution Feed</span>
+                  <span className={cn(
+                    "flex items-center gap-1 text-[10px] uppercase font-mono",
+                    mode === 'real' ? "text-orange-500/60" : "text-blue-500/60"
+                  )}>
                     <RefreshCcw className="w-3 h-3 animate-spin" /> Live Updates
                   </span>
                 </div>
@@ -476,7 +493,10 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
                   {[1, 2, 3].map(i => (
                     <div key={i} className="flex items-center justify-between text-[10px] font-mono text-white/40">
                       <span className="flex items-center gap-2">
-                        <div className="w-1 h-1 rounded-full bg-blue-500" />
+                        <div className={cn(
+                          "w-1 h-1 rounded-full",
+                          mode === 'real' ? "bg-orange-500" : "bg-blue-500"
+                        )} />
                         Bot scanning {selectedPair} orderbook...
                       </span>
                       <span>{new Date().toLocaleTimeString()}</span>
@@ -493,7 +513,7 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
               <h3 className="font-bold text-xl uppercase tracking-tighter flex items-center gap-2">
                 <History className="w-5 h-5 text-white/40" /> Recent Trades
               </h3>
-              <button className="text-blue-500 text-xs font-bold hover:underline">View All</button>
+              <button className="text-orange-500 text-xs font-bold hover:underline uppercase tracking-widest">View All</button>
             </div>
 
             <div className="overflow-x-auto">

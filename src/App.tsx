@@ -45,6 +45,16 @@ export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    // Apply theme to body
+    document.body.className = theme;
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   useEffect(() => {
     // Check for invalid config
@@ -146,7 +156,7 @@ export default function App() {
     return (
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
         <img src={APP_CONFIG.LOADING_GIF} alt="Loading..." className="w-24 h-24 mb-4" />
-        <p className="text-blue-500 font-mono animate-pulse">INITIALIZING QUANTUM ENGINE...</p>
+        <p className="text-orange-500 font-mono animate-pulse">INITIALIZING QUANTUM ENGINE...</p>
       </div>
     );
   }
@@ -178,37 +188,56 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-blue-500/30">
+    <div className={cn(
+      "min-h-screen font-sans selection:bg-orange-500/30 transition-colors duration-300",
+      theme === 'dark' ? "bg-[#050505] text-white" : "bg-white text-black"
+    )}>
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 h-16 bg-black/80 backdrop-blur-md border-b border-white/5 z-40 flex items-center justify-between px-4 md:px-8">
+      <header className={cn(
+        "fixed top-0 left-0 right-0 h-16 backdrop-blur-md border-b z-40 flex items-center justify-between px-4 md:px-8 transition-colors",
+        theme === 'dark' ? "bg-black/80 border-white/5" : "bg-white/80 border-black/5"
+      )}>
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.5)]">
+          <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(249,115,22,0.5)]">
             <Zap className="w-5 h-5 text-white fill-white" />
           </div>
-          <span className="font-bold text-xl tracking-tight hidden sm:block">QUANTUM <span className="text-blue-500">FINANCE</span></span>
+          <span className="font-bold text-xl tracking-tight hidden sm:block uppercase">QUANTUM <span className="text-orange-500">FINANCE</span></span>
         </div>
 
         <div className="flex items-center gap-4">
           <div className={cn(
             "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border",
-            mode === 'real' ? "bg-red-500/10 border-red-500/50 text-red-500" : "bg-blue-500/10 border-blue-500/50 text-blue-500"
+            mode === 'real' ? "bg-red-500/10 border-red-500/50 text-red-500" : "bg-orange-500/10 border-orange-500/50 text-orange-500"
           )}>
             {mode} MODE
           </div>
           
           <button 
+            onClick={toggleTheme}
+            className={cn(
+              "p-2 rounded-lg transition-colors",
+              theme === 'dark' ? "hover:bg-white/5 text-white/60" : "hover:bg-black/5 text-black/60"
+            )}
+          >
+            {theme === 'dark' ? <Globe className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+          </button>
+
+          <button 
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="p-2 hover:bg-white/5 rounded-lg transition-colors md:hidden"
+            className={cn(
+              "p-2 rounded-lg transition-colors md:hidden",
+              theme === 'dark' ? "hover:bg-white/5 text-white" : "hover:bg-black/5 text-black"
+            )}
           >
             {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
 
           <div className="hidden md:flex items-center gap-4">
             <div className="flex flex-col items-end">
-              <span className="text-xs font-medium text-white/70">{user?.username}</span>
-              <span className="text-[10px] text-white/40 font-mono">{user?.walletAddress.slice(0, 6)}...{user?.walletAddress.slice(-4)}</span>
+              <span className={cn("text-xs font-medium", theme === 'dark' ? "text-white/70" : "text-black/70")}>{user?.username}</span>
+              <span className={cn("text-[10px] font-mono", theme === 'dark' ? "text-white/40" : "text-black/40")}>{user?.walletAddress.slice(0, 6)}...{user?.walletAddress.slice(-4)}</span>
             </div>
-            <img src={user?.avatar} alt="Avatar" className="w-8 h-8 rounded-full border border-white/10" />
+            <img src={user?.avatar} alt="Avatar" className={cn("w-8 h-8 rounded-full border", theme === 'dark' ? "border-white/10" : "border-black/10")} />
           </div>
         </div>
       </header>
@@ -220,7 +249,10 @@ export default function App() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-0 bg-black z-30 pt-20 px-4 md:hidden"
+            className={cn(
+              "fixed inset-0 z-30 pt-20 px-4 md:hidden",
+              theme === 'dark' ? "bg-black" : "bg-white"
+            )}
           >
             <div className="grid gap-2">
               {tabs.map((tab) => (
@@ -232,7 +264,9 @@ export default function App() {
                   }}
                   className={cn(
                     "flex items-center gap-4 p-4 rounded-xl transition-all",
-                    activeTab === tab.id ? "bg-blue-600 text-white" : "bg-white/5 text-white/60"
+                    activeTab === tab.id 
+                      ? "bg-orange-600 text-white" 
+                      : theme === 'dark' ? "bg-white/5 text-white/60" : "bg-black/5 text-black/60"
                   )}
                 >
                   <tab.icon className="w-5 h-5" />
@@ -252,7 +286,10 @@ export default function App() {
       </AnimatePresence>
 
       {/* Sidebar (Desktop) */}
-      <aside className="fixed left-0 top-16 bottom-0 w-64 bg-black/50 border-r border-white/5 hidden md:flex flex-col p-4 z-20">
+      <aside className={cn(
+        "fixed left-0 top-16 bottom-0 w-64 border-r hidden md:flex flex-col p-4 z-20 transition-colors",
+        theme === 'dark' ? "bg-black/50 border-white/5" : "bg-white/50 border-black/5"
+      )}>
         <nav className="flex-1 space-y-1">
           {tabs.map((tab) => (
             <button
@@ -261,11 +298,11 @@ export default function App() {
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group",
                 activeTab === tab.id 
-                  ? "bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)]" 
-                  : "text-white/50 hover:text-white hover:bg-white/5"
+                  ? "bg-orange-600 text-white shadow-[0_0_20px_rgba(249,115,22,0.3)]" 
+                  : theme === 'dark' ? "text-white/50 hover:text-white hover:bg-white/5" : "text-black/50 hover:text-black hover:bg-black/5"
               )}
             >
-              <tab.icon className={cn("w-5 h-5", activeTab === tab.id ? "text-white" : "text-white/50 group-hover:text-white")} />
+              <tab.icon className={cn("w-5 h-5", activeTab === tab.id ? "text-white" : theme === 'dark' ? "text-white/50 group-hover:text-white" : "text-black/50 group-hover:text-black")} />
               <span className="font-medium">{tab.label}</span>
             </button>
           ))}
@@ -303,14 +340,17 @@ export default function App() {
       </main>
 
       {/* Bottom Nav (Mobile) */}
-      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-black/80 backdrop-blur-md border-t border-white/5 flex items-center justify-around px-2 md:hidden z-40">
+      <nav className={cn(
+        "fixed bottom-0 left-0 right-0 h-16 backdrop-blur-md border-t flex items-center justify-around px-2 md:hidden z-40 transition-colors",
+        theme === 'dark' ? "bg-black/80 border-white/5" : "bg-white/80 border-black/5"
+      )}>
         {tabs.slice(0, 5).map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
               "flex flex-col items-center gap-1 p-2 transition-all",
-              activeTab === tab.id ? "text-blue-500" : "text-white/40"
+              activeTab === tab.id ? "text-orange-500" : theme === 'dark' ? "text-white/40" : "text-black/40"
             )}
           >
             <tab.icon className="w-5 h-5" />

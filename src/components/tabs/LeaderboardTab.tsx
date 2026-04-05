@@ -36,12 +36,12 @@ export default function LeaderboardTab() {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-widest mb-6"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-bold uppercase tracking-widest mb-6"
         >
-          <Trophy className="w-4 h-4 fill-blue-400" />
+          <Trophy className="w-4 h-4 fill-orange-400" />
           Global Rankings
         </motion.div>
-        <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-4 uppercase">Quantum <span className="text-blue-600">Elite</span></h2>
+        <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-4 uppercase">Quantum <span className="text-orange-600">Elite</span></h2>
         <p className="text-white/50 text-lg">The top performing automated trading engines on the BNB Chain. Real mode data only.</p>
       </div>
 
@@ -70,7 +70,7 @@ export default function LeaderboardTab() {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="order-1 md:order-2 p-10 rounded-[3rem] bg-blue-600/10 border border-blue-600/30 text-center relative group hover:bg-blue-600/20 transition-all shadow-[0_0_50px_rgba(37,99,235,0.2)]"
+            className="order-1 md:order-2 p-10 rounded-[3rem] bg-orange-600/10 border border-orange-600/30 text-center relative group hover:bg-orange-600/20 transition-all shadow-[0_0_50px_rgba(249,115,22,0.2)]"
           >
             <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-16 h-16 bg-yellow-500 rounded-2xl flex items-center justify-center shadow-xl animate-bounce">
               <Trophy className="w-8 h-8 text-white fill-white" />
@@ -78,7 +78,7 @@ export default function LeaderboardTab() {
             <img src={topThree[0].avatar} alt="Avatar" className="w-32 h-32 rounded-full mx-auto mb-6 border-4 border-yellow-500/20" />
             <h3 className="text-2xl font-black mb-2">{topThree[0].username}</h3>
             <p className="text-green-500 font-black text-3xl tracking-tighter">+${topThree[0].totalProfit.toLocaleString()}</p>
-            <p className="text-xs text-blue-500 uppercase tracking-widest mt-3 font-black">Global Champion</p>
+            <p className="text-xs text-orange-500 uppercase tracking-widest mt-3 font-black">Global Champion</p>
           </motion.div>
         )}
 
@@ -111,7 +111,7 @@ export default function LeaderboardTab() {
               <input 
                 type="text" 
                 placeholder="Search traders..." 
-                className="bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-xs focus:outline-none focus:border-blue-500 transition-all"
+                className="bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-xs focus:outline-none focus:border-orange-500 transition-all"
               />
             </div>
             <button className="p-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all">
@@ -148,7 +148,7 @@ export default function LeaderboardTab() {
                     <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1">Total Profit</p>
                     <p className="font-black text-green-500 text-lg tracking-tighter">+${entry.totalProfit.toLocaleString()}</p>
                   </div>
-                  <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500 opacity-0 group-hover:opacity-100 transition-all">
+                  <div className="p-2 bg-orange-500/10 rounded-lg text-orange-500 opacity-0 group-hover:opacity-100 transition-all">
                     <ArrowUpRight className="w-4 h-4" />
                   </div>
                 </div>
@@ -160,17 +160,17 @@ export default function LeaderboardTab() {
 
       {/* Stats Footer */}
       <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="p-6 rounded-3xl bg-blue-600/5 border border-blue-600/10 flex items-center gap-4">
-          <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center">
-            <Zap className="w-6 h-6 text-blue-500" />
+        <div className="p-6 rounded-3xl bg-orange-600/5 border border-orange-600/10 flex items-center gap-4 group cursor-pointer hover:bg-orange-600/10 transition-all">
+          <div className="w-12 h-12 bg-orange-600/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+            <Zap className="w-6 h-6 text-orange-500" />
           </div>
           <div>
             <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">Total Volume</p>
             <p className="text-xl font-black">$1.2B+</p>
           </div>
         </div>
-        <div className="p-6 rounded-3xl bg-green-500/5 border border-green-500/10 flex items-center gap-4">
-          <div className="w-12 h-12 bg-green-500/10 rounded-2xl flex items-center justify-center">
+        <div className="p-6 rounded-3xl bg-green-500/5 border border-green-500/10 flex items-center gap-4 group cursor-pointer hover:bg-green-500/10 transition-all">
+          <div className="w-12 h-12 bg-green-500/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
             <TrendingUp className="w-6 h-6 text-green-500" />
           </div>
           <div>
@@ -178,8 +178,8 @@ export default function LeaderboardTab() {
             <p className="text-xl font-black">24.5%</p>
           </div>
         </div>
-        <div className="p-6 rounded-3xl bg-purple-500/5 border border-purple-500/10 flex items-center gap-4">
-          <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center">
+        <div className="p-6 rounded-3xl bg-purple-500/5 border border-purple-500/10 flex items-center gap-4 group cursor-pointer hover:bg-purple-500/10 transition-all">
+          <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
             <Users className="w-6 h-6 text-purple-500" />
           </div>
           <div>
