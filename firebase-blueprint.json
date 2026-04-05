@@ -1,0 +1,116 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Profile",
+      "description": "Stores user profile information and wallet address.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "walletAddress": { "type": "string" },
+        "username": { "type": "string" },
+        "avatar": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "walletAddress", "username"]
+    },
+    "leaderboard": {
+      "title": "Leaderboard Entry",
+      "description": "Stores top traders' performance data.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "username": { "type": "string" },
+        "avatar": { "type": "string" },
+        "totalBalance": { "type": "number" },
+        "totalProfit": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "username", "totalBalance"]
+    },
+    "trades": {
+      "title": "Trade Record",
+      "description": "Stores historical trade data.",
+      "type": "object",
+      "properties": {
+        "tradeId": { "type": "string" },
+        "uid": { "type": "string" },
+        "pair": { "type": "string" },
+        "modeType": { "type": "string", "enum": ["demo", "real"] },
+        "tradeMode": { "type": "string", "enum": ["Aggressive", "Momentum", "Scalping", "Conservative"] },
+        "amount": { "type": "number" },
+        "pnl": { "type": "number" },
+        "status": { "type": "string" },
+        "timeTaken": { "type": "number" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "endedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tradeId", "uid", "pair", "modeType", "amount"]
+    },
+    "trade_live_updates": {
+      "title": "Live Trade Update",
+      "description": "Stores real-time updates for active trades.",
+      "type": "object",
+      "properties": {
+        "updateId": { "type": "string" },
+        "uid": { "type": "string" },
+        "pair": { "type": "string" },
+        "modeType": { "type": "string" },
+        "tradeMode": { "type": "string" },
+        "amount": { "type": "number" },
+        "floatingPnl": { "type": "number" },
+        "status": { "type": "string" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["updateId", "uid", "pair"]
+    },
+    "demo_wallets": {
+      "title": "Demo Wallet",
+      "description": "Stores simulated wallet balances for demo mode.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "demoBalance": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "demoBalance"]
+    },
+    "posts": {
+      "title": "Community Post",
+      "description": "Stores user posts in the community tab.",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "uid": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "likeCount": { "type": "number" },
+        "commentCount": { "type": "number" }
+      },
+      "required": ["postId", "uid", "content"]
+    },
+    "comments": {
+      "title": "Post Comment",
+      "description": "Stores comments on community posts.",
+      "type": "object",
+      "properties": {
+        "commentId": { "type": "string" },
+        "postId": { "type": "string" },
+        "uid": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["commentId", "postId", "uid", "content"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "users", "description": "User profiles" },
+    "/leaderboard/{uid}": { "schema": "leaderboard", "description": "Leaderboard entries" },
+    "/trades/{tradeId}": { "schema": "trades", "description": "Historical trades" },
+    "/trade_live_updates/{updateId}": { "schema": "trade_live_updates", "description": "Live trade updates" },
+    "/demo_wallets/{uid}": { "schema": "demo_wallets", "description": "Demo wallet balances" },
+    "/posts/{postId}": { "schema": "posts", "description": "Community posts" },
+    "/posts/{postId}/comments/{commentId}": { "schema": "comments", "description": "Post comments" }
+  }
+}
