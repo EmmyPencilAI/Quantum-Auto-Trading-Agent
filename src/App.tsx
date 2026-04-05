@@ -20,8 +20,10 @@ import {
 } from 'lucide-react';
 import { web3auth, initWeb3Auth } from './lib/web3auth';
 import { auth, db } from './lib/firebase';
+import firebaseConfig from '../firebase-applet-config.json';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { ethers } from 'ethers';
 import { APP_CONFIG } from './config';
 import { cn } from './lib/utils';
 import { User, ModeType } from './types';
@@ -42,11 +44,24 @@ export default function App() {
   const [mode, setMode] = useState<ModeType>('demo');
   const [loading, setLoading] = useState<boolean>(true);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const [configError, setConfigError] = useState<string | null>(null);
 
   useEffect(() => {
-    const init = async () => {
-      await initWeb3Auth();
+    // Check for invalid config
+    if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes('TODO')) {
+      setConfigError("Firebase configuration is missing or invalid. Please set up Firebase via the AIS Agent.");
       setLoading(false);
+      return;
+    }
+
+    const init = async () => {
+      try {
+        await initWeb3Auth();
+      } catch (error) {
+        console.error("Failed to initialize Web3Auth:", error);
+      } finally {
+        setLoading(false);
+      }
     };
     init();
 
@@ -81,9 +96,39 @@ export default function App() {
     try {
       setLoading(true);
       const web3authProvider = await web3auth.connect();
-      // In a real app, you'd use the provider to get the address and sign in to Firebase
-      // For this demo, we'll use a mock login or Firebase Auth directly if configured
-      // The prompt mentions Web3Auth social login.
+      if (!web3authProvider) throw new Error("No provider returned");
+
+      const ethersProvider = new ethers.BrowserProvider(web3authProvider);
+      const signer = await ethersProvider.getSigner();
+      const address = await signer.getAddress();
+
+      // Get user info from Web3Auth
+      const userInfo = await web3auth.getUserInfo();
+
+      // Sign in to Firebase or update user doc
+      if (auth.currentUser) {
+        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+        if (!userDoc.exists()) {
+          const newUser: User = {
+            uid: auth.currentUser.uid,
+            walletAddress: address,
+            username: userInfo.name || auth.currentUser.displayName || `User_${address.slice(0, 6)}`,
+            avatar: userInfo.profileImage || auth.currentUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${address}`,
+            createdAt: new Date().toISOString(),
+          };
+          await setDoc(doc(db, 'users', auth.currentUser.uid), newUser);
+          setUser(newUser);
+        } else {
+          const existingData = userDoc.data() as User;
+          if (existingData.walletAddress !== address) {
+            await updateDoc(doc(db, 'users', auth.currentUser.uid), { walletAddress: address });
+            setUser({ ...existingData, walletAddress: address });
+          } else {
+            setUser(existingData);
+          }
+        }
+      }
+      setIsLoggedIn(true);
     } catch (error) {
       console.error("Login failed", error);
     } finally {
@@ -102,6 +147,19 @@ export default function App() {
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
         <img src={APP_CONFIG.LOADING_GIF} alt="Loading..." className="w-24 h-24 mb-4" />
         <p className="text-blue-500 font-mono animate-pulse">INITIALIZING QUANTUM ENGINE...</p>
+      </div>
+    );
+  }
+
+  if (configError) {
+    return (
+      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50 p-8 text-center">
+        <AlertTriangle className="w-16 h-16 text-red-500 mb-6" />
+        <h1 className="text-2xl font-black text-white mb-4 uppercase tracking-tighter">Configuration Error</h1>
+        <p className="text-white/60 max-w-md mb-8 leading-relaxed">{configError}</p>
+        <div className="p-4 bg-white/5 rounded-2xl border border-white/10 text-xs font-mono text-white/40 break-all">
+          {JSON.stringify(firebaseConfig)}
+        </div>
       </div>
     );
   }

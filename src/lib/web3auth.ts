@@ -23,12 +23,30 @@ export const web3auth = new Web3Auth({
   clientId,
   web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
   privateKeyProvider,
+  sessionTime: 86400,
+  uiConfig: {
+    appName: APP_CONFIG.NAME,
+    theme: {
+      primary: "#2563eb",
+    },
+    mode: "dark",
+    loginMethodsOrder: ["google", "apple", "facebook", "email_passwordless"],
+    defaultLanguage: "en",
+  },
 });
 
 export const initWeb3Auth = async () => {
   try {
     // For v10+, initModal is the correct method
-    await (web3auth as any).initModal();
+    // Add a timeout to prevent hanging on invalid client IDs or network issues
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Web3Auth init timeout")), 10000)
+    );
+    
+    await Promise.race([
+      (web3auth as any).initModal(),
+      timeoutPromise
+    ]);
   } catch (error) {
     console.error("Error initializing Web3Auth", error);
   }

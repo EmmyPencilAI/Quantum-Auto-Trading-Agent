@@ -4,6 +4,112 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Quantum Agent</title>
+    <script>
+      window.global = window;
+      window.process = {
+        env: { NODE_ENV: 'development' },
+        nextTick: function(fn) {
+          var args = Array.prototype.slice.call(arguments, 1);
+          setTimeout(function() {
+            fn.apply(null, args);
+          }, 0);
+        },
+        browser: true,
+        cwd: function() { return '/'; },
+        version: 'v18.0.0',
+        versions: { node: '18.0.0' },
+        on: function() { return this; },
+        once: function() { return this; },
+        off: function() { return this; },
+        emit: function() { return this; },
+        listeners: function() { return []; },
+        binding: function() { throw new Error('process.binding is not supported'); }
+      };
+      
+      // Try to mock window.parent and window.top to avoid cross-origin errors
+      (function() {
+        // Handle fetch getter error
+        try {
+          const originalFetch = window.fetch;
+          Object.defineProperty(window, 'fetch', {
+            get: function() { return originalFetch; },
+            set: function(v) { console.warn('Attempted to set read-only fetch', v); },
+            configurable: true
+          });
+        } catch (e) {
+          console.warn("Could not redefine fetch", e);
+        }
+
+        try {
+          if (window.parent !== window) {
+            const originalParent = window.parent;
+            const originalTop = window.top;
+            
+            const createSafeLocation = (originalLocation) => {
+              return new Proxy({}, {
+                get: function(_, prop) {
+                  try {
+                    const val = originalLocation[prop];
+                    if (typeof val === 'function') return val.bind(originalLocation);
+                    return val;
+                  } catch (e) {
+                    // Fallback to current window location for blocked properties
+                    return window.location[prop];
+                  }
+                }
+              });
+            };
+
+            const createSafeFrame = (originalFrame) => {
+              const safeLocation = createSafeLocation(originalFrame.location);
+              return new Proxy(originalFrame, {
+                get: function(target, prop) {
+                  if (prop === 'location') return safeLocation;
+                  if (prop === 'origin') {
+                    try {
+                      return target.origin;
+                    } catch (e) {
+                      return window.location.origin;
+                    }
+                  }
+                  try {
+                    const val = target[prop];
+                    if (typeof val === 'function') return val.bind(target);
+                    return val;
+                  } catch (e) {
+                    // If we can't access a property, try to find it on window
+                    return window[prop];
+                  }
+                }
+              });
+            };
+
+            const safeParent = createSafeFrame(originalParent);
+            const safeTop = createSafeFrame(originalTop);
+
+            try {
+              Object.defineProperty(window, 'parent', {
+                get: function() { return safeParent; },
+                configurable: true
+              });
+            } catch (e) {
+              window.parent = safeParent;
+            }
+
+            try {
+              Object.defineProperty(window, 'top', {
+                get: function() { return safeTop; },
+                configurable: true
+              });
+            } catch (e) {
+              window.top = safeTop;
+            }
+          }
+        } catch (e) {
+          console.warn("Could not redefine window.parent or window.top", e);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
