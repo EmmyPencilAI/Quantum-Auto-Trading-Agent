@@ -22,9 +22,10 @@
         // Fix for cross-origin frame access errors
         try {
           if (window.parent !== window) {
-            const mockLocation = new Proxy({}, {
+            const mockLocation = new Proxy(window.location, {
               get: (target, prop) => {
-                if (prop === 'origin') return window.location.origin;
+                const origin = window.location.origin && window.location.origin !== 'null' ? window.location.origin : (window.location.protocol + '//' + window.location.host);
+                if (prop === 'origin') return origin;
                 if (prop === 'href') return window.location.href;
                 if (prop === 'protocol') return window.location.protocol;
                 if (prop === 'host') return window.location.host;
@@ -33,18 +34,18 @@
                 if (prop === 'pathname') return window.location.pathname;
                 if (prop === 'search') return window.location.search;
                 if (prop === 'hash') return window.location.hash;
-                if (prop === 'ancestorOrigins') return [window.location.origin];
+                if (prop === 'ancestorOrigins') return [origin];
                 
                 try {
-                  const val = window.location[prop];
-                  return typeof val === 'function' ? val.bind(window.location) : val;
+                  const val = target[prop];
+                  return typeof val === 'function' ? val.bind(target) : val;
                 } catch (e) {
                   return undefined;
                 }
               },
               set: (target, prop, value) => {
                 try {
-                  window.location[prop] = value;
+                  target[prop] = value;
                   return true;
                 } catch (e) {
                   return false;
@@ -85,6 +86,23 @@
                 return false;
               }
             });
+
+            // Mock document.location and history
+            try {
+              Object.defineProperty(document, 'location', { get: () => mockLocation, configurable: true });
+              
+              const mockHistory = new Proxy(window.history, {
+                get: (target, prop) => {
+                  try {
+                    const val = target[prop];
+                    return typeof val === 'function' ? val.bind(target) : val;
+                  } catch (e) {
+                    return undefined;
+                  }
+                }
+              });
+              Object.defineProperty(window, 'history', { get: () => mockHistory, configurable: true });
+            } catch (e) {}
 
             Object.defineProperty(window, 'parent', { get: () => mockFrame, configurable: true });
             Object.defineProperty(window, 'top', { get: () => mockFrame, configurable: true });

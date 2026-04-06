@@ -106,35 +106,48 @@ export default function App() {
 
   const handleLogin = async () => {
     try {
+      console.log("Starting login flow...");
       setLoading(true);
       setLoginError(null);
       setLoadingMessage("OPENING WALLET MODAL...");
       
       // Ensure Web3Auth is initialized
+      console.log("Current Web3Auth status:", web3auth.status);
       if (web3auth.status === 'not_ready') {
+        console.log("Initializing Web3Auth...");
         await initWeb3Auth();
       }
 
+      console.log("Web3Auth status after init:", web3auth.status);
       if (web3auth.status === 'not_ready') {
         throw new Error("Web3Auth failed to initialize. Check your Client ID and domain settings.");
       }
 
+      console.log("Calling web3auth.connect()...");
       const web3authProvider = await web3auth.connect();
-      if (!web3authProvider) throw new Error("No provider returned. Did you close the modal?");
+      if (!web3authProvider) {
+        console.warn("No provider returned from connect()");
+        throw new Error("No provider returned. Did you close the modal?");
+      }
 
       setLoadingMessage("SYNCING WITH BLOCKCHAIN...");
+      console.log("Wallet connected, initializing ethers provider...");
       const ethersProvider = new ethers.BrowserProvider(web3authProvider);
       const signer = await ethersProvider.getSigner();
       const address = await signer.getAddress();
+      console.log("Connected address:", address);
 
       // Get user info from Web3Auth
       const userInfo = await web3auth.getUserInfo();
+      console.log("User info retrieved:", userInfo.email || "No email");
 
       setLoadingMessage("AUTHENTICATING WITH QUANTUM...");
+      console.log("Authenticating with Firebase...");
       // Sign in to Firebase anonymously if not already signed in
       // This ensures onAuthStateChanged doesn't kick the user out
       let firebaseUser = auth.currentUser;
       if (!firebaseUser) {
+        console.log("Signing in anonymously to Firebase...");
         const { signInAnonymously } = await import('firebase/auth');
         const cred = await signInAnonymously(auth);
         firebaseUser = cred.user;

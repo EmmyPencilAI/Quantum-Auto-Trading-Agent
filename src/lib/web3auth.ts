@@ -5,6 +5,17 @@ import { APP_CONFIG } from "../config";
 
 const clientId = APP_CONFIG.WEB3AUTH_CLIENT_ID;
 
+// Helper to get a safe origin for URL construction
+const getSafeOrigin = () => {
+  try {
+    const origin = window.location.origin;
+    if (origin && origin !== 'null') return origin;
+    return window.location.protocol + '//' + window.location.host;
+  } catch (e) {
+    return 'http://localhost:3000'; // Fallback
+  }
+};
+
 const chainConfig = {
   chainNamespace: CHAIN_NAMESPACES.EIP155,
   chainId: APP_CONFIG.BNB_CHAIN.CHAIN_ID,
@@ -14,6 +25,24 @@ const chainConfig = {
   ticker: APP_CONFIG.BNB_CHAIN.TICKER,
   tickerName: APP_CONFIG.BNB_CHAIN.TICKER_NAME,
 };
+
+// Validate URLs in chainConfig to prevent "Invalid URL" errors
+const validateChainConfig = (config: any) => {
+  const urlFields = ['rpcTarget', 'blockExplorerUrl'];
+  for (const field of urlFields) {
+    try {
+      if (config[field]) new URL(config[field]);
+    } catch (e) {
+      console.warn(`Invalid URL in chainConfig.${field}: ${config[field]}`);
+      // If it's a relative URL or malformed, try to fix it or set a default
+      if (config[field] && !config[field].startsWith('http')) {
+        config[field] = getSafeOrigin() + (config[field].startsWith('/') ? '' : '/') + config[field];
+      }
+    }
+  }
+};
+
+validateChainConfig(chainConfig);
 
 const privateKeyProvider = new EthereumPrivateKeyProvider({
   config: { chainConfig },
@@ -26,6 +55,8 @@ export const web3auth = new Web3Auth({
   sessionTime: 86400,
   uiConfig: {
     appName: APP_CONFIG.NAME,
+    logoLight: getSafeOrigin() + APP_CONFIG.LOGO,
+    logoDark: getSafeOrigin() + APP_CONFIG.LOGO,
     theme: {
       primary: "#f97316", // Orange
     },
@@ -37,6 +68,11 @@ export const web3auth = new Web3Auth({
 });
 
 export const initWeb3Auth = async () => {
+  if (web3auth.status === "ready") {
+    console.log("Web3Auth already initialized");
+    return;
+  }
+  
   try {
     // Check if clientId is a placeholder
     if (clientId.includes("p763p763p763p763p")) {
