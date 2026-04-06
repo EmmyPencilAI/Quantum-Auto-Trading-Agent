@@ -38,14 +38,20 @@ export const web3auth = new Web3Auth({
 
 export const initWeb3Auth = async () => {
   try {
-    // For v10+, initModal is the correct method
+    // For v9+, initModal is the correct method
     // Add a timeout to prevent hanging on invalid client IDs or network issues
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error("Web3Auth init timeout")), 10000)
+      setTimeout(() => reject(new Error("Web3Auth init timeout")), 15000)
     );
     
+    // Check if initModal exists, if not try init
+    const initMethod = (web3auth as any).initModal || (web3auth as any).init;
+    if (!initMethod) {
+      throw new Error("Web3Auth init method not found");
+    }
+    
     await Promise.race([
-      (web3auth as any).initModal(),
+      initMethod.call(web3auth),
       timeoutPromise
     ]);
   } catch (error) {

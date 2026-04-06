@@ -8,10 +8,10 @@
       (function() {
         // Fix for "Cannot set property fetch of #<Window> which has only a getter"
         try {
-          const originalFetch = window.fetch;
+          let _fetch = window.fetch;
           Object.defineProperty(window, 'fetch', {
-            value: originalFetch,
-            writable: true,
+            get: () => _fetch,
+            set: (v) => { _fetch = v; },
             configurable: true,
             enumerable: true
           });
@@ -22,27 +22,32 @@
         // Fix for cross-origin frame access errors
         try {
           if (window.parent !== window) {
-            // Mock window.parent and window.top to return safe versions
-            const safeLocation = new Proxy(window.location, {
-              get: (target, prop) => {
-                try {
-                  return window.parent.location[prop];
-                } catch (e) {
-                  return target[prop];
-                }
-              }
-            });
+            const mockLocation = {
+              href: window.location.href,
+              origin: window.location.origin,
+              protocol: window.location.protocol,
+              host: window.location.host,
+              hostname: window.location.hostname,
+              port: window.location.port,
+              pathname: window.location.pathname,
+              search: window.location.search,
+              hash: window.location.hash,
+              assign: function() { window.location.assign.apply(window.location, arguments); },
+              replace: function() { window.location.replace.apply(window.location, arguments); },
+              reload: function() { window.location.reload.apply(window.location, arguments); },
+              toString: function() { return window.location.toString(); }
+            };
 
-            const safeFrame = new Proxy(window.parent, {
+            // Make it look more like a real Location object
+            try {
+              Object.setPrototypeOf(mockLocation, Location.prototype);
+            } catch (e) {}
+
+            const mockFrame = new Proxy(window.parent, {
               get: (target, prop) => {
-                if (prop === 'location') return safeLocation;
-                if (prop === 'origin') {
-                  try {
-                    return target.origin;
-                  } catch (e) {
-                    return window.location.origin;
-                  }
-                }
+                if (prop === 'location') return mockLocation;
+                if (prop === 'origin') return window.location.origin;
+                if (prop === 'parent' || prop === 'top') return mockFrame;
                 try {
                   const val = target[prop];
                   return typeof val === 'function' ? val.bind(target) : val;
@@ -52,8 +57,8 @@
               }
             });
 
-            Object.defineProperty(window, 'parent', { get: () => safeFrame, configurable: true });
-            Object.defineProperty(window, 'top', { get: () => safeFrame, configurable: true });
+            Object.defineProperty(window, 'parent', { get: () => mockFrame, configurable: true });
+            Object.defineProperty(window, 'top', { get: () => mockFrame, configurable: true });
           }
         } catch (e) {
           console.warn("Could not mock parent/top", e);
