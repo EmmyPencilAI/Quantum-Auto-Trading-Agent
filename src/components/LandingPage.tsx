@@ -258,7 +258,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
           <span className="font-black text-2xl tracking-tighter uppercase">QUANTUM FINANCE</span>
         </div>
         <div className="flex justify-center gap-8 mb-8 text-white/40 text-sm font-bold uppercase tracking-widest">
-          <a href="#" className="hover:text-orange-500 transition-colors">Terms</a>
+          <a href="https://guguroboticsreporter.medium.com/quantum-finance-55ce34afd39c" target="_blank" rel="noopener noreferrer" className="hover:text-orange-500 transition-colors">Terms</a>
           <a href="#" className="hover:text-orange-500 transition-colors">Privacy</a>
           <a href="#" className="hover:text-orange-500 transition-colors">Docs</a>
           <a href="#" className="hover:text-orange-500 transition-colors">Support</a>

@@ -77,25 +77,24 @@ export default function App() {
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        if (userDoc.exists()) {
-          setUser(userDoc.data() as User);
-        } else {
-          // Create new user if not exists
-          const newUser: User = {
-            uid: firebaseUser.uid,
-            walletAddress: firebaseUser.uid, // Placeholder, Web3Auth will provide real one
-            username: firebaseUser.displayName || `User_${firebaseUser.uid.slice(0, 5)}`,
-            avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
-            createdAt: new Date().toISOString(),
-          };
-          await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
-          setUser(newUser);
+        try {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            setUser(userDoc.data() as User);
+            setIsLoggedIn(true);
+          } else if (web3auth.status === 'connected') {
+            // If Web3Auth is connected but no user doc yet, handleLogin will create it
+            setIsLoggedIn(true);
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
         }
-        setIsLoggedIn(true);
       } else {
-        setIsLoggedIn(false);
-        setUser(null);
+        // Only set logged out if Web3Auth is also not connected
+        if (web3auth.status !== 'connected') {
+          setIsLoggedIn(false);
+          setUser(null);
+        }
       }
     });
 
@@ -105,6 +104,12 @@ export default function App() {
   const handleLogin = async () => {
     try {
       setLoading(true);
+      
+      // Ensure Web3Auth is initialized
+      if (web3auth.status === 'not_ready') {
+        await initWeb3Auth();
+      }
+
       const web3authProvider = await web3auth.connect();
       if (!web3authProvider) throw new Error("No provider returned");
 
@@ -115,32 +120,41 @@ export default function App() {
       // Get user info from Web3Auth
       const userInfo = await web3auth.getUserInfo();
 
-      // Sign in to Firebase or update user doc
-      if (auth.currentUser) {
-        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+      // Sign in to Firebase anonymously if not already signed in
+      // This ensures onAuthStateChanged doesn't kick the user out
+      let firebaseUser = auth.currentUser;
+      if (!firebaseUser) {
+        const { signInAnonymously } = await import('firebase/auth');
+        const cred = await signInAnonymously(auth);
+        firebaseUser = cred.user;
+      }
+
+      if (firebaseUser) {
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
         if (!userDoc.exists()) {
           const newUser: User = {
-            uid: auth.currentUser.uid,
+            uid: firebaseUser.uid,
             walletAddress: address,
-            username: userInfo.name || auth.currentUser.displayName || `User_${address.slice(0, 6)}`,
-            avatar: userInfo.profileImage || auth.currentUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${address}`,
+            username: userInfo.name || firebaseUser.displayName || `User_${address.slice(0, 6)}`,
+            avatar: userInfo.profileImage || firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${address}`,
             createdAt: new Date().toISOString(),
           };
-          await setDoc(doc(db, 'users', auth.currentUser.uid), newUser);
+          await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
           setUser(newUser);
         } else {
           const existingData = userDoc.data() as User;
           if (existingData.walletAddress !== address) {
-            await updateDoc(doc(db, 'users', auth.currentUser.uid), { walletAddress: address });
+            await updateDoc(doc(db, 'users', firebaseUser.uid), { walletAddress: address });
             setUser({ ...existingData, walletAddress: address });
           } else {
             setUser(existingData);
           }
         }
+        setIsLoggedIn(true);
       }
-      setIsLoggedIn(true);
     } catch (error) {
       console.error("Login failed", error);
+      // If it's a "User closed modal" error, we don't need to do much
     } finally {
       setLoading(false);
     }

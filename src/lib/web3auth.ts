@@ -27,11 +27,12 @@ export const web3auth = new Web3Auth({
   uiConfig: {
     appName: APP_CONFIG.NAME,
     theme: {
-      primary: "#2563eb",
+      primary: "#f97316", // Orange
     },
     mode: "dark",
     loginMethodsOrder: ["google", "apple", "facebook", "email_passwordless"],
     defaultLanguage: "en",
+    uxMode: "popup", // Force popup mode
   },
 });
 
