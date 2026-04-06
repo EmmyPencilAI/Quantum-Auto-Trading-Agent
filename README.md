@@ -1,5 +1,5 @@
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="Quantum-Auto-Trading-Agent/logo.png" />
+<img width="1200" height="475" alt="GHBanner" src="[Quantum-Auto-Trading-Agent](https://github.com/EmmyPencilAI/Quantum-Auto-Trading-Agent/logo.png" />
 </div>
 
 # ტ Quantum Finance
