@@ -22,43 +22,91 @@
         // Fix for cross-origin frame access errors
         try {
           if (window.parent !== window) {
-            const mockLocation = {
-              href: window.location.href,
-              origin: window.location.origin,
-              protocol: window.location.protocol,
-              host: window.location.host,
-              hostname: window.location.hostname,
-              port: window.location.port,
-              pathname: window.location.pathname,
-              search: window.location.search,
-              hash: window.location.hash,
-              assign: function() { window.location.assign.apply(window.location, arguments); },
-              replace: function() { window.location.replace.apply(window.location, arguments); },
-              reload: function() { window.location.reload.apply(window.location, arguments); },
-              toString: function() { return window.location.toString(); }
-            };
+            const mockLocation = new Proxy({}, {
+              get: (target, prop) => {
+                if (prop === 'origin') return window.location.origin;
+                if (prop === 'href') return window.location.href;
+                if (prop === 'protocol') return window.location.protocol;
+                if (prop === 'host') return window.location.host;
+                if (prop === 'hostname') return window.location.hostname;
+                if (prop === 'port') return window.location.port;
+                if (prop === 'pathname') return window.location.pathname;
+                if (prop === 'search') return window.location.search;
+                if (prop === 'hash') return window.location.hash;
+                if (prop === 'ancestorOrigins') return [window.location.origin];
+                
+                try {
+                  const val = window.location[prop];
+                  return typeof val === 'function' ? val.bind(window.location) : val;
+                } catch (e) {
+                  return undefined;
+                }
+              },
+              set: (target, prop, value) => {
+                try {
+                  window.location[prop] = value;
+                  return true;
+                } catch (e) {
+                  return false;
+                }
+              }
+            });
 
-            const mockFrame = new Proxy(window.parent, {
+            const mockFrame = new Proxy({}, {
               get: (target, prop) => {
                 if (prop === 'location') return mockLocation;
                 if (prop === 'origin') return window.location.origin;
                 if (prop === 'parent' || prop === 'top') return mockFrame;
+                if (prop === 'window' || prop === 'self') return mockFrame;
                 
-                // Avoid accessing restricted properties on the real target
-                const restricted = ['location', 'origin', 'parent', 'top', 'document', 'frames', 'length', 'self'];
-                if (restricted.includes(prop)) return undefined;
+                // Return safe values for common window properties
+                if (prop === 'document') return undefined;
+                if (prop === 'frames') return [];
+                if (prop === 'length') return 0;
+                
+                // Mock common window methods to prevent crashes
+                const noop = () => {};
+                const methods = ['postMessage', 'addEventListener', 'removeEventListener', 'focus', 'blur', 'close'];
+                if (methods.includes(prop)) return noop;
 
+                // For anything else, try to return from current window if it makes sense, or undefined
                 try {
-                  const val = target[prop];
-                  return typeof val === 'function' ? val.bind(target) : val;
+                  const val = window[prop];
+                  return typeof val === 'function' ? val.bind(window) : val;
                 } catch (e) {
                   return undefined;
                 }
+              },
+              set: (target, prop, value) => {
+                if (prop === 'location') {
+                  window.location.href = value;
+                  return true;
+                }
+                return false;
               }
             });
 
             Object.defineProperty(window, 'parent', { get: () => mockFrame, configurable: true });
             Object.defineProperty(window, 'top', { get: () => mockFrame, configurable: true });
+            
+            // Also try to mock on self
+            try {
+              Object.defineProperty(self, 'parent', { get: () => mockFrame, configurable: true });
+              Object.defineProperty(self, 'top', { get: () => mockFrame, configurable: true });
+            } catch (e) {}
+
+            // Mock document.domain and referrer
+            try {
+              Object.defineProperty(document, 'domain', {
+                get: () => window.location.hostname,
+                set: (v) => {},
+                configurable: true
+              });
+              Object.defineProperty(document, 'referrer', {
+                get: () => window.location.origin,
+                configurable: true
+              });
+            } catch (e) {}
           }
         } catch (e) {
           console.warn("Could not mock parent/top", e);

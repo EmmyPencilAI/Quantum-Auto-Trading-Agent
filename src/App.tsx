@@ -166,6 +166,8 @@ export default function App() {
     } catch (error: any) {
       console.error("Login failed", error);
       setLoginError(error.message || "Login failed. Please try again.");
+      // Add a small delay so the user sees the transition
+      await new Promise(resolve => setTimeout(resolve, 1000));
     } finally {
       setLoading(false);
     }

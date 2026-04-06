@@ -21,7 +21,7 @@ const privateKeyProvider = new EthereumPrivateKeyProvider({
 
 export const web3auth = new Web3Auth({
   clientId,
-  web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
+  web3AuthNetwork: (import.meta.env.VITE_WEB3AUTH_NETWORK as any) || WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
   privateKeyProvider,
   sessionTime: 86400,
   uiConfig: {
@@ -43,6 +43,14 @@ export const initWeb3Auth = async () => {
       throw new Error("Web3Auth Client ID is a placeholder. Please configure VITE_WEB3AUTH_CLIENT_ID in the Secrets panel.");
     }
 
+    if (clientId.length < 20) {
+      throw new Error("Web3Auth Client ID seems too short. Please verify your Client ID in the Secrets panel.");
+    }
+
+    const network = (import.meta.env.VITE_WEB3AUTH_NETWORK as any) || WEB3AUTH_NETWORK.SAPPHIRE_MAINNET;
+    // Log a masked version of the client ID and network for debugging
+    console.log(`Initializing Web3Auth on ${network} with Client ID: ${clientId.slice(0, 5)}...${clientId.slice(-5)}`);
+
     // For v9+, initModal is the correct method
     // Add a timeout to prevent hanging on invalid client IDs or network issues
     const timeoutPromise = new Promise((_, reject) => 
@@ -59,10 +67,13 @@ export const initWeb3Auth = async () => {
       initMethod.call(web3auth),
       timeoutPromise
     ]);
+    console.log("Web3Auth initialized successfully");
   } catch (error: any) {
     console.error("Error initializing Web3Auth:", error);
     if (error?.message?.includes("failed to fetch project configurations")) {
-      console.warn("Web3Auth failed to fetch configurations. This usually means the Client ID is invalid or the domain is not allowlisted.");
+      console.warn("Web3Auth failed to fetch configurations. This usually means the Client ID is invalid or the domain is not allowlisted in the Web3Auth dashboard.");
+      console.warn(`Current domain: ${window.location.origin}`);
     }
+    throw error; // Re-throw to be caught by the UI
   }
 };

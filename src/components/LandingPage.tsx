@@ -210,7 +210,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
               <li className="flex items-center gap-3"><ChevronRight className="w-4 h-4 text-orange-500" /> Uses real BNB/USDT funds</li>
               <li className="flex items-center gap-3"><ChevronRight className="w-4 h-4 text-orange-500" /> Executes real trades on-chain</li>
               <li className="flex items-center gap-3"><ChevronRight className="w-4 h-4 text-orange-500" /> Real profit/loss outcomes</li>
-              <li className="flex items-center gap-3"><ChevronRight className="w-4 h-4 text-orange-500" /> Instant 80/20 profit sharing</li>
+              <li className="flex items-center gap-3"><ChevronRight className="w-4 h-4 text-orange-500" /> Instant 50/50 profit sharing</li>
             </ul>
           </div>
         </div>
