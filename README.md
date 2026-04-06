@@ -125,7 +125,7 @@ TREASURY_ADDRESS=
 
 ## 🔐 Smart Contract
 
-Quantum runs on deployed **Sui Move contracts**:
+Quantum runs on deployed **BNB Solidity contracts**:
 
 > Fund Management
 > Trade Execution Logic
