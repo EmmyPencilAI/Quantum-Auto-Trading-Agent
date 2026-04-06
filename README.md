@@ -94,7 +94,7 @@ Storage:
 ## 📦 Installation
 
 ```bash
-git clone https://github.com/your-username/quantum-finance.git
+git clone https://github.com/your-username/quantum-trading-agent.git
 
 cd quantum-finance
 
