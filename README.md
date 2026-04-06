@@ -87,7 +87,7 @@ Storage:
 
 ## 🌐 Live Demo
 
-🔗 https://quantum-trading-agent.vercel.app/(https://quantum-trading-agent.vercel.app/)
+🔗 https://quantum-trading-agent.vercel.app/
 
 ---
 
@@ -116,7 +116,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 PINATA_API_KEY=
 PINATA_SECRET_API_KEY=
 
-SUI_RPC_URL=
+BNB_RPC_URL=
 CONTRACT_ADDRESS=
 TREASURY_ADDRESS=
 ```
@@ -170,7 +170,7 @@ Quantum uses a **performance-based profit-sharing model**:
 > [x] Migration to Crypto/Web3
 > [x] Sui Smart Contract Deployment
 > [x] Live dApp Launch
-> [ ] Multi-chain Expansion (BNB, ETH)
+> [ ] Multi-chain Expansion (SUI, SOL, BNB, ETH)
 > [ ] Mobile App (iOS / Android)
 > [ ] Advanced AI Models (Deep Learning Layer)
 > [ ] Institutional Trading API
