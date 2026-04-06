@@ -6,128 +6,73 @@
     <title>Quantum Agent</title>
     <script>
       (function() {
-        const safeDefine = (obj, prop, value) => {
-          try {
-            Object.defineProperty(obj, prop, {
-              value: value,
-              writable: true,
-              configurable: true,
-              enumerable: true
-            });
-          } catch (e) {
-            try {
-              obj[prop] = value;
-            } catch (e2) {
-              console.warn(`Could not define ${prop} on`, obj, e2);
-            }
-          }
-        };
+        // Fix for "Cannot set property fetch of #<Window> which has only a getter"
+        try {
+          const originalFetch = window.fetch;
+          Object.defineProperty(window, 'fetch', {
+            value: originalFetch,
+            writable: true,
+            configurable: true,
+            enumerable: true
+          });
+        } catch (e) {
+          console.warn("Could not redefine fetch as writable", e);
+        }
 
-        safeDefine(window, 'global', window);
-        
-        const processMock = {
+        // Fix for cross-origin frame access errors
+        try {
+          if (window.parent !== window) {
+            // Mock window.parent and window.top to return safe versions
+            const safeLocation = new Proxy(window.location, {
+              get: (target, prop) => {
+                try {
+                  return window.parent.location[prop];
+                } catch (e) {
+                  return target[prop];
+                }
+              }
+            });
+
+            const safeFrame = new Proxy(window.parent, {
+              get: (target, prop) => {
+                if (prop === 'location') return safeLocation;
+                if (prop === 'origin') {
+                  try {
+                    return target.origin;
+                  } catch (e) {
+                    return window.location.origin;
+                  }
+                }
+                try {
+                  const val = target[prop];
+                  return typeof val === 'function' ? val.bind(target) : val;
+                } catch (e) {
+                  return undefined;
+                }
+              }
+            });
+
+            Object.defineProperty(window, 'parent', { get: () => safeFrame, configurable: true });
+            Object.defineProperty(window, 'top', { get: () => safeFrame, configurable: true });
+          }
+        } catch (e) {
+          console.warn("Could not mock parent/top", e);
+        }
+
+        // Global and process mocks
+        window.global = window;
+        window.process = {
           env: { NODE_ENV: 'development' },
-          nextTick: function(fn) {
-            var args = Array.prototype.slice.call(arguments, 1);
-            setTimeout(function() {
-              fn.apply(null, args);
-            }, 0);
-          },
+          nextTick: (fn, ...args) => setTimeout(() => fn(...args), 0),
           browser: true,
-          cwd: function() { return '/'; },
+          cwd: () => '/',
           version: 'v18.0.0',
           versions: { node: '18.0.0' },
           on: function() { return this; },
           once: function() { return this; },
           off: function() { return this; },
           emit: function() { return this; },
-          listeners: function() { return []; },
-          binding: function() { throw new Error('process.binding is not supported'); }
         };
-        safeDefine(window, 'process', processMock);
-
-        // Handle fetch getter error
-        try {
-          const originalFetch = window.fetch;
-          const descriptor = Object.getOwnPropertyDescriptor(window, 'fetch');
-          if (descriptor && descriptor.get && !descriptor.set) {
-            Object.defineProperty(window, 'fetch', {
-              get: function() { return originalFetch; },
-              set: function(v) { console.warn('Attempted to set read-only fetch', v); },
-              configurable: true
-            });
-          }
-        } catch (e) {
-          console.warn("Could not redefine fetch", e);
-        }
-
-        // Try to mock window.parent and window.top to avoid cross-origin errors
-        try {
-          if (window.parent !== window) {
-            const originalParent = window.parent;
-            const originalTop = window.top;
-            
-            const createSafeLocation = (originalLocation) => {
-              return new Proxy({}, {
-                get: function(_, prop) {
-                  try {
-                    const val = originalLocation[prop];
-                    if (typeof val === 'function') return val.bind(originalLocation);
-                    return val;
-                  } catch (e) {
-                    return window.location[prop];
-                  }
-                }
-              });
-            };
-
-            const createSafeFrame = (originalFrame) => {
-              const safeLocation = createSafeLocation(originalFrame.location);
-              return new Proxy(originalFrame, {
-                get: function(target, prop) {
-                  if (prop === 'location') return safeLocation;
-                  if (prop === 'origin') {
-                    try {
-                      return target.origin;
-                    } catch (e) {
-                      return window.location.origin;
-                    }
-                  }
-                  try {
-                    const val = target[prop];
-                    if (typeof val === 'function') return val.bind(target);
-                    return val;
-                  } catch (e) {
-                    return window[prop];
-                  }
-                }
-              });
-            };
-
-            const safeParent = createSafeFrame(originalParent);
-            const safeTop = createSafeFrame(originalTop);
-
-            try {
-              Object.defineProperty(window, 'parent', {
-                get: function() { return safeParent; },
-                configurable: true
-              });
-            } catch (e) {
-              console.warn("Could not redefine window.parent", e);
-            }
-
-            try {
-              Object.defineProperty(window, 'top', {
-                get: function() { return safeTop; },
-                configurable: true
-              });
-            } catch (e) {
-              console.warn("Could not redefine window.top", e);
-            }
-          }
-        } catch (e) {
-          console.warn("Could not redefine window.parent or window.top", e);
-        }
       })();
     </script>
   </head>
