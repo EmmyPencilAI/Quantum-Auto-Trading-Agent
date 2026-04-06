@@ -43,8 +43,10 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('wallet');
   const [mode, setMode] = useState<ModeType>('demo');
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadingMessage, setLoadingMessage] = useState<string>("INITIALIZING QUANTUM ENGINE...");
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   useEffect(() => {
@@ -66,6 +68,7 @@ export default function App() {
 
     const init = async () => {
       try {
+        setLoadingMessage("CONNECTING TO WEB3AUTH...");
         await initWeb3Auth();
       } catch (error) {
         console.error("Failed to initialize Web3Auth:", error);
@@ -104,15 +107,22 @@ export default function App() {
   const handleLogin = async () => {
     try {
       setLoading(true);
+      setLoginError(null);
+      setLoadingMessage("OPENING WALLET MODAL...");
       
       // Ensure Web3Auth is initialized
       if (web3auth.status === 'not_ready') {
         await initWeb3Auth();
       }
 
-      const web3authProvider = await web3auth.connect();
-      if (!web3authProvider) throw new Error("No provider returned");
+      if (web3auth.status === 'not_ready') {
+        throw new Error("Web3Auth failed to initialize. Check your Client ID and domain settings.");
+      }
 
+      const web3authProvider = await web3auth.connect();
+      if (!web3authProvider) throw new Error("No provider returned. Did you close the modal?");
+
+      setLoadingMessage("SYNCING WITH BLOCKCHAIN...");
       const ethersProvider = new ethers.BrowserProvider(web3authProvider);
       const signer = await ethersProvider.getSigner();
       const address = await signer.getAddress();
@@ -120,6 +130,7 @@ export default function App() {
       // Get user info from Web3Auth
       const userInfo = await web3auth.getUserInfo();
 
+      setLoadingMessage("AUTHENTICATING WITH QUANTUM...");
       // Sign in to Firebase anonymously if not already signed in
       // This ensures onAuthStateChanged doesn't kick the user out
       let firebaseUser = auth.currentUser;
@@ -152,9 +163,9 @@ export default function App() {
         }
         setIsLoggedIn(true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login failed", error);
-      // If it's a "User closed modal" error, we don't need to do much
+      setLoginError(error.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -169,26 +180,20 @@ export default function App() {
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
-        <motion.img 
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
-          src="/logo.png" 
-          alt="Quantum Logo" 
-          className="w-32 h-32 mb-8 object-contain" 
-          referrerPolicy="no-referrer"
-        />
-        <div className="flex flex-col items-center gap-2">
-          <p className="text-orange-500 font-display text-2xl tracking-widest animate-pulse">QUANTUM ENGINE</p>
-          <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden">
-            <motion.div 
-              initial={{ x: "-100%" }}
-              animate={{ x: "100%" }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-              className="w-full h-full bg-orange-600"
-            />
+        <div className="relative w-24 h-24 mb-8">
+          <div className="absolute inset-0 bg-orange-600/20 blur-xl rounded-full animate-pulse" />
+          <div className="relative w-full h-full bg-orange-600 rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(249,115,22,0.5)]">
+            <Zap className="w-12 h-12 text-white fill-white animate-bounce" />
           </div>
-          <p className="text-white/40 font-mono text-[10px] uppercase tracking-[0.3em] mt-4">Initializing Autonomy...</p>
+        </div>
+        <p className="text-orange-500 font-mono text-sm tracking-[0.3em] animate-pulse uppercase">{loadingMessage}</p>
+        <div className="mt-8 w-48 h-1 bg-white/5 rounded-full overflow-hidden">
+          <motion.div 
+            className="h-full bg-orange-600"
+            initial={{ width: "0%" }}
+            animate={{ width: "100%" }}
+            transition={{ duration: 2, repeat: Infinity }}
+          />
         </div>
       </div>
     );
@@ -208,7 +213,26 @@ export default function App() {
   }
 
   if (!isLoggedIn) {
-    return <LandingPage onLogin={handleLogin} />;
+    return (
+      <>
+        {loginError && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-full max-w-md px-4">
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-red-500 text-white p-4 rounded-xl shadow-2xl flex items-center gap-3 border border-red-400"
+            >
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <p className="text-sm font-bold uppercase tracking-tight">{loginError}</p>
+              <button onClick={() => setLoginError(null)} className="ml-auto p-1 hover:bg-white/20 rounded-lg">
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
+          </div>
+        )}
+        <LandingPage onLogin={handleLogin} />
+      </>
+    );
   }
 
   const tabs = [
@@ -231,8 +255,10 @@ export default function App() {
         theme === 'dark' ? "bg-black/80 border-white/5" : "bg-white/80 border-black/5"
       )}>
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Quantum" className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
-          <span className="font-display text-xl tracking-tight hidden sm:block uppercase">QUANTUM <span className="text-orange-500">FINANCE</span></span>
+          <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(249,115,22,0.5)]">
+            <Zap className="w-5 h-5 text-white fill-white" />
+          </div>
+          <span className="font-bold text-xl tracking-tight hidden sm:block uppercase">QUANTUM <span className="text-orange-500">FINANCE</span></span>
         </div>
 
         <div className="flex items-center gap-4">

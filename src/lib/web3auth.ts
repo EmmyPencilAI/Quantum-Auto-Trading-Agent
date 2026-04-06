@@ -40,8 +40,7 @@ export const initWeb3Auth = async () => {
   try {
     // Check if clientId is a placeholder
     if (clientId.includes("p763p763p763p763p")) {
-      console.warn("Web3Auth Client ID is a placeholder. Please configure VITE_WEB3AUTH_CLIENT_ID in the Secrets panel.");
-      return;
+      throw new Error("Web3Auth Client ID is a placeholder. Please configure VITE_WEB3AUTH_CLIENT_ID in the Secrets panel.");
     }
 
     // For v9+, initModal is the correct method
