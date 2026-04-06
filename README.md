@@ -96,7 +96,7 @@ Storage:
 ```bash
 git clone https://github.com/your-username/quantum-trading-agent.git
 
-cd quantum-finance
+cd quantum-trading-agent
 
 npm install
 
