@@ -38,16 +38,16 @@
               toString: function() { return window.location.toString(); }
             };
 
-            // Make it look more like a real Location object
-            try {
-              Object.setPrototypeOf(mockLocation, Location.prototype);
-            } catch (e) {}
-
             const mockFrame = new Proxy(window.parent, {
               get: (target, prop) => {
                 if (prop === 'location') return mockLocation;
                 if (prop === 'origin') return window.location.origin;
                 if (prop === 'parent' || prop === 'top') return mockFrame;
+                
+                // Avoid accessing restricted properties on the real target
+                const restricted = ['location', 'origin', 'parent', 'top', 'document', 'frames', 'length', 'self'];
+                if (restricted.includes(prop)) return undefined;
+
                 try {
                   const val = target[prop];
                   return typeof val === 'function' ? val.bind(target) : val;

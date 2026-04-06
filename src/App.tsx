@@ -169,8 +169,27 @@ export default function App() {
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
-        <img src={APP_CONFIG.LOADING_GIF} alt="Loading..." className="w-24 h-24 mb-4" />
-        <p className="text-orange-500 font-mono animate-pulse">INITIALIZING QUANTUM ENGINE...</p>
+        <motion.img 
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
+          src="/logo.png" 
+          alt="Quantum Logo" 
+          className="w-32 h-32 mb-8 object-contain" 
+          referrerPolicy="no-referrer"
+        />
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-orange-500 font-display text-2xl tracking-widest animate-pulse">QUANTUM ENGINE</p>
+          <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden">
+            <motion.div 
+              initial={{ x: "-100%" }}
+              animate={{ x: "100%" }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+              className="w-full h-full bg-orange-600"
+            />
+          </div>
+          <p className="text-white/40 font-mono text-[10px] uppercase tracking-[0.3em] mt-4">Initializing Autonomy...</p>
+        </div>
       </div>
     );
   }
@@ -212,10 +231,8 @@ export default function App() {
         theme === 'dark' ? "bg-black/80 border-white/5" : "bg-white/80 border-black/5"
       )}>
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(249,115,22,0.5)]">
-            <Zap className="w-5 h-5 text-white fill-white" />
-          </div>
-          <span className="font-bold text-xl tracking-tight hidden sm:block uppercase">QUANTUM <span className="text-orange-500">FINANCE</span></span>
+          <img src="/logo.png" alt="Quantum" className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
+          <span className="font-display text-xl tracking-tight hidden sm:block uppercase">QUANTUM <span className="text-orange-500">FINANCE</span></span>
         </div>
 
         <div className="flex items-center gap-4">

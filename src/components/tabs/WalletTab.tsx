@@ -50,16 +50,16 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
               <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
                 <Wallet className="w-6 h-6 text-white" />
               </div>
-              <span className="font-bold text-lg tracking-tight uppercase">MAIN WALLET</span>
+              <span className="font-display text-lg tracking-tight uppercase">MAIN WALLET</span>
             </div>
-            <div className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-black uppercase tracking-widest border border-white/20">
+            <div className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-display uppercase tracking-widest border border-white/20">
               {mode} MODE
             </div>
           </div>
 
           <div className="mb-8">
             <p className="text-white/60 text-sm font-medium mb-1 uppercase tracking-widest">Total Balance</p>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tighter">
+            <h2 className="text-4xl md:text-5xl font-display tracking-tighter">
               {mode === 'demo' ? '$13,300.00' : '$2,542.12'}
             </h2>
           </div>
@@ -130,8 +130,8 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
         {/* Assets */}
         <div className="space-y-4">
           <div className="flex items-center justify-between px-2">
-            <h3 className="font-bold text-lg uppercase tracking-widest opacity-50">Your Assets</h3>
-            <button className="text-orange-500 text-xs font-bold hover:underline uppercase tracking-widest">View All</button>
+            <h3 className="font-display text-lg uppercase tracking-widest opacity-50">Your Assets</h3>
+            <button className="text-orange-500 text-xs font-display hover:underline uppercase tracking-widest">View All</button>
           </div>
           <div className="space-y-2">
             {balances.map((asset, i) => (
@@ -155,8 +155,8 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
         {/* Recent Activity */}
         <div className="space-y-4">
           <div className="flex items-center justify-between px-2">
-            <h3 className="font-bold text-lg uppercase tracking-widest opacity-50">Recent Activity</h3>
-            <button className="text-orange-500 text-xs font-bold hover:underline uppercase tracking-widest">History</button>
+            <h3 className="font-display text-lg uppercase tracking-widest opacity-50">Recent Activity</h3>
+            <button className="text-orange-500 text-xs font-display hover:underline uppercase tracking-widest">History</button>
           </div>
           <div className="space-y-2">
             {transactions.map((tx, i) => (

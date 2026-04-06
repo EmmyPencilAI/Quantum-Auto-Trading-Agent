@@ -2,7 +2,7 @@ export const APP_CONFIG = {
   NAME: "Quantum Finance",
   DESCRIPTION: "Automated Web3 Trading Engine Built for Speed, Strategy, and Scale",
   LOGO: "/logo.png",
-  LOADING_GIF: "/loading.gif",
+  LOADING_GIF: "/logo.png",
   FIREBASE_ID: "quantum-bnb",
   GOOGLE_CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID || "",
   

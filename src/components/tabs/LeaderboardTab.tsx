@@ -41,8 +41,8 @@ export default function LeaderboardTab() {
           <Trophy className="w-4 h-4 fill-orange-400" />
           Global Rankings
         </motion.div>
-        <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-4 uppercase">Quantum <span className="text-orange-600">Elite</span></h2>
-        <p className="text-white/50 text-lg">The top performing automated trading engines on the BNB Chain. Real mode data only.</p>
+        <h2 className="text-4xl md:text-6xl font-display tracking-tighter mb-4 uppercase">Quantum <span className="text-orange-600">Elite</span></h2>
+        <p className="text-white/50 text-lg font-sans">The top performing automated trading engines on the BNB Chain. Real mode data only.</p>
       </div>
 
       {/* Top 3 Podium */}
@@ -59,9 +59,9 @@ export default function LeaderboardTab() {
               <Medal className="w-6 h-6 text-white" />
             </div>
             <img src={topThree[1].avatar} alt="Avatar" className="w-24 h-24 rounded-full mx-auto mb-6 border-4 border-slate-400/20" />
-            <h3 className="text-xl font-bold mb-2">{topThree[1].username}</h3>
-            <p className="text-green-500 font-black text-2xl tracking-tighter">+${topThree[1].totalProfit.toLocaleString()}</p>
-            <p className="text-[10px] text-white/30 uppercase tracking-widest mt-2 font-bold">Rank #2</p>
+            <h3 className="text-xl font-display mb-2">{topThree[1].username}</h3>
+            <p className="text-green-500 font-display text-2xl tracking-tighter">+${topThree[1].totalProfit.toLocaleString()}</p>
+            <p className="text-[10px] text-white/30 uppercase tracking-widest mt-2 font-display">Rank #2</p>
           </motion.div>
         )}
 
@@ -76,9 +76,9 @@ export default function LeaderboardTab() {
               <Trophy className="w-8 h-8 text-white fill-white" />
             </div>
             <img src={topThree[0].avatar} alt="Avatar" className="w-32 h-32 rounded-full mx-auto mb-6 border-4 border-yellow-500/20" />
-            <h3 className="text-2xl font-black mb-2">{topThree[0].username}</h3>
-            <p className="text-green-500 font-black text-3xl tracking-tighter">+${topThree[0].totalProfit.toLocaleString()}</p>
-            <p className="text-xs text-orange-500 uppercase tracking-widest mt-3 font-black">Global Champion</p>
+            <h3 className="text-2xl font-display mb-2">{topThree[0].username}</h3>
+            <p className="text-green-500 font-display text-3xl tracking-tighter">+${topThree[0].totalProfit.toLocaleString()}</p>
+            <p className="text-xs text-orange-500 uppercase tracking-widest mt-3 font-display">Global Champion</p>
           </motion.div>
         )}
 
@@ -94,9 +94,9 @@ export default function LeaderboardTab() {
               <Medal className="w-6 h-6 text-white" />
             </div>
             <img src={topThree[2].avatar} alt="Avatar" className="w-24 h-24 rounded-full mx-auto mb-6 border-4 border-amber-700/20" />
-            <h3 className="text-xl font-bold mb-2">{topThree[2].username}</h3>
-            <p className="text-green-500 font-black text-2xl tracking-tighter">+${topThree[2].totalProfit.toLocaleString()}</p>
-            <p className="text-[10px] text-white/30 uppercase tracking-widest mt-2 font-bold">Rank #3</p>
+            <h3 className="text-xl font-display mb-2">{topThree[2].username}</h3>
+            <p className="text-green-500 font-display text-2xl tracking-tighter">+${topThree[2].totalProfit.toLocaleString()}</p>
+            <p className="text-[10px] text-white/30 uppercase tracking-widest mt-2 font-display">Rank #3</p>
           </motion.div>
         )}
       </div>
@@ -104,7 +104,7 @@ export default function LeaderboardTab() {
       {/* List View */}
       <div className="max-w-5xl mx-auto p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
-          <h3 className="font-bold text-xl uppercase tracking-tighter">Full Leaderboard</h3>
+          <h3 className="font-display text-xl uppercase tracking-tighter">Full Leaderboard</h3>
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />

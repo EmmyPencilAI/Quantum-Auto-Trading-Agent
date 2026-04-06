@@ -36,46 +36,54 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden selection:bg-orange-500/30 font-sans">
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 h-20 backdrop-blur-md border-b border-white/5 z-50 flex items-center justify-between px-4 md:px-8">
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="Quantum" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
+          <span className="font-display text-2xl tracking-tighter uppercase">QUANTUM <span className="text-orange-500">FINANCE</span></span>
+        </div>
+        <button 
+          onClick={onLogin}
+          className="px-6 py-2 bg-orange-600 rounded-full font-bold text-sm uppercase tracking-widest hover:bg-orange-500 transition-colors shadow-[0_0_20px_rgba(249,115,22,0.3)]"
+        >
+          Launch App
+        </button>
+      </header>
+
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-4 md:px-8 overflow-hidden">
+      <section className="relative pt-40 pb-20 px-4 md:px-8 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-orange-600/10 blur-[120px] rounded-full -z-10" />
         
         <div className="max-w-7xl mx-auto text-center">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-bold uppercase tracking-widest mb-8"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mb-12 inline-block"
           >
-            <Zap className="w-4 h-4 fill-orange-400" />
-            Next-Gen Trading Engine
+            <img src="/logo.png" alt="Quantum Logo" className="w-32 h-32 mx-auto object-contain drop-shadow-[0_0_30px_rgba(249,115,22,0.3)]" referrerPolicy="no-referrer" />
           </motion.div>
 
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-5xl md:text-8xl font-black tracking-tighter mb-6 leading-[0.9] uppercase"
+            className="text-6xl md:text-9xl font-display tracking-tighter mb-8 leading-[0.8] uppercase"
           >
             QUANTUM <span className="text-orange-600">FINANCE</span>
           </motion.h1>
 
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="text-xl md:text-3xl font-bold text-white/80 mb-6 uppercase tracking-tight"
-          >
-            Automated Web3 Trading Engine Built for Speed, Strategy, and Scale
-          </motion.h2>
-
-          <motion.p
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-10 leading-relaxed"
+            className="max-w-3xl mx-auto mb-12"
           >
-            Trade smarter using automated strategies. Connect your wallet, fund trading, and start/stop anytime.
-          </motion.p>
+            <p className="text-xl md:text-2xl font-display text-white/90 leading-tight uppercase tracking-tight">
+              Traditional finance was built for control.<br/>
+              Quantum is built for speed, intelligence, and autonomy.<br/>
+              <span className="text-orange-500">The future of money isn’t managed. It’s engineered.</span>
+            </p>
+          </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -106,8 +114,8 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
       <section className="py-24 px-4 md:px-8 bg-white/[0.02] border-y border-white/5">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black tracking-tighter mb-4 uppercase">HOW IT WORKS</h2>
-            <p className="text-white/50 text-lg">Four simple steps to start your automated trading journey.</p>
+            <h2 className="text-3xl md:text-6xl font-display tracking-tighter mb-4 uppercase">HOW IT WORKS</h2>
+            <p className="text-white/50 text-lg font-sans">Four simple steps to start your automated trading journey.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 relative">
@@ -136,8 +144,8 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
       <section className="py-24 px-4 md:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black tracking-tighter mb-4 uppercase">CORE FEATURES</h2>
-            <p className="text-white/50 text-lg">Everything you need to trade with confidence and scale.</p>
+            <h2 className="text-4xl md:text-7xl font-display tracking-tighter mb-4 uppercase">CORE FEATURES</h2>
+            <p className="text-white/50 text-lg font-sans">Everything you need to trade with confidence and scale.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, i) => (
@@ -164,8 +172,8 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
       <section className="py-24 px-4 md:px-8 bg-white/[0.02] border-y border-white/5">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black tracking-tighter mb-4 uppercase">TRADING STRATEGIES</h2>
-            <p className="text-white/50 text-lg">Select the mode that fits your risk profile and goals.</p>
+            <h2 className="text-4xl md:text-7xl font-display tracking-tighter mb-4 uppercase">TRADING STRATEGIES</h2>
+            <p className="text-white/50 text-lg font-sans">Select the mode that fits your risk profile and goals.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {tradingModes.map((mode, i) => (
@@ -254,8 +262,8 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
       {/* Footer */}
       <footer className="py-16 px-4 md:px-8 border-t border-white/5 text-center">
         <div className="flex items-center justify-center gap-3 mb-8">
-          <Zap className="w-8 h-8 text-orange-600 fill-orange-600" />
-          <span className="font-black text-2xl tracking-tighter uppercase">QUANTUM FINANCE</span>
+          <img src="/logo.png" alt="Quantum" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
+          <span className="font-display text-3xl tracking-tighter uppercase">QUANTUM FINANCE</span>
         </div>
         <div className="flex justify-center gap-8 mb-8 text-white/40 text-sm font-bold uppercase tracking-widest">
           <a href="https://guguroboticsreporter.medium.com/quantum-finance-55ce34afd39c" target="_blank" rel="noopener noreferrer" className="hover:text-orange-500 transition-colors">Terms</a>

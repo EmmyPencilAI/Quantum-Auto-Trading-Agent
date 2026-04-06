@@ -296,8 +296,8 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
           </div>
 
           <div className="text-right">
-            <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-1">Available Balance</p>
-            <h3 className="text-3xl font-black tracking-tight">
+            <p className="text-xs font-display text-white/40 uppercase tracking-widest mb-1">Available Balance</p>
+            <h3 className="text-3xl font-display tracking-tight">
               {mode === 'demo' ? `$${demoBalance.toLocaleString()}` : `$2,542.12`}
             </h3>
           </div>
@@ -308,7 +308,7 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
         {/* Trading Controls */}
         <div className="lg:col-span-1 space-y-6">
           <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 space-y-6">
-            <h3 className="font-bold text-xl uppercase tracking-tighter flex items-center gap-2">
+            <h3 className="font-display text-xl uppercase tracking-tighter flex items-center gap-2">
               <Zap className="w-5 h-5 text-orange-500" /> Trading Setup
             </h3>
 
@@ -433,7 +433,7 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
                   <Activity className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-xl uppercase tracking-tighter">Live Status</h3>
+                  <h3 className="font-display text-xl uppercase tracking-tighter">Live Status</h3>
                   <p className="text-xs text-white/40 uppercase tracking-widest">{isTrading ? 'Engine Active' : 'Engine Idle'}</p>
                 </div>
               </div>
@@ -510,10 +510,10 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
           {/* Trade History */}
           <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5">
             <div className="flex items-center justify-between mb-8">
-              <h3 className="font-bold text-xl uppercase tracking-tighter flex items-center gap-2">
+              <h3 className="font-display text-xl uppercase tracking-tighter flex items-center gap-2">
                 <History className="w-5 h-5 text-white/40" /> Recent Trades
               </h3>
-              <button className="text-orange-500 text-xs font-bold hover:underline uppercase tracking-widest">View All</button>
+              <button className="text-orange-500 text-xs font-display hover:underline uppercase tracking-widest">View All</button>
             </div>
 
             <div className="overflow-x-auto">

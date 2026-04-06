@@ -90,7 +90,7 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Profile Section */}
       <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5">
-        <h3 className="font-bold text-xl uppercase tracking-tighter mb-8 flex items-center gap-2">
+        <h3 className="font-display text-xl uppercase tracking-tighter mb-8 flex items-center gap-2">
           <User className="w-5 h-5 text-orange-500" /> Profile Settings
         </h3>
 
@@ -134,7 +134,7 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
 
       {/* Demo Wallet Controls */}
       <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5">
-        <h3 className="font-bold text-xl uppercase tracking-tighter mb-8 flex items-center gap-2">
+        <h3 className="font-display text-xl uppercase tracking-tighter mb-8 flex items-center gap-2">
           <Wallet className="w-5 h-5 text-orange-500" /> Demo Wallet Controls
         </h3>
 
@@ -175,7 +175,7 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
 
       {/* Security & Account */}
       <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5">
-        <h3 className="font-bold text-xl uppercase tracking-tighter mb-8 flex items-center gap-2">
+        <h3 className="font-display text-xl uppercase tracking-tighter mb-8 flex items-center gap-2">
           <Shield className="w-5 h-5 text-orange-500" /> Security & Account
         </h3>
 
@@ -245,7 +245,7 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-2xl font-black tracking-tighter uppercase">Choose Avatar</h3>
+                <h3 className="text-2xl font-display tracking-tighter uppercase">Choose Avatar</h3>
                 <button onClick={() => setShowAvatarPicker(false)} className="p-2 hover:bg-white/5 rounded-full transition-all">
                   <X className="w-6 h-6" />
                 </button>

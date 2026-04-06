@@ -38,6 +38,12 @@ export const web3auth = new Web3Auth({
 
 export const initWeb3Auth = async () => {
   try {
+    // Check if clientId is a placeholder
+    if (clientId.includes("p763p763p763p763p")) {
+      console.warn("Web3Auth Client ID is a placeholder. Please configure VITE_WEB3AUTH_CLIENT_ID in the Secrets panel.");
+      return;
+    }
+
     // For v9+, initModal is the correct method
     // Add a timeout to prevent hanging on invalid client IDs or network issues
     const timeoutPromise = new Promise((_, reject) => 
@@ -54,7 +60,10 @@ export const initWeb3Auth = async () => {
       initMethod.call(web3auth),
       timeoutPromise
     ]);
-  } catch (error) {
-    console.error("Error initializing Web3Auth", error);
+  } catch (error: any) {
+    console.error("Error initializing Web3Auth:", error);
+    if (error?.message?.includes("failed to fetch project configurations")) {
+      console.warn("Web3Auth failed to fetch configurations. This usually means the Client ID is invalid or the domain is not allowlisted.");
+    }
   }
 };

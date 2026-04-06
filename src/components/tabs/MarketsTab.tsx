@@ -72,10 +72,10 @@ export default function MarketsTab() {
           <div key={i} className="p-6 rounded-3xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-all group cursor-pointer">
             <div className="flex items-center gap-2 mb-2">
               <stat.icon className="w-4 h-4 text-orange-500 group-hover:scale-110 transition-transform" />
-              <span className="text-xs font-bold opacity-40 uppercase tracking-widest">{stat.label}</span>
+              <span className="text-xs font-display opacity-40 uppercase tracking-widest">{stat.label}</span>
             </div>
             <div className="flex items-end gap-2">
-              <span className="text-2xl font-black tracking-tight">{stat.value}</span>
+              <span className="text-2xl font-display tracking-tight">{stat.value}</span>
               <span className={cn(
                 "text-[10px] font-bold px-1.5 py-0.5 rounded-md mb-1",
                 stat.change.startsWith('+') ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
@@ -94,7 +94,7 @@ export default function MarketsTab() {
             <div className="w-10 h-10 bg-orange-600/10 rounded-xl flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-orange-500" />
             </div>
-            <h2 className="text-2xl font-black tracking-tight uppercase">Market Overview</h2>
+            <h2 className="text-2xl font-display tracking-tight uppercase">Market Overview</h2>
           </div>
           
           <div className="relative w-full md:w-80">
@@ -115,7 +115,7 @@ export default function MarketsTab() {
       {/* Top Gainers/Losers (Mock) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5">
-          <h3 className="font-bold text-lg mb-6 flex items-center gap-2 uppercase tracking-tighter">
+          <h3 className="font-display text-lg mb-6 flex items-center gap-2 uppercase tracking-tighter">
             <TrendingUp className="w-5 h-5 text-green-500" /> Top Gainers
           </h3>
           <div className="space-y-4">
@@ -142,7 +142,7 @@ export default function MarketsTab() {
         </div>
 
         <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5">
-          <h3 className="font-bold text-lg mb-6 flex items-center gap-2 uppercase tracking-tighter">
+          <h3 className="font-display text-lg mb-6 flex items-center gap-2 uppercase tracking-tighter">
             <TrendingDown className="w-5 h-5 text-red-500" /> Top Losers
           </h3>
           <div className="space-y-4">

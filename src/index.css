@@ -1,7 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Natural Precision", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Alien Invader", "Orbitron", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   --color-primary: #f97316; /* orange-500 */
   --color-primary-dark: #ea580c; /* orange-600 */

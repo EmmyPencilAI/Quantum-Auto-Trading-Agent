@@ -170,7 +170,7 @@ export default function CommunityTab({ user }: CommunityTabProps) {
       <div className="hidden lg:block space-y-6">
         {/* Trending Topics */}
         <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5">
-          <h3 className="font-bold text-lg uppercase tracking-tighter mb-6 flex items-center gap-2">
+          <h3 className="font-display text-lg uppercase tracking-tighter mb-6 flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-orange-500" /> Trending
           </h3>
           <div className="space-y-4">
@@ -190,7 +190,7 @@ export default function CommunityTab({ user }: CommunityTabProps) {
 
         {/* Suggested Users */}
         <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5">
-          <h3 className="font-bold text-lg uppercase tracking-tighter mb-6 flex items-center gap-2">
+          <h3 className="font-display text-lg uppercase tracking-tighter mb-6 flex items-center gap-2">
             <Users className="w-5 h-5 text-orange-500" /> Suggested
           </h3>
           <div className="space-y-4">
