@@ -106,26 +106,44 @@ export const initWeb3Auth = async () => {
     }
 
     const network = APP_CONFIG.WEB3AUTH_NETWORK;
+    let safeOrigin = "unknown domain";
+    try {
+      safeOrigin = getSafeOrigin();
+    } catch (e) { /* ignore */ }
+    
     // Log a masked version of the client ID and network for debugging
     console.log(`Initializing Web3Auth on ${network} with Client ID: ${clientId.slice(0, 5)}...${clientId.slice(-5)}`);
+    console.log(`Current safe origin: ${safeOrigin}`);
+    console.log(`Chain Config: ${APP_CONFIG.BNB_CHAIN.DISPLAY_NAME} (${APP_CONFIG.BNB_CHAIN.CHAIN_ID})`);
+    console.log(`RPC Target: ${APP_CONFIG.BNB_CHAIN.RPC_URL}`);
 
     // For v9+, initModal is the correct method
     // Add a timeout to prevent hanging on invalid client IDs or network issues
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error("Web3Auth init timeout")), 15000)
+      setTimeout(() => reject(new Error(`Web3Auth init timeout (60s exceeded). Status: ${web3auth.status}`)), 60000)
     );
+    
+    // Monitor status changes
+    const statusInterval = setInterval(() => {
+      console.log(`Web3Auth initialization in progress... Status: ${web3auth.status}`);
+    }, 5000);
     
     // Check if initModal exists, if not try init
     const initMethod = (web3auth as any).initModal || (web3auth as any).init;
     if (!initMethod) {
+      clearInterval(statusInterval);
       throw new Error("Web3Auth init method not found");
     }
     
-    await Promise.race([
-      initMethod.call(web3auth),
-      timeoutPromise
-    ]);
-    console.log("Web3Auth initialized successfully");
+    try {
+      await Promise.race([
+        initMethod.call(web3auth),
+        timeoutPromise
+      ]);
+      console.log("Web3Auth initialized successfully");
+    } finally {
+      clearInterval(statusInterval);
+    }
   } catch (error: any) {
     console.error("Error initializing Web3Auth:", error);
     
