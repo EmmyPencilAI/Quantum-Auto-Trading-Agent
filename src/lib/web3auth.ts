@@ -8,12 +8,26 @@ const clientId = APP_CONFIG.WEB3AUTH_CLIENT_ID;
 // Helper to get a safe origin for URL construction
 const getSafeOrigin = () => {
   try {
-    const origin = window.location.origin;
-    if (origin && origin !== 'null') return origin;
-    return window.location.protocol + '//' + window.location.host;
+    // Try to get origin from window.location
+    // Use a very defensive approach to avoid "Blocked a frame" errors
+    const loc = window.location;
+    if (loc) {
+      try {
+        if (loc.origin && loc.origin !== 'null') return loc.origin;
+      } catch (e) { /* ignore */ }
+      
+      try {
+        if (loc.protocol && loc.host && loc.protocol !== 'null' && loc.host !== 'null') {
+          return `${loc.protocol}//${loc.host}`;
+        }
+      } catch (e) { /* ignore */ }
+    }
   } catch (e) {
-    return 'http://localhost:3000'; // Fallback
+    // Ignore all location access errors
   }
+  
+  // Fallback to environment variable or localhost
+  return (import.meta.env.VITE_APP_URL as string) || 'http://localhost:3000';
 };
 
 const chainConfig = {
@@ -30,13 +44,21 @@ const chainConfig = {
 const validateChainConfig = (config: any) => {
   const urlFields = ['rpcTarget', 'blockExplorerUrl'];
   for (const field of urlFields) {
+    const value = config[field];
+    if (!value || typeof value !== 'string' || value.trim() === '') {
+      console.warn(`Empty or missing URL in chainConfig.${field}`);
+      continue;
+    }
+    
     try {
-      if (config[field]) new URL(config[field]);
+      new URL(value);
     } catch (e) {
-      console.warn(`Invalid URL in chainConfig.${field}: ${config[field]}`);
-      // If it's a relative URL or malformed, try to fix it or set a default
-      if (config[field] && !config[field].startsWith('http')) {
-        config[field] = getSafeOrigin() + (config[field].startsWith('/') ? '' : '/') + config[field];
+      console.warn(`Invalid URL in chainConfig.${field}: ${value}`);
+      // If it's a relative URL, try to fix it
+      if (value.startsWith('/')) {
+        config[field] = getSafeOrigin() + value;
+      } else if (!value.startsWith('http')) {
+        config[field] = getSafeOrigin() + '/' + value;
       }
     }
   }
@@ -50,7 +72,7 @@ const privateKeyProvider = new EthereumPrivateKeyProvider({
 
 export const web3auth = new Web3Auth({
   clientId,
-  web3AuthNetwork: (import.meta.env.VITE_WEB3AUTH_NETWORK as any) || WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
+  web3AuthNetwork: APP_CONFIG.WEB3AUTH_NETWORK as any,
   privateKeyProvider,
   sessionTime: 86400,
   uiConfig: {
@@ -83,7 +105,7 @@ export const initWeb3Auth = async () => {
       throw new Error("Web3Auth Client ID seems too short. Please verify your Client ID in the Secrets panel.");
     }
 
-    const network = (import.meta.env.VITE_WEB3AUTH_NETWORK as any) || WEB3AUTH_NETWORK.SAPPHIRE_MAINNET;
+    const network = APP_CONFIG.WEB3AUTH_NETWORK;
     // Log a masked version of the client ID and network for debugging
     console.log(`Initializing Web3Auth on ${network} with Client ID: ${clientId.slice(0, 5)}...${clientId.slice(-5)}`);
 
@@ -106,9 +128,23 @@ export const initWeb3Auth = async () => {
     console.log("Web3Auth initialized successfully");
   } catch (error: any) {
     console.error("Error initializing Web3Auth:", error);
+    
+    let safeOrigin = "unknown domain";
+    try {
+      safeOrigin = getSafeOrigin();
+    } catch (e) { /* ignore */ }
+
     if (error?.message?.includes("failed to fetch project configurations")) {
       console.warn("Web3Auth failed to fetch configurations. This usually means the Client ID is invalid or the domain is not allowlisted in the Web3Auth dashboard.");
-      console.warn(`Current domain: ${window.location.origin}`);
+      console.warn(`Current domain: ${safeOrigin}`);
+      console.warn(`Current network: ${APP_CONFIG.WEB3AUTH_NETWORK}`);
+      
+      const helpMsg = `WEB3AUTH CONFIG ERROR: 
+1. Ensure your Client ID is correct for the "${APP_CONFIG.WEB3AUTH_NETWORK}" network.
+2. Ensure "${safeOrigin}" is allowlisted in your Web3Auth Dashboard (https://dashboard.web3auth.io/).
+3. If you just created the project, wait 5-10 minutes for the configuration to propagate.`;
+      
+      throw new Error(helpMsg);
     }
     throw error; // Re-throw to be caught by the UI
   }
