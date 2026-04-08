@@ -21,25 +21,53 @@
 
         // Fix for cross-origin frame access errors
         try {
+          // Global error handler for cross-origin access
+          window.addEventListener('error', (event) => {
+            if (event.message && (
+                event.message.includes('Blocked a frame with origin') || 
+                event.message.includes('cross-origin frame') ||
+                event.message.includes('origin from Location')
+            )) {
+              console.warn('Caught and silenced cross-origin error:', event.message);
+              event.preventDefault();
+              event.stopPropagation();
+            }
+          }, true);
+
           if (window.parent !== window) {
+            const safeOrigin = (function() {
+              try {
+                // Try to get origin from current window
+                if (window.location.origin && window.location.origin !== 'null') return window.location.origin;
+                if (window.location.protocol && window.location.host && window.location.protocol !== 'null') {
+                  return window.location.protocol + '//' + window.location.host;
+                }
+              } catch (e) {}
+              
+              // Fallback: parse from href
+              try {
+                const url = new URL(window.location.href);
+                return url.origin;
+              } catch (e) {}
+              
+              return window.location.href.split('/').slice(0, 3).join('/') || 'http://localhost:3000';
+            })();
+
             const mockLocation = new Proxy(window.location, {
               get: (target, prop) => {
-                const origin = window.location.origin && window.location.origin !== 'null' ? window.location.origin : (window.location.protocol + '//' + window.location.host);
-                if (prop === 'origin') return origin;
-                if (prop === 'href') return window.location.href;
-                if (prop === 'protocol') return window.location.protocol;
-                if (prop === 'host') return window.location.host;
-                if (prop === 'hostname') return window.location.hostname;
-                if (prop === 'port') return window.location.port;
-                if (prop === 'pathname') return window.location.pathname;
-                if (prop === 'search') return window.location.search;
-                if (prop === 'hash') return window.location.hash;
-                if (prop === 'ancestorOrigins') return [origin];
+                if (prop === 'origin') return safeOrigin;
+                if (prop === 'ancestorOrigins') return [safeOrigin];
                 
                 try {
                   const val = target[prop];
-                  return typeof val === 'function' ? val.bind(target) : val;
+                  if (typeof val === 'function') return val.bind(target);
+                  return val;
                 } catch (e) {
+                  // Fallback for blocked properties
+                  if (prop === 'href') return window.location.href;
+                  if (prop === 'protocol') return window.location.protocol;
+                  if (prop === 'host') return window.location.host;
+                  if (prop === 'hostname') return window.location.hostname;
                   return undefined;
                 }
               },
@@ -56,7 +84,7 @@
             const mockFrame = new Proxy({}, {
               get: (target, prop) => {
                 if (prop === 'location') return mockLocation;
-                if (prop === 'origin') return window.location.origin;
+                if (prop === 'origin') return safeOrigin;
                 if (prop === 'parent' || prop === 'top') return mockFrame;
                 if (prop === 'window' || prop === 'self') return mockFrame;
                 
@@ -70,10 +98,11 @@
                 const methods = ['postMessage', 'addEventListener', 'removeEventListener', 'focus', 'blur', 'close'];
                 if (methods.includes(prop)) return noop;
 
-                // For anything else, try to return from current window if it makes sense, or undefined
+                // For anything else, try to return from current window if it makes sense
                 try {
                   const val = window[prop];
-                  return typeof val === 'function' ? val.bind(window) : val;
+                  if (typeof val === 'function') return val.bind(window);
+                  return val;
                 } catch (e) {
                   return undefined;
                 }

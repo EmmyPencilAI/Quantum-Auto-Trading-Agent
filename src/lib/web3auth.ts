@@ -27,7 +27,11 @@ const getSafeOrigin = () => {
   }
   
   // Fallback to environment variable or localhost
-  return (import.meta.env.VITE_APP_URL as string) || 'http://localhost:3000';
+  // Ensure we don't return "null" as a string
+  const envUrl = import.meta.env.VITE_APP_URL as string;
+  if (envUrl && envUrl !== 'null') return envUrl;
+  
+  return 'http://localhost:3000';
 };
 
 const chainConfig = {
@@ -106,6 +110,13 @@ export const initWeb3Auth = async () => {
     }
 
     const network = APP_CONFIG.WEB3AUTH_NETWORK;
+    const rawNetwork = (import.meta.env.VITE_WEB3AUTH_NETWORK || "").trim();
+    
+    // Log if we auto-corrected the network
+    if (rawNetwork.length > 40 && /^[a-f0-9]+$/i.test(rawNetwork)) {
+      console.warn(`WEB3AUTH WARNING: "VITE_WEB3AUTH_NETWORK" was set to a Client ID. Auto-correcting to "sapphire_devnet".`);
+    }
+
     let safeOrigin = "unknown domain";
     try {
       safeOrigin = getSafeOrigin();

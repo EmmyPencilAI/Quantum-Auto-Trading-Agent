@@ -6,11 +6,30 @@ export const APP_CONFIG = {
   FIREBASE_ID: "quantum-bnb",
   GOOGLE_CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID || "",
   
-  // WEB3AUTH CLIENT ID: Get this from https://dashboard.web3auth.io/
-  WEB3AUTH_CLIENT_ID: import.meta.env.VITE_WEB3AUTH_CLIENT_ID || import.meta.env.VITE_WEB3AUTH_ID || "BPi54f794u763p763p763p763p763p763p763p763p763p763p763p763p763p763p763p763p763p763p763p763p", 
+  // WEB3AUTH CONFIG
+  WEB3AUTH_CLIENT_ID: (() => {
+    const id = (import.meta.env.VITE_WEB3AUTH_CLIENT_ID || import.meta.env.VITE_WEB3AUTH_ID || "").trim();
+    const network = (import.meta.env.VITE_WEB3AUTH_NETWORK || "").trim();
+    
+    // Auto-correct: If network looks like a Client ID and ID is empty or placeholder
+    if (network.length > 40 && /^[a-f0-9]+$/i.test(network) && (!id || id.includes("p763p763p763p763p"))) {
+      return network;
+    }
+    
+    return id || "BPi54f794u763p763p763p763p763p763p763p763p763p763p763p763p763p763p763p763p763p763p763p763p";
+  })(),
   
   // WEB3AUTH NETWORK: sapphire_mainnet or sapphire_devnet
-  WEB3AUTH_NETWORK: import.meta.env.VITE_WEB3AUTH_NETWORK || "sapphire_devnet",
+  WEB3AUTH_NETWORK: (() => {
+    const network = (import.meta.env.VITE_WEB3AUTH_NETWORK || "").trim();
+    
+    // If network looks like a Client ID, it's likely misconfigured
+    if (network.length > 40 && /^[a-f0-9]+$/i.test(network)) {
+      return "sapphire_devnet"; // Default to devnet if misconfigured
+    }
+    
+    return network || "sapphire_devnet";
+  })(),
   
   BNB_CHAIN: {
     CHAIN_ID: "0x61", // 97
