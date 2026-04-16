@@ -83,7 +83,7 @@ Storage:
 
 ## 🌐 Live Demo
 
-🔗 https://quantum-trading-agent.vercel.app/
+🔗 [https://quantum-auto-bot.vercel.app/](https://quantum-trading-agent.vercel.app/)
 
 ---
 
@@ -203,8 +203,8 @@ It is a **financial intelligence system** built to:
 ## 📬 Contact
 
 * Founder: **Emmy Pencil**
-* Email: mechpencil@gugurobotics.com.ng
-* GitHub: https://github.com/EmmyPencilAI
+* Email: [your@email.com](mailto:your@email.com)
+* GitHub: [https://github.com/EmmyPencilAI](https://github.com/EmmyPencilAI)
 
 ---
 

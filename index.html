@@ -26,7 +26,8 @@
             if (event.message && (
                 event.message.includes('Blocked a frame with origin') || 
                 event.message.includes('cross-origin frame') ||
-                event.message.includes('origin from Location')
+                event.message.includes('origin from Location') ||
+                event.message.includes('Failed to read a named property')
             )) {
               console.warn('Caught and silenced cross-origin error:', event.message);
               event.preventDefault();
@@ -34,25 +35,42 @@
             }
           }, true);
 
-          if (window.parent !== window) {
-            const safeOrigin = (function() {
-              try {
-                // Try to get origin from current window
-                if (window.location.origin && window.location.origin !== 'null') return window.location.origin;
-                if (window.location.protocol && window.location.host && window.location.protocol !== 'null') {
-                  return window.location.protocol + '//' + window.location.host;
-                }
-              } catch (e) {}
-              
-              // Fallback: parse from href
-              try {
-                const url = new URL(window.location.href);
-                return url.origin;
-              } catch (e) {}
-              
-              return window.location.href.split('/').slice(0, 3).join('/') || 'http://localhost:3000';
-            })();
+          const safeOrigin = (function() {
+            try {
+              if (window.location.origin && window.location.origin !== 'null') return window.location.origin;
+              if (window.location.protocol && window.location.host && window.location.protocol !== 'null') {
+                return window.location.protocol + '//' + window.location.host;
+              }
+            } catch (e) {}
+            try {
+              const url = new URL(window.location.href);
+              return url.origin;
+            } catch (e) {}
+            return window.location.href.split('/').slice(0, 3).join('/') || 'http://localhost:3000';
+          })();
 
+          // Mock Location.prototype.origin to prevent cross-origin access errors
+          try {
+            const originalOriginDescriptor = Object.getOwnPropertyDescriptor(Location.prototype, 'origin');
+            if (originalOriginDescriptor && originalOriginDescriptor.configurable) {
+              Object.defineProperty(Location.prototype, 'origin', {
+                get: function() {
+                  try {
+                    // Try to get the real origin
+                    const realOrigin = originalOriginDescriptor.get.call(this);
+                    if (realOrigin && realOrigin !== 'null') return realOrigin;
+                  } catch (e) {
+                    // If access is blocked, return our safe origin
+                    return safeOrigin;
+                  }
+                  return safeOrigin;
+                },
+                configurable: true
+              });
+            }
+          } catch (e) {}
+
+          if (window.parent !== window) {
             const mockLocation = new Proxy(window.location, {
               get: (target, prop) => {
                 if (prop === 'origin') return safeOrigin;
@@ -157,6 +175,28 @@
           }
         } catch (e) {
           console.warn("Could not mock parent/top", e);
+        }
+
+        // Mock storage APIs if they are restricted
+        try {
+          const testKey = '__storage_test__';
+          window.localStorage.setItem(testKey, testKey);
+          window.localStorage.removeItem(testKey);
+        } catch (e) {
+          console.warn("LocalStorage is restricted, mocking...", e);
+          const createMockStorage = () => {
+            let storage = {};
+            return {
+              getItem: (key) => storage[key] || null,
+              setItem: (key, value) => { storage[key] = String(value); },
+              removeItem: (key) => { delete storage[key]; },
+              clear: () => { storage = {}; },
+              key: (i) => Object.keys(storage)[i] || null,
+              get length() { return Object.keys(storage).length; }
+            };
+          };
+          Object.defineProperty(window, 'localStorage', { value: createMockStorage(), configurable: true });
+          Object.defineProperty(window, 'sessionStorage', { value: createMockStorage(), configurable: true });
         }
 
         // Global and process mocks
