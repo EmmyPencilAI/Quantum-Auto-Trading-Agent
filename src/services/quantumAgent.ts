@@ -40,23 +40,29 @@ NEVER claim insider access.
 Keep responses short, high signal, visually structured.`;
 
 export class QuantumAgentService {
-  private ai: any;
+  private ai: GoogleGenAI | null = null;
 
-  constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  private getAI() {
+    if (!this.ai) {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("GEMINI_API_KEY is not configured. Please add it to your environment variables.");
+      }
+      this.ai = new GoogleGenAI(apiKey);
+    }
+    return this.ai;
   }
 
   async generateResponse(userMessage: string, context?: any) {
     try {
-      const response = await this.ai.models.generateContent({
-        model: "gemini-3-flash-latest",
-        contents: userMessage,
-        config: {
-          systemInstruction: SYSTEM_PROMPT,
-        },
+      const ai = this.getAI();
+      const model = ai.getGenerativeModel({ 
+        model: "gemini-3-flash-preview-0417",
+        systemInstruction: SYSTEM_PROMPT
       });
 
-      return response.text;
+      const response = await model.generateContent(userMessage);
+      return response.response.text();
     } catch (error) {
       console.error("Quantum Agent Analysis Error:", error);
       return "Quantum Agent is currently processing on-chain blocks. Please standby for synchronization...";

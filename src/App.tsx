@@ -206,21 +206,18 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
+      <div className="fixed inset-0 bg-[#0a0a0a] flex flex-col items-center justify-center z-50">
         <div className="relative w-24 h-24 mb-8">
-          <div className="absolute inset-0 bg-orange-600/20 blur-xl rounded-full animate-pulse" />
           <div className="relative w-full h-full bg-orange-600 rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(249,115,22,0.5)]">
-            <Zap className="w-12 h-12 text-white fill-white animate-bounce" />
+            <Zap className="w-12 h-12 text-white fill-white" />
           </div>
         </div>
-        <p className="text-orange-500 font-mono text-sm tracking-[0.3em] animate-pulse uppercase">{loadingMessage}</p>
+        <div className="text-orange-500 font-mono text-xs tracking-[0.3em] uppercase space-y-2 text-center">
+          <p className="animate-pulse">{loadingMessage}</p>
+          <p className="text-[8px] text-white/20 font-bold">QUANTUM ENGINE V1.0.4-STABLE</p>
+        </div>
         <div className="mt-8 w-48 h-1 bg-white/5 rounded-full overflow-hidden">
-          <motion.div 
-            className="h-full bg-orange-600"
-            initial={{ width: "0%" }}
-            animate={{ width: "100%" }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
+          <div className="h-full bg-orange-600 w-1/3 animate-pulse" />
         </div>
       </div>
     );
@@ -404,22 +401,12 @@ export default function App() {
       {/* Main Content */}
       <main className="pt-16 md:pl-64 min-h-screen">
         <div className="p-4 md:p-8 max-w-7xl mx-auto">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              {activeTab === 'wallet' && <WalletTab user={user} mode={mode} />}
-              {activeTab === 'markets' && <MarketsTab />}
-              {activeTab === 'trading' && <TradingTab user={user} mode={mode} setMode={setMode} />}
-              {activeTab === 'leaderboard' && <LeaderboardTab />}
-              {activeTab === 'community' && <CommunityTab user={user} />}
-              {activeTab === 'settings' && <SettingsTab user={user} setUser={setUser} mode={mode} />}
-            </motion.div>
-          </AnimatePresence>
+          {activeTab === 'wallet' && <WalletTab user={user} mode={mode} />}
+          {activeTab === 'markets' && <MarketsTab />}
+          {activeTab === 'trading' && <TradingTab user={user} mode={mode} setMode={setMode} />}
+          {activeTab === 'leaderboard' && <LeaderboardTab />}
+          {activeTab === 'community' && <CommunityTab user={user} />}
+          {activeTab === 'settings' && <SettingsTab user={user} setUser={setUser} mode={mode} />}
         </div>
       </main>
 
