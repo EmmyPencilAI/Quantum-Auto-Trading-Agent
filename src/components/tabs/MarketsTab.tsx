@@ -123,6 +123,8 @@ export default function MarketsTab() {
               { symbol: 'SOL', name: 'Solana', price: '$145.23', change: '+12.4%', icon: 'https://cryptologos.cc/logos/solana-sol-logo.png' },
               { symbol: 'BNB', name: 'Binance Coin', price: '$582.12', change: '+8.2%', icon: 'https://cryptologos.cc/logos/binance-coin-bnb-logo.png' },
               { symbol: 'SUI', name: 'Sui', price: '$1.84', change: '+6.5%', icon: 'https://cryptologos.cc/logos/sui-sui-logo.png' },
+              { symbol: 'FET', name: 'Fetch.ai', price: '$2.12', change: '+4.8%', icon: 'https://cryptologos.cc/logos/fetch-ai-fet-logo.png' },
+              { symbol: 'PEPE', name: 'Pepe', price: '$0.000008', change: '+15.2%', icon: 'https://cryptologos.cc/logos/pepe-pepe-logo.png' },
             ].map((asset, i) => (
               <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group cursor-pointer">
                 <div className="flex items-center gap-3">

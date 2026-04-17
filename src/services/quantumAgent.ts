@@ -42,27 +42,23 @@ Keep responses short, high signal, visually structured.`;
 export class QuantumAgentService {
   private ai: GoogleGenAI | null = null;
 
-  private getAI() {
-    if (!this.ai) {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("GEMINI_API_KEY is not configured. Please add it to your environment variables.");
-      }
-      this.ai = new GoogleGenAI(apiKey);
-    }
-    return this.ai;
-  }
-
   async generateResponse(userMessage: string, context?: any) {
     try {
-      const ai = this.getAI();
-      const model = ai.getGenerativeModel({ 
-        model: "gemini-3-flash-preview-0417",
-        systemInstruction: SYSTEM_PROMPT
+      if (!this.ai) {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) throw new Error("GEMINI_API_KEY is not configured.");
+        this.ai = new GoogleGenAI({ apiKey });
+      }
+
+      const response = await this.ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: userMessage,
+        config: {
+          systemInstruction: SYSTEM_PROMPT
+        }
       });
 
-      const response = await model.generateContent(userMessage);
-      return response.response.text();
+      return response.text || "Quantum Agent is currently processing on-chain blocks. Please standby for synchronization...";
     } catch (error) {
       console.error("Quantum Agent Analysis Error:", error);
       return "Quantum Agent is currently processing on-chain blocks. Please standby for synchronization...";

@@ -55,32 +55,26 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
 
   const handleResetDemoBalance = async () => {
     if (!user) return;
-    // if (confirm("Are you sure you want to reset your demo balance to $10,000?")) {
-      try {
-        await updateDoc(doc(db, 'demo_wallets', user.uid), {
-          demoBalance: 10000,
-          updatedAt: serverTimestamp()
-        });
-        // alert("Demo balance reset!");
-      } catch (error) {
-        console.error("Failed to reset demo balance", error);
-      }
-    // }
+    try {
+      await updateDoc(doc(db, 'demo_wallets', user.uid), {
+        demoBalance: 10000,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Failed to reset demo balance", error);
+    }
   };
 
   const handleEmptyDemoBalance = async () => {
     if (!user) return;
-    // if (confirm("Are you sure you want to empty your demo wallet?")) {
-      try {
-        await updateDoc(doc(db, 'demo_wallets', user.uid), {
-          demoBalance: 0,
-          updatedAt: serverTimestamp()
-        });
-        // alert("Demo wallet emptied!");
-      } catch (error) {
-        console.error("Failed to empty demo wallet", error);
-      }
-    // }
+    try {
+      await updateDoc(doc(db, 'demo_wallets', user.uid), {
+        demoBalance: 0,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Failed to empty demo wallet", error);
+    }
   };
 
   const handleLogout = async () => {
@@ -211,11 +205,7 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
               </div>
             </div>
             <button 
-              onClick={() => {
-                const action = notificationsEnabled ? 'disabled' : 'enabled';
-                setNotificationsEnabled(!notificationsEnabled);
-                alert(`Trade Alerts ${action} for Quantum Hand.`);
-              }}
+              onClick={() => setNotificationsEnabled(!notificationsEnabled)}
               className={cn(
                 "w-12 h-6 rounded-full relative cursor-pointer transition-colors duration-300",
                 notificationsEnabled ? "bg-orange-600" : "bg-white/10"

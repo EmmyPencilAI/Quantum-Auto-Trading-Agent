@@ -5,6 +5,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { cn } from '../../lib/utils';
 import { User, ModeType } from '../../types';
 import { APP_CONFIG } from '../../config';
+import { db } from '../../lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 interface WalletTabProps {
   user: User | null;
@@ -18,6 +20,17 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
   const [showFund, setShowFund] = useState(false);
   const [sendAmount, setSendAmount] = useState('');
   const [sendAddress, setSendAddress] = useState('');
+  const [demoBalance, setDemoBalance] = useState<number>(0);
+
+  useEffect(() => {
+    if (!user || mode !== 'demo') return;
+    const unsubscribe = onSnapshot(doc(db, 'demo_wallets', user.uid), (snapshot) => {
+      if (snapshot.exists()) {
+        setDemoBalance(snapshot.data().demoBalance);
+      }
+    });
+    return () => unsubscribe();
+  }, [user, mode]);
 
   const handleCopy = () => {
     if (user?.walletAddress) {
@@ -28,9 +41,62 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
   };
 
   const balances = [
-    { symbol: 'BNB', name: 'Binance Coin', balance: mode === 'demo' ? '10.00' : '0.00', value: mode === 'demo' ? '$5,800.00' : '$0.00', icon: 'https://cryptologos.cc/logos/binance-coin-bnb-logo.png' },
-    { symbol: 'USDT', name: 'Tether', balance: mode === 'demo' ? '5,000.00' : '0.00', value: mode === 'demo' ? '$5,000.00' : '$0.00', icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png' },
-    { symbol: 'USDC', name: 'USD Coin', balance: mode === 'demo' ? '2,500.00' : '0.00', value: mode === 'demo' ? '$2,500.00' : '$0.00', icon: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png' },
+    { 
+      symbol: 'BNB', 
+      name: 'Binance Coin', 
+      balance: mode === 'demo' ? (demoBalance * 0.001).toFixed(4) : '0.0000', 
+      value: mode === 'demo' ? `$${(demoBalance * 0.6).toLocaleString()}` : '$0.00', 
+      icon: 'https://cryptologos.cc/logos/binance-coin-bnb-logo.png' 
+    },
+    { 
+      symbol: 'USDT', 
+      name: 'Tether', 
+      balance: mode === 'demo' ? (demoBalance * 0.2).toFixed(2) : '0.00', 
+      value: mode === 'demo' ? `$${(demoBalance * 0.2).toLocaleString()}` : '$0.00', 
+      icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png' 
+    },
+    { 
+      symbol: 'USDC', 
+      name: 'USD Coin', 
+      balance: mode === 'demo' ? (demoBalance * 0.1).toFixed(2) : '0.00', 
+      value: mode === 'demo' ? `$${(demoBalance * 0.1).toLocaleString()}` : '$0.00', 
+      icon: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png' 
+    },
+    { 
+      symbol: 'SOL', 
+      name: 'Solana', 
+      balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(2) : '0.00', 
+      value: mode === 'demo' ? `$${(demoBalance * 0.05).toLocaleString()}` : '$0.00', 
+      icon: 'https://cryptologos.cc/logos/solana-sol-logo.png' 
+    },
+    { 
+      symbol: 'ETH', 
+      name: 'Ethereum', 
+      balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(4) : '0.0000', 
+      value: mode === 'demo' ? `$${(demoBalance * 0.05).toLocaleString()}` : '$0.00', 
+      icon: 'https://cryptologos.cc/logos/ethereum-eth-logo.png' 
+    },
+    { 
+      symbol: 'XRP', 
+      name: 'Ripple', 
+      balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(2) : '0.00', 
+      value: mode === 'demo' ? `$${(demoBalance * 0.05).toLocaleString()}` : '$0.00', 
+      icon: 'https://cryptologos.cc/logos/xrp-xrp-logo.png' 
+    },
+    { 
+      symbol: 'ADA', 
+      name: 'Cardano', 
+      balance: mode === 'demo' ? (demoBalance * 0.03).toFixed(2) : '0.00', 
+      value: mode === 'demo' ? `$${(demoBalance * 0.03).toLocaleString()}` : '$0.00', 
+      icon: 'https://cryptologos.cc/logos/cardano-ada-logo.png' 
+    },
+    { 
+      symbol: 'SUI', 
+      name: 'Sui', 
+      balance: mode === 'demo' ? (demoBalance * 0.02).toFixed(2) : '0.00', 
+      value: mode === 'demo' ? `$${(demoBalance * 0.02).toLocaleString()}` : '$0.00', 
+      icon: 'https://cryptologos.cc/logos/sui-sui-logo.png' 
+    },
   ];
 
   const transactions = [
@@ -64,7 +130,7 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
           <div className="mb-8">
             <p className="text-white/60 text-sm font-medium mb-1 uppercase tracking-widest">Total Balance</p>
             <h2 className="text-4xl md:text-5xl font-display tracking-tighter">
-              {mode === 'demo' ? '$13,300.00' : '$0.00'}
+              {mode === 'demo' ? `$${demoBalance.toLocaleString()}` : '$0.00'}
             </h2>
           </div>
 

@@ -13,6 +13,26 @@ export default function QuantumAgentOverlay() {
   const [isTyping, setIsTyping] = useState(false);
   const [alerts, setAlerts] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // Initialize audio element
+    audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    audioRef.current.volume = 0.4;
+  }, []);
+
+  const playSound = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => {});
+    }
+  };
+
+  useEffect(() => {
+    if (alerts.length > 0) {
+      playSound();
+    }
+  }, [alerts.length]);
 
   useEffect(() => {
     if (scrollRef.current) {

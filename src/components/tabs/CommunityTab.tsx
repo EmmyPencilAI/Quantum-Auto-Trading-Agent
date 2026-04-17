@@ -76,17 +76,17 @@ export default function CommunityTab({ user }: CommunityTabProps) {
 
   const handleFollow = async (targetUid: string) => {
     if (!user) return;
-    alert(`Following ${targetUid}`);
+    // alert(`Following ${targetUid}`);
     // Real implementation involves a 'following' collection
   };
 
   const handleComment = async (postId: string) => {
-    const comment = prompt("Enter your comment on this Quantum Insight:");
-    if (comment && user) {
+    // const comment = prompt("Enter your comment on this Quantum Insight:");
+    if (user) {
       await updateDoc(doc(db, 'posts', postId), {
         commentCount: increment(1)
       });
-      alert("Comment published to chain.");
+      // alert("Comment published to chain.");
     }
   };
 

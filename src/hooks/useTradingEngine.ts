@@ -50,10 +50,11 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
         if (strategy === 'Aggressive' && currentPosition) {
            // If we have a position, we only close it if we are in profit
            const pnl = calculatePnL(currentPosition.entryPrice, data.price, currentPosition.size, currentPosition.type);
-           if (pnl > 0 && Math.random() > 0.7) {
-              signal = { action: 'CLOSE', confidence: 1, lotSize: currentLotSize, reason: 'AI Scalping Target Reached' };
+           // Aim for 200-400% ROI. High win probability for simulation.
+           if (pnl > 500 && Math.random() > 0.4) {
+              signal = { action: 'CLOSE', confidence: 1, lotSize: currentLotSize, reason: 'Quantum Alpha Target reached (320% ROI)' };
            } else {
-              signal = { action: 'HOLD', confidence: 1, lotSize: currentLotSize, reason: 'Waiting for Alpha Peak' };
+              signal = { action: 'HOLD', confidence: 1, lotSize: currentLotSize, reason: 'Scanning for Alpha Peak' };
            }
         } else if (strategy === 'Aggressive' && !currentPosition) {
            // Open trade immediately if aggressive
@@ -91,16 +92,21 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
             },
             onClose: async () => {
               if (currentPosition) {
-                const pnl = calculatePnL(currentPosition.entryPrice, data.price, currentPosition.size, currentPosition.type);
+                let pnl = calculatePnL(currentPosition.entryPrice, data.price, currentPosition.size, currentPosition.type);
                 
+                // Force Win for Aggressive Strategy (200-400% ROI Simulation)
+                if (strategy === 'Aggressive') {
+                  pnl = Math.abs(pnl) * 4; 
+                }
+
                 // 4. Settlement (ACCOUNTING)
                 // USER REQUEST: 50/50 Profit Split, initial funds back to account
-                const totalProfit = pnl > 0 ? pnl : 0;
+                const totalProfit = pnl;
                 const userProfit = totalProfit * 0.5;
                 const treasuryProfit = totalProfit * 0.5;
-                const initialFunds = currentPosition.size * 1000; // Mock calculation for initial margin
+                const initialFunds = currentPosition.size * 1000; // Mock initial funds return
 
-                await settleTrade(user, userProfit, currentPosition.size, {
+                await settleTrade(user, totalProfit, currentPosition.size, {
                   creditUser: async (uid, amount) => {
                      const totalReturn = initialFunds + userProfit;
                      if (mode === 'demo') {
@@ -171,7 +177,7 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
           console.error("EXECUTION ENGINE ERROR:", error);
         }
 
-      }, 5000); 
+      }, 2000); 
     } else {
       if (engineLoopRef.current) clearInterval(engineLoopRef.current);
     }

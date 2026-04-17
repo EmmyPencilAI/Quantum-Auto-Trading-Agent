@@ -140,44 +140,59 @@ export default function App() {
       console.log("Connected address:", address);
 
       // Get user info from Web3Auth
-      const userInfo = await web3auth.getUserInfo();
-      console.log("User info retrieved:", userInfo.email || "No email");
+        const userInfo = await web3auth.getUserInfo();
+        console.log("User info retrieved:", userInfo.email || "No email");
 
-      setLoadingMessage("AUTHENTICATING WITH QUANTUM...");
-      console.log("Authenticating with Firebase...");
-      // Sign in to Firebase anonymously if not already signed in
-      // This ensures onAuthStateChanged doesn't kick the user out
-      let firebaseUser = auth.currentUser;
-      if (!firebaseUser) {
-        console.log("Signing in anonymously to Firebase...");
-        const { signInAnonymously } = await import('firebase/auth');
-        const cred = await signInAnonymously(auth);
-        firebaseUser = cred.user;
-      }
-
-      if (firebaseUser) {
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        if (!userDoc.exists()) {
-          const newUser: User = {
-            uid: firebaseUser.uid,
-            walletAddress: address,
-            username: userInfo.name || firebaseUser.displayName || `User_${address.slice(0, 6)}`,
-            avatar: userInfo.profileImage || firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${address}`,
-            createdAt: new Date().toISOString(),
+        setLoadingMessage("DETECTING GEOLOCATION...");
+        let location = null;
+        try {
+          const geoResponse = await fetch('https://ipapi.co/json/');
+          const geoData = await geoResponse.json();
+          location = {
+            country: geoData.country_name || 'Unknown',
+            region: geoData.region || 'Unknown',
+            city: geoData.city || 'Unknown',
+            ip: geoData.ip || 'Unknown'
           };
-          await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
-          setUser(newUser);
-        } else {
-          const existingData = userDoc.data() as User;
-          if (existingData.walletAddress !== address) {
-            await updateDoc(doc(db, 'users', firebaseUser.uid), { walletAddress: address });
-            setUser({ ...existingData, walletAddress: address });
-          } else {
-            setUser(existingData);
-          }
+        } catch (e) {
+          console.warn("Geolocation fetch failed", e);
         }
-        setIsLoggedIn(true);
-      }
+
+        setLoadingMessage("AUTHENTICATING WITH QUANTUM...");
+        console.log("Authenticating with Firebase...");
+        // Sign in to Firebase anonymously if not already signed in
+        // This ensures onAuthStateChanged doesn't kick the user out
+        let firebaseUser = auth.currentUser;
+        if (!firebaseUser) {
+          console.log("Signing in anonymously to Firebase...");
+          const { signInAnonymously } = await import('firebase/auth');
+          const cred = await signInAnonymously(auth);
+          firebaseUser = cred.user;
+        }
+
+        if (firebaseUser) {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (!userDoc.exists()) {
+            const newUser: User = {
+              uid: firebaseUser.uid,
+              walletAddress: address,
+              username: userInfo.name || firebaseUser.displayName || `User_${address.slice(0, 6)}`,
+              avatar: userInfo.profileImage || firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${address}`,
+              createdAt: new Date().toISOString(),
+              location: location // Save location on registration
+            } as any;
+            await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+            setUser(newUser);
+          } else {
+            const existingData = userDoc.data() as User;
+            const updatePayload: any = { walletAddress: address };
+            if (location) updatePayload.location = location; // Update location on login
+            
+            await updateDoc(doc(db, 'users', firebaseUser.uid), updatePayload);
+            setUser({ ...existingData, ...updatePayload });
+          }
+          setIsLoggedIn(true);
+        }
     } catch (error: any) {
       console.error("Login failed", error);
       
