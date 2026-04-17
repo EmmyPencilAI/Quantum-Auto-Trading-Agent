@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Search, TrendingUp, TrendingDown, Globe, BarChart2, Zap } from 'lucide-react';
-import { APP_CONFIG } from '../../config';
+import { cn } from '../../lib/utils';
 
 export default function MarketsTab() {
   const container = useRef<HTMLDivElement>(null);
@@ -120,13 +120,13 @@ export default function MarketsTab() {
           </h3>
           <div className="space-y-4">
             {[
-              { symbol: 'SOL', name: 'Solana', price: '$145.23', change: '+12.4%' },
-              { symbol: 'BNB', name: 'Binance Coin', price: '$582.12', change: '+8.2%' },
-              { symbol: 'SUI', name: 'Sui', price: '$1.84', change: '+6.5%' },
+              { symbol: 'SOL', name: 'Solana', price: '$145.23', change: '+12.4%', icon: 'https://cryptologos.cc/logos/solana-sol-logo.png' },
+              { symbol: 'BNB', name: 'Binance Coin', price: '$582.12', change: '+8.2%', icon: 'https://cryptologos.cc/logos/binance-coin-bnb-logo.png' },
+              { symbol: 'SUI', name: 'Sui', price: '$1.84', change: '+6.5%', icon: 'https://cryptologos.cc/logos/sui-sui-logo.png' },
             ].map((asset, i) => (
               <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group cursor-pointer">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center font-bold text-xs text-white uppercase">{asset.symbol[0]}</div>
+                  <img src={asset.icon} className="w-8 h-8 rounded-lg group-hover:scale-110 transition-transform" />
                   <div>
                     <h4 className="font-bold text-sm">{asset.symbol}</h4>
                     <p className="text-[10px] opacity-40">{asset.name}</p>
@@ -147,13 +147,13 @@ export default function MarketsTab() {
           </h3>
           <div className="space-y-4">
             {[
-              { symbol: 'XRP', name: 'Ripple', price: '$0.62', change: '-4.2%' },
-              { symbol: 'ADA', name: 'Cardano', price: '$0.45', change: '-3.8%' },
-              { symbol: 'DOGE', name: 'Dogecoin', price: '$0.16', change: '-2.5%' },
+              { symbol: 'XRP', name: 'Ripple', price: '$0.62', change: '-4.2%', icon: 'https://cryptologos.cc/logos/xrp-xrp-logo.png' },
+              { symbol: 'ADA', name: 'Cardano', price: '$0.45', change: '-3.8%', icon: 'https://cryptologos.cc/logos/cardano-ada-logo.png' },
+              { symbol: 'DOGE', name: 'Dogecoin', price: '$0.16', change: '-2.5%', icon: 'https://cryptologos.cc/logos/dogecoin-doge-logo.png' },
             ].map((asset, i) => (
               <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group cursor-pointer">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center font-bold text-xs text-white uppercase">{asset.symbol[0]}</div>
+                  <img src={asset.icon} className="w-8 h-8 rounded-lg group-hover:scale-110 transition-transform" />
                   <div>
                     <h4 className="font-bold text-sm">{asset.symbol}</h4>
                     <p className="text-[10px] opacity-40">{asset.name}</p>
@@ -170,8 +170,4 @@ export default function MarketsTab() {
       </div>
     </div>
   );
-}
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
 }

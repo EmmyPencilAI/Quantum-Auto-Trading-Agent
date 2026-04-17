@@ -39,16 +39,16 @@ export function generateSignal(data: MarketData, currentLotSize: number = 0.05):
 
   // Calculate SL/TP based on scalping parameters (tight)
   const pipValue = price * 0.001; // Scalping range
-  const stop_loss = action === "BUY" ? price - (pipValue * 2) : price + (pipValue * 2);
-  const take_profit = action === "BUY" ? price + (pipValue * 3) : price - (pipValue * 3);
+  const stopLoss = action === "BUY" ? price - (pipValue * 2) : price + (pipValue * 2);
+  const takeProfit = action === "BUY" ? price + (pipValue * 3) : price - (pipValue * 3);
 
   return {
     action,
     confidence,
-    lot_size: currentLotSize,
-    entry_price: price,
-    stop_loss,
-    take_profit,
+    lotSize: currentLotSize,
+    entryPrice: price,
+    stopLoss,
+    takeProfit,
     reason
   };
 }

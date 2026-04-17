@@ -37,6 +37,8 @@ import LeaderboardTab from './components/tabs/LeaderboardTab';
 import CommunityTab from './components/tabs/CommunityTab';
 import SettingsTab from './components/tabs/SettingsTab';
 
+import QuantumAgentOverlay from './components/QuantumAgentOverlay';
+
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
@@ -440,6 +442,8 @@ export default function App() {
           </button>
         ))}
       </nav>
+
+      <QuantumAgentOverlay />
     </div>
   );
 }

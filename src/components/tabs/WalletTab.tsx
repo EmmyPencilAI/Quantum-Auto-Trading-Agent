@@ -14,6 +14,10 @@ interface WalletTabProps {
 export default function WalletTab({ user, mode }: WalletTabProps) {
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [showSend, setShowSend] = useState(false);
+  const [showFund, setShowFund] = useState(false);
+  const [sendAmount, setSendAmount] = useState('');
+  const [sendAddress, setSendAddress] = useState('');
 
   const handleCopy = () => {
     if (user?.walletAddress) {
@@ -81,6 +85,100 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
         </div>
       </div>
 
+      {/* Send Modal */}
+      {showSend && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowSend(false)}
+        >
+          <div className="bg-[#111] border border-white/10 p-8 rounded-3xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <h3 className="text-white font-display text-xl mb-6 uppercase tracking-tight">Send Assets</h3>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="text-[10px] uppercase tracking-widest text-white/40 mb-2 block">Recipient Address</label>
+                <input 
+                  type="text" 
+                  value={sendAddress}
+                  onChange={(e) => setSendAddress(e.target.value)}
+                  placeholder="0x..." 
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm focus:outline-none focus:border-orange-500 transition-all font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-widest text-white/40 mb-2 block">Amount</label>
+                <input 
+                  type="number" 
+                  value={sendAmount}
+                  onChange={(e) => setSendAmount(e.target.value)}
+                  placeholder="0.00" 
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm focus:outline-none focus:border-orange-500 transition-all font-mono"
+                />
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setShowSend(false)}
+                className="flex-1 py-4 bg-white/5 text-white rounded-2xl font-bold hover:bg-white/10 transition-all"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  alert(`Sending ${sendAmount} to ${sendAddress}`);
+                  setShowSend(false);
+                }}
+                className="flex-1 py-4 bg-orange-600 text-white rounded-2xl font-bold hover:bg-orange-700 transition-all"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Fund Trading Modal */}
+      {showFund && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowFund(false)}
+        >
+          <div className="bg-[#111] border border-white/10 p-8 rounded-3xl w-full max-w-md text-center" onClick={e => e.stopPropagation()}>
+            <div className="w-16 h-16 bg-orange-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <Plus className="w-8 h-8 text-orange-500" />
+            </div>
+            <h3 className="text-white font-display text-xl mb-4 uppercase tracking-tight">Activate Trading Hand</h3>
+            <p className="text-white/40 text-sm mb-8">Move funds from your main wallet to the Quantum Autobot engine. Real mode requires at least 0.1 BNB for activation.</p>
+            
+            <div className="space-y-4 mb-8">
+              <button className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between hover:bg-white/10 transition-all group">
+                <div className="flex items-center gap-3">
+                  <img src="https://cryptologos.cc/logos/binance-coin-bnb-logo.png" className="w-8 h-8 rounded-full" />
+                  <span className="font-bold">BNB Chain</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-bold">12.45 BNB</p>
+                  <p className="text-[8px] opacity-40 uppercase tracking-widest">Available</p>
+                </div>
+              </button>
+            </div>
+
+            <button 
+              onClick={() => {
+                alert("Funding initiated. Syncing with Quantum Hand...");
+                setShowFund(false);
+              }}
+              className="w-full py-4 bg-orange-600 text-white rounded-2xl font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-600/20"
+            >
+              Transfer & Start
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       {/* QR Code Modal */}
       {showQR && (
         <motion.div 
@@ -108,13 +206,14 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { icon: Plus, label: 'Fund Trading', color: 'bg-orange-500' },
-          { icon: Send, label: 'Send', color: 'bg-purple-500' },
-          { icon: ArrowDownLeft, label: 'Receive', color: 'bg-green-500' },
-          { icon: History, label: 'History', color: 'bg-blue-500' },
+          { icon: Plus, label: 'Fund Trading', color: 'bg-orange-500', onClick: () => setShowFund(true) },
+          { icon: Send, label: 'Send', color: 'bg-purple-500', onClick: () => setShowSend(true) },
+          { icon: ArrowDownLeft, label: 'Receive', color: 'bg-green-500', onClick: () => setShowQR(true) },
+          { icon: History, label: 'History', color: 'bg-blue-500', onClick: () => alert('Showing Full Transaction History...') },
         ].map((action, i) => (
           <button 
             key={i}
+            onClick={action.onClick}
             className="flex flex-col items-center justify-center p-6 rounded-3xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] hover:border-white/10 transition-all group"
           >
             <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-lg", action.color)}>

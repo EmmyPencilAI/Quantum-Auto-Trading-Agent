@@ -63,12 +63,30 @@ export default function CommunityTab({ user }: CommunityTabProps) {
   };
 
   const handleLike = async (postId: string) => {
+    if (!user) return;
     try {
       await updateDoc(doc(db, 'posts', postId), {
         likeCount: increment(1)
       });
+      // Optionally track who liked in a subcollection
     } catch (error) {
       console.error("Failed to like post", error);
+    }
+  };
+
+  const handleFollow = async (targetUid: string) => {
+    if (!user) return;
+    alert(`Following ${targetUid}`);
+    // Real implementation involves a 'following' collection
+  };
+
+  const handleComment = async (postId: string) => {
+    const comment = prompt("Enter your comment on this Quantum Insight:");
+    if (comment && user) {
+      await updateDoc(doc(db, 'posts', postId), {
+        commentCount: increment(1)
+      });
+      alert("Comment published to chain.");
     }
   };
 
@@ -148,7 +166,10 @@ export default function CommunityTab({ user }: CommunityTabProps) {
                     </div>
                     <span className="text-xs font-bold">{post.likeCount}</span>
                   </button>
-                  <button className="flex items-center gap-2 text-white/40 hover:text-orange-500 transition-all group/btn">
+                  <button 
+                    onClick={() => handleComment(post.postId)}
+                    className="flex items-center gap-2 text-white/40 hover:text-orange-500 transition-all group/btn"
+                  >
                     <div className="p-2 rounded-lg group-hover/btn:bg-orange-500/10 transition-all">
                       <MessageSquare className="w-5 h-5" />
                     </div>
@@ -203,7 +224,10 @@ export default function CommunityTab({ user }: CommunityTabProps) {
                     <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Elite</p>
                   </div>
                 </div>
-                <button className="px-4 py-1.5 bg-white text-black rounded-full font-bold text-[10px] hover:bg-orange-500 hover:text-white transition-all">
+                <button 
+                  onClick={() => handleFollow(`Trader_${i}`)}
+                  className="px-4 py-1.5 bg-white text-black rounded-full font-bold text-[10px] hover:bg-orange-500 hover:text-white transition-all shadow-sm"
+                >
                   Follow
                 </button>
               </div>

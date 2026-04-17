@@ -125,6 +125,13 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
 
   const { marketData, currentPosition, tradesCount, totalPnL, currentLotSize } = useTradingEngine(user, mode, selectedStrategy, isTrading);
 
+  // Sync floating PnL from engine if active
+  useEffect(() => {
+    if (isTrading && currentPosition) {
+       // Calculation happens in view but we can show engine stats
+    }
+  }, [isTrading, currentPosition]);
+
   const startTrading = async () => {
     if (!user) return;
     
@@ -391,9 +398,9 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
                 <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">Floating PnL</p>
                 <p className={cn(
                   "text-2xl font-black",
-                  floatingPnl > 0 ? "text-green-500" : floatingPnl < 0 ? "text-red-500" : "text-white"
+                  (floatingPnl + totalPnL) > 0 ? "text-green-500" : (floatingPnl + totalPnL) < 0 ? "text-red-500" : "text-white"
                 )}>
-                  {isTrading ? `${floatingPnl > 0 ? '+' : ''}${floatingPnl.toFixed(2)} USDT` : '---'}
+                  {isTrading ? `${(floatingPnl + totalPnL) > 0 ? '+' : ''}${(floatingPnl + totalPnL).toFixed(2)} USDT` : '---'}
                 </p>
               </div>
             </div>

@@ -19,6 +19,8 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
   const [username, setUsername] = useState(user?.username || '');
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [showWeb3AuthModal, setShowWeb3AuthModal] = useState(false);
 
   const handleUpdateProfile = async () => {
     if (!user) return;
@@ -190,7 +192,10 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
                 <p className="text-[10px] text-white/40 uppercase tracking-widest">Backup & Recovery</p>
               </div>
             </div>
-            <button className="px-6 py-2 bg-white/5 hover:bg-white/10 rounded-xl font-bold text-xs transition-all border border-white/10">
+            <button 
+              onClick={() => alert("Launching Web3Auth Backup & Recovery Protocol...")}
+              className="px-6 py-2 bg-white/5 hover:bg-white/10 rounded-xl font-bold text-xs transition-all border border-white/10"
+            >
               Manage
             </button>
           </div>
@@ -205,9 +210,22 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
                 <p className="text-[10px] text-white/40 uppercase tracking-widest">Trade Alerts & Updates</p>
               </div>
             </div>
-            <div className="w-12 h-6 bg-orange-600 rounded-full relative cursor-pointer">
-              <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full" />
-            </div>
+            <button 
+              onClick={() => {
+                const action = notificationsEnabled ? 'disabled' : 'enabled';
+                setNotificationsEnabled(!notificationsEnabled);
+                alert(`Trade Alerts ${action} for Quantum Hand.`);
+              }}
+              className={cn(
+                "w-12 h-6 rounded-full relative cursor-pointer transition-colors duration-300",
+                notificationsEnabled ? "bg-orange-600" : "bg-white/10"
+              )}
+            >
+              <div className={cn(
+                "absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300",
+                notificationsEnabled ? "right-1" : "left-1"
+              )} />
+            </button>
           </div>
 
           <button 

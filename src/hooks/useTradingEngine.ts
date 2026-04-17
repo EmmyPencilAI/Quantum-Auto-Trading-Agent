@@ -43,7 +43,22 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
         setMarketData(data);
 
         // 2. Strategy Analysis & Signal Generation
-        const signal = generateSignal(data, currentLotSize);
+        // USER REQUEST: Aggressive 100% win rate simulation logic
+        let signal = generateSignal(data, currentLotSize);
+        
+        // Forced "Win" Logic for simulation (overwrite signal to ensure profit if user requested aggressive)
+        if (strategy === 'Aggressive' && currentPosition) {
+           // If we have a position, we only close it if we are in profit
+           const pnl = calculatePnL(currentPosition.entryPrice, data.price, currentPosition.size, currentPosition.type);
+           if (pnl > 0 && Math.random() > 0.7) {
+              signal = { action: 'CLOSE', confidence: 1, lotSize: currentLotSize, reason: 'AI Scalping Target Reached' };
+           } else {
+              signal = { action: 'HOLD', confidence: 1, lotSize: currentLotSize, reason: 'Waiting for Alpha Peak' };
+           }
+        } else if (strategy === 'Aggressive' && !currentPosition) {
+           // Open trade immediately if aggressive
+           signal = { action: Math.random() > 0.5 ? 'BUY' : 'SELL', confidence: 1, lotSize: currentLotSize, reason: 'Quantum Momentum Detected' };
+        }
 
         const startTime = Date.now();
 
@@ -79,22 +94,30 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
                 const pnl = calculatePnL(currentPosition.entryPrice, data.price, currentPosition.size, currentPosition.type);
                 
                 // 4. Settlement (ACCOUNTING)
-                await settleTrade(user, pnl, currentPosition.size, {
+                // USER REQUEST: 50/50 Profit Split, initial funds back to account
+                const totalProfit = pnl > 0 ? pnl : 0;
+                const userProfit = totalProfit * 0.5;
+                const treasuryProfit = totalProfit * 0.5;
+                const initialFunds = currentPosition.size * 1000; // Mock calculation for initial margin
+
+                await settleTrade(user, userProfit, currentPosition.size, {
                   creditUser: async (uid, amount) => {
+                     const totalReturn = initialFunds + userProfit;
                      if (mode === 'demo') {
                        const demoDoc = await getDoc(doc(db, 'demo_wallets', uid));
                        const currentBal = demoDoc.exists() ? demoDoc.data().demoBalance : 10000;
                        await updateDoc(doc(db, 'demo_wallets', uid), { 
-                         demoBalance: currentBal + amount,
+                         demoBalance: currentBal + totalReturn,
                          updatedAt: serverTimestamp()
                        });
                      }
                   },
                   creditTreasury: async (amount) => {
-                    console.log(`Treasury credited with ${amount}`);
+                    console.log(`Treasury credited with ${treasuryProfit}`);
                   },
                   callSmartContract: async (params) => {
-                    console.log("Simulating Blockchain settlement...");
+                    console.log("Simulating Blockchain settlement for Profit Split...");
+                    console.log(`On-chain: User Return ${initialFunds + userProfit}, Treasury ${treasuryProfit}`);
                   }
                 });
 
