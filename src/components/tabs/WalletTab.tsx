@@ -24,9 +24,9 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
   };
 
   const balances = [
-    { symbol: 'BNB', name: 'Binance Coin', balance: mode === 'demo' ? '10.00' : '1.452', value: mode === 'demo' ? '$5,800.00' : '$842.12', icon: 'https://cryptologos.cc/logos/binance-coin-bnb-logo.png' },
-    { symbol: 'USDT', name: 'Tether', balance: mode === 'demo' ? '5,000.00' : '1,250.00', value: mode === 'demo' ? '$5,000.00' : '$1,250.00', icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png' },
-    { symbol: 'USDC', name: 'USD Coin', balance: mode === 'demo' ? '2,500.00' : '450.00', value: mode === 'demo' ? '$2,500.00' : '$450.00', icon: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png' },
+    { symbol: 'BNB', name: 'Binance Coin', balance: mode === 'demo' ? '10.00' : '0.00', value: mode === 'demo' ? '$5,800.00' : '$0.00', icon: 'https://cryptologos.cc/logos/binance-coin-bnb-logo.png' },
+    { symbol: 'USDT', name: 'Tether', balance: mode === 'demo' ? '5,000.00' : '0.00', value: mode === 'demo' ? '$5,000.00' : '$0.00', icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png' },
+    { symbol: 'USDC', name: 'USD Coin', balance: mode === 'demo' ? '2,500.00' : '0.00', value: mode === 'demo' ? '$2,500.00' : '$0.00', icon: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png' },
   ];
 
   const transactions = [
@@ -60,7 +60,7 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
           <div className="mb-8">
             <p className="text-white/60 text-sm font-medium mb-1 uppercase tracking-widest">Total Balance</p>
             <h2 className="text-4xl md:text-5xl font-display tracking-tighter">
-              {mode === 'demo' ? '$13,300.00' : '$2,542.12'}
+              {mode === 'demo' ? '$13,300.00' : '$0.00'}
             </h2>
           </div>
 

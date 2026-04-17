@@ -14,7 +14,7 @@ export default function LeaderboardTab() {
     const q = query(
       collection(db, 'leaderboard'),
       orderBy('totalProfit', 'desc'),
-      limit(50)
+      limit(10)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {

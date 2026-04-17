@@ -19,10 +19,10 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
   ];
 
   const steps = [
-    { number: "01", title: "Connect Wallet", desc: "Sign in with your favorite social account via Web3Auth." },
-    { number: "02", title: "Fund Account", desc: "Deposit BNB or USDT to start your trading journey." },
-    { number: "03", title: "Choose Strategy", desc: "Select from Aggressive, Momentum, Scalping, or Conservative." },
-    { number: "04", title: "Start Trading", desc: "Launch the engine and watch your portfolio grow in real-time." },
+    { number: "01", title: "Connect Wallet", desc: "Sign in with your favorite social account to Quantum Autobot." },
+    { number: "02", title: "Fund Account", desc: "Deposit BNB or USDT. Real mode requires living funds to operate." },
+    { number: "03", title: "Scale AI", desc: "Engine starts at 0.05 lot and scales aggressively with performance." },
+    { number: "04", title: "Live Execution", desc: "Watch high-frequency trades (up to 1600/day) in real-time." },
   ];
 
   const tradingModes = [

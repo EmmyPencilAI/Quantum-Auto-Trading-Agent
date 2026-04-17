@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - walletAddress: string (required)
+    //   - username: string (required)
+    //   - avatar: string (optional)
+    //   - createdAt: string (required, date-time)
+    //
+    // Collection: leaderboard
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - username: string (required)
+    //   - avatar: string (optional)
+    //   - totalBalance: number (required)
+    //   - totalProfit: number (required)
+    //   - updatedAt: string (required, date-time)
+    //
+    // Collection: trades
+    // Document ID: {tradeId}
+    // Fields:
+    //   - tradeId: string (required)
+    //   - uid: string (required)
+    //   - pair: string (required)
+    //   - modeType: string (required, enum: demo, real)
+    //   - tradeMode: string (required, enum: Aggressive, Momentum, Scalping, Conservative)
+    //   - amount: number (required)
+    //   - pnl: number (optional)
+    //   - status: string (required)
+    //   - startedAt: string (required, date-time)
+    //   - createdAt: string (required, date-time)
+    //
+    // [And so on for other collections...]
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+    }
+
+    // Leaderboard Collection
+    match /leaderboard/{userId} {
+      allow read: if true; // Publicly readable
+      allow write: if isOwner(userId); // Only owner can update their entry
+    }
+
+    // Trades Collection
+    match /trades/{tradeId} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.uid == request.auth.uid);
+      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+    }
+
+    // Live Updates
+    match /trade_live_updates/{updateId} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.uid == request.auth.uid);
+      allow write: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
+    }
+
+    // Demo Wallets
+    match /demo_wallets/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+    }
+
+    // Community Posts
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.uid == request.auth.uid || 
+                    (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount', 'commentCount'])));
+      allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+    }
+
+    // Comments
+    match /posts/{postId}/comments/{commentId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+    }
+  }
+}

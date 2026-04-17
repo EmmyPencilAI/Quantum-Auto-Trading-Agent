@@ -68,7 +68,7 @@ export default function App() {
 
     const init = async () => {
       try {
-        setLoadingMessage("CONNECTING TO WEB3AUTH...");
+        setLoadingMessage("CONNECTING TO QUANTUM AUTOBOT...");
         await initWeb3Auth();
       } catch (error) {
         console.error("Failed to initialize Web3Auth:", error);
@@ -178,7 +178,17 @@ export default function App() {
       }
     } catch (error: any) {
       console.error("Login failed", error);
-      setLoginError(error.message || "Login failed. Please try again.");
+      
+      let errorMessage = error.message || "Login failed. Please try again.";
+      
+      // Specifically handle the admin-restricted-operation error which usually means 
+      // Anonymous Auth is not enabled in the Firebase Console
+      if (error.code === 'auth/admin-restricted-operation' || 
+          (error.message && error.message.includes('auth/admin-restricted-operation'))) {
+        errorMessage = "FISCAL AUTH ERROR: Anonymous Authentication is disabled in your Firebase project. Please enable it in the Firebase Console (Authentication > Sign-in method).";
+      }
+
+      setLoginError(errorMessage);
       // Add a small delay so the user sees the transition
       await new Promise(resolve => setTimeout(resolve, 1000));
     } finally {

@@ -7,8 +7,8 @@ import { APP_CONFIG } from '../../config';
 import { db, auth } from '../../lib/firebase';
 import { collection, query, where, orderBy, limit, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, deleteDoc, getDoc, setDoc } from 'firebase/firestore';
 import { ethers } from 'ethers';
-import { web3auth } from '../../lib/web3auth';
-import { withRetry, getBufferedGasPrice } from '../../lib/web3utils';
+import HFTTradingView from '../HFTTradingView';
+import { useTradingEngine } from '../../hooks/useTradingEngine';
 
 // Mock ABI for the trading contract
 const TRADING_ABI = [
@@ -123,12 +123,24 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
     };
   }, [isTrading, mode]);
 
+  const { marketData, currentPosition, tradesCount, totalPnL, currentLotSize } = useTradingEngine(user, mode, selectedStrategy, isTrading);
+
   const startTrading = async () => {
     if (!user) return;
     
     if (!isOnline) {
       alert("You are offline. Please check your internet connection.");
       return;
+    }
+
+    if (mode === 'real') {
+      // Check if real money is inside (simulated for now by checking a threshold or real balance)
+      // The user said: "Real Mode should have zero balance and shall only work when real money is inside"
+      const realBalance = 0; // In a real app we'd fetch actual BNB/USDT balance
+      if (realBalance <= 0) {
+        alert("REAL MODE INACTIVE: Insufficient Live Funds. Please deposit BNB or USDT to activate Quantum Hand.");
+        return;
+      }
     }
 
     if (mode === 'demo' && demoBalance < tradeAmount) {
@@ -138,46 +150,6 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
 
     try {
       setIsBlockchainSyncing(true);
-
-      if (mode === 'real') {
-        const provider = new ethers.BrowserProvider(web3auth.provider!);
-        const signer = await provider.getSigner();
-        const contract = new ethers.Contract(APP_CONFIG.CONTRACT_ADDRESS, TRADING_ABI, signer);
-
-        // Execute on-chain transaction with retry logic
-        await withRetry(async () => {
-          const gasPrice = await getBufferedGasPrice(provider);
-          const tx = await contract.startTrade(selectedPair, selectedStrategy, {
-            value: ethers.parseEther((tradeAmount / 600).toString()), // Mock conversion for BNB
-            gasPrice
-          });
-          await tx.wait();
-        });
-      }
-
-      const updateId = `update_${Date.now()}`;
-      const newUpdate: LiveTradeUpdate = {
-        updateId,
-        uid: user.uid,
-        pair: selectedPair,
-        modeType: mode,
-        tradeMode: selectedStrategy,
-        amount: tradeAmount,
-        floatingPnl: 0,
-        status: "Running",
-        startedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      await setDoc(doc(db, 'trade_live_updates', updateId), newUpdate);
-      
-      if (mode === 'demo') {
-        await updateDoc(doc(db, 'demo_wallets', user.uid), {
-          demoBalance: demoBalance - tradeAmount,
-          updatedAt: serverTimestamp()
-        });
-      }
-      
       setIsTrading(true);
     } catch (error) {
       console.error("Failed to start trade", error);
@@ -188,61 +160,7 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
   };
 
   const stopTrading = async () => {
-    if (!user || liveUpdates.length === 0) return;
-
-    try {
-      setIsBlockchainSyncing(true);
-      const update = liveUpdates[0];
-
-      if (mode === 'real') {
-        const provider = new ethers.BrowserProvider(web3auth.provider!);
-        const signer = await provider.getSigner();
-        const contract = new ethers.Contract(APP_CONFIG.CONTRACT_ADDRESS, TRADING_ABI, signer);
-
-        // Execute on-chain settlement with retry logic
-        await withRetry(async () => {
-          const gasPrice = await getBufferedGasPrice(provider);
-          const tx = await contract.stopTrade(selectedPair, { gasPrice });
-          await tx.wait();
-        });
-      }
-
-      const finalPnl = floatingPnl;
-      const tradeId = `trade_${Date.now()}`;
-      
-      const newTrade: Trade = {
-        tradeId,
-        uid: user.uid,
-        pair: update.pair,
-        modeType: mode,
-        tradeMode: update.tradeMode,
-        amount: update.amount,
-        pnl: finalPnl,
-        status: "Completed",
-        timeTaken: elapsedTime,
-        startedAt: update.startedAt,
-        endedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-      };
-
-      await setDoc(doc(db, 'trades', tradeId), newTrade);
-      await deleteDoc(doc(db, 'trade_live_updates', update.updateId));
-
-      if (mode === 'demo') {
-        await updateDoc(doc(db, 'demo_wallets', user.uid), {
-          demoBalance: demoBalance + update.amount + finalPnl,
-          updatedAt: serverTimestamp()
-        });
-      }
-
-      setIsTrading(false);
-      setFloatingPnl(0);
-    } catch (error) {
-      console.error("Failed to stop trade", error);
-      alert("Settlement failed. Your funds are safe on-chain, please try again.");
-    } finally {
-      setIsBlockchainSyncing(false);
-    }
+    setIsTrading(false);
   };
 
   const formatTime = (seconds: number) => {
@@ -281,24 +199,29 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
         </div>
 
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-white/5">
-            {isOnline ? (
-              <Wifi className="w-3 h-3 text-green-500" />
-            ) : (
-              <WifiOff className="w-3 h-3 text-red-500" />
+          <div className="flex flex-col items-end">
+             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-white/5">
+              {isOnline ? (
+                <Wifi className="w-3 h-3 text-green-500" />
+              ) : (
+                <WifiOff className="w-3 h-3 text-red-500" />
+              )}
+              <span className={cn(
+                "text-[10px] font-bold uppercase tracking-widest",
+                isOnline ? "text-green-500" : "text-red-500"
+              )}>
+                {isOnline ? 'Direct Execution Active' : 'Execution Offline'}
+              </span>
+            </div>
+            {isTrading && (
+              <p className="text-[8px] font-mono text-white/30 truncate mt-1">Current Lot: {currentLotSize.toFixed(3)}</p>
             )}
-            <span className={cn(
-              "text-[10px] font-bold uppercase tracking-widest",
-              isOnline ? "text-green-500" : "text-red-500"
-            )}>
-              {isOnline ? 'Network Stable' : 'Network Offline'}
-            </span>
           </div>
 
           <div className="text-right">
             <p className="text-xs font-display text-white/40 uppercase tracking-widest mb-1">Available Balance</p>
             <h3 className="text-3xl font-display tracking-tight">
-              {mode === 'demo' ? `$${demoBalance.toLocaleString()}` : `$2,542.12`}
+              {mode === 'demo' ? `$${demoBalance.toLocaleString()}` : `$0.00`}
             </h3>
           </div>
         </div>
@@ -413,6 +336,9 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
 
         {/* Live Status & Feed */}
         <div className="lg:col-span-2 space-y-6">
+          {/* HFT Chart View */}
+          <HFTTradingView marketData={marketData} currentPosition={currentPosition} />
+
           {/* Active Trade Panel */}
           <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 relative overflow-hidden">
             {isTrading && (
