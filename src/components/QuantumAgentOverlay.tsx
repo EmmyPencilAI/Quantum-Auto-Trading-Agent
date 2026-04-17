@@ -95,11 +95,11 @@ export default function QuantumAgentOverlay() {
 
       {/* Floating Chat Trigger */}
       <button 
-        onClick={() => setIsOpen(true)}
+        onClick={() => setIsOpen(!isOpen)}
         className="fixed bottom-24 right-6 z-[60] w-14 h-14 bg-orange-600 rounded-full flex items-center justify-center shadow-lg shadow-orange-600/40 hover:scale-110 transition-all group active:scale-95"
       >
-        <Bot className="w-7 h-7 text-white" />
-        <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-black animate-pulse" />
+        {isOpen ? <X className="w-7 h-7 text-white" /> : <Bot className="w-7 h-7 text-white" />}
+        {!isOpen && <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-black animate-pulse" />}
       </button>
 
       {/* Chat Window */}
@@ -127,9 +127,10 @@ export default function QuantumAgentOverlay() {
               </div>
               <button 
                 onClick={() => setIsOpen(false)}
-                className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                className="p-1.5 hover:bg-white/10 rounded-full transition-colors group"
+                title="Close Chat"
               >
-                <X className="w-5 h-5 text-white/40" />
+                <X className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
               </button>
             </div>
 
