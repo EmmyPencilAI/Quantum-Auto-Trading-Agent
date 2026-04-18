@@ -3,68 +3,69 @@ export type ModeType = "demo" | "real";
 
 export interface User {
   uid: string;
-  walletAddress: string;
+  wallet_address: string;
   username: string;
   avatar: string;
-  createdAt: string;
-  tradeVolume?: number; // Total volume for ranking
+  created_at: string;
+  trade_volume?: number; // Total volume for ranking
   followers?: string[]; // UIDs of followers
   following?: string[]; // UIDs of following
+  location?: any;
 }
 
 export interface Trade {
-  tradeId: string;
+  id: string; // From trades.id
   uid: string;
+  type: string;
   pair: string;
-  modeType: ModeType;
-  tradeMode: TradingMode;
-  amount: number;
+  trade_mode: TradingMode;
+  entry_price: number;
+  size: number;
   pnl: number;
+  mode_type: ModeType;
   status: string;
-  timeTaken: number;
-  startedAt: string;
-  endedAt?: string;
-  createdAt: string;
+  time_taken?: number;
+  created_at: string;
 }
 
 export interface LiveTradeUpdate {
-  updateId: string;
+  id: string;
   uid: string;
   pair: string;
-  modeType: ModeType;
-  tradeMode: TradingMode;
+  mode_type: ModeType;
+  trade_mode: TradingMode;
   amount: number;
-  floatingPnl: number;
+  floating_pnl: number;
   status: string;
-  startedAt: string;
-  updatedAt: string;
+  started_at: string;
+  updated_at: string;
 }
 
 export interface DemoWallet {
-  uid: string;
-  demoBalance: number;
-  updatedAt: string;
+  id: string;
+  demo_balance: number;
+  updated_at: string;
 }
 
 export interface Post {
-  postId: string;
+  id: string; // From posts.id
   uid: string;
   content: string;
-  createdAt: string;
-  likeCount: number;
-  commentCount: number;
-  likedBy?: string[]; // UIDs of users who liked
+  created_at: string;
+  like_count: number;
+  comment_count: number;
+  liked_by?: string[]; // UIDs of users who liked
   username?: string;
   avatar?: string;
-  tradeVolume?: number;
+  trade_volume?: number;
 }
 
 export interface Comment {
-  commentId: string;
-  postId: string;
+  id: string; // From comments.id
+  post_id: string;
   uid: string;
   content: string;
-  createdAt: string;
+  created_at: string;
   username?: string;
   avatar?: string;
 }
@@ -73,7 +74,7 @@ export interface LeaderboardEntry {
   uid: string;
   username: string;
   avatar: string;
-  totalBalance: number;
-  totalProfit: number;
-  updatedAt: string;
+  total_balance: number;
+  total_profit: number;
+  updated_at: string;
 }

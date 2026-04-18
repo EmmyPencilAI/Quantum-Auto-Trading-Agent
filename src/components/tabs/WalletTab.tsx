@@ -28,12 +28,12 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
     const fetchBalance = async () => {
       const { data, error } = await supabase
         .from('demo_wallets')
-        .select('demoBalance')
+        .select('demo_balance')
         .eq('id', user.uid)
         .single();
       
       if (data) {
-        setDemoBalance(data.demoBalance);
+        setDemoBalance(data.demo_balance);
       }
     };
     fetchBalance();
@@ -50,7 +50,7 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
           filter: `id=eq.${user.uid}`
         },
         (payload) => {
-          setDemoBalance(payload.new.demoBalance);
+          setDemoBalance(payload.new.demo_balance);
         }
       )
       .subscribe();
@@ -61,8 +61,8 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
   }, [user, mode]);
 
   const handleCopy = () => {
-    if (user?.walletAddress) {
-      navigator.clipboard.writeText(user.walletAddress);
+    if (user?.wallet_address) {
+      navigator.clipboard.writeText(user.wallet_address);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -137,15 +137,15 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
         .from('trades')
         .select('*')
         .eq('uid', user.uid)
-        .eq('modeType', mode)
-        .order('createdAt', { ascending: false })
+        .eq('mode_type', mode)
+        .order('created_at', { ascending: false })
         .limit(10);
       
       if (data) {
         const formatted = data.map((t: any) => ({
           type: t.pnl >= 0 ? 'profit' : 'loss',
           amount: `${t.pnl >= 0 ? '+' : ''}$${Math.abs(t.pnl).toLocaleString()}`,
-          time: new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          time: new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           to: t.type === 'BUY' ? 'Long' : 'Short',
           from: 'Quantum Engine'
         }));
@@ -198,7 +198,7 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
 
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 px-4 py-2 bg-black/20 backdrop-blur-md rounded-xl border border-white/10 font-mono text-xs">
-              {user?.walletAddress ? `${user.walletAddress.slice(0, 8)}...${user.walletAddress.slice(-8)}` : '0x000...000'}
+              {user?.wallet_address ? `${user.wallet_address.slice(0, 8)}...${user.wallet_address.slice(-8)}` : '0x000...000'}
               <button onClick={handleCopy} className="hover:text-orange-300 transition-colors">
                 {copied ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
               </button>
@@ -318,9 +318,9 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
           <div className="bg-white p-8 rounded-3xl text-center" onClick={e => e.stopPropagation()}>
             <h3 className="text-black font-bold text-xl mb-6">Receive Funds</h3>
             <div className="bg-white p-4 rounded-2xl shadow-inner mb-6">
-              <QRCodeSVG value={user?.walletAddress || ''} size={200} />
+              <QRCodeSVG value={user?.wallet_address || ''} size={200} />
             </div>
-            <p className="text-black/50 text-xs font-mono mb-4 break-all max-w-[200px] mx-auto">{user?.walletAddress}</p>
+            <p className="text-black/50 text-xs font-mono mb-4 break-all max-w-[200px] mx-auto">{user?.wallet_address}</p>
             <button 
               onClick={handleCopy}
               className="w-full py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-all"

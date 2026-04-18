@@ -48,6 +48,8 @@ CREATE TABLE IF NOT EXISTS trades (
     id TEXT PRIMARY KEY,
     uid TEXT REFERENCES users(uid) ON DELETE CASCADE,
     type TEXT NOT NULL,
+    pair TEXT,
+    trade_mode TEXT,
     entry_price NUMERIC NOT NULL,
     size NUMERIC NOT NULL,
     pnl NUMERIC NOT NULL,
@@ -59,13 +61,14 @@ CREATE TABLE IF NOT EXISTS trades (
 
 -- Leaderboard Table
 CREATE TABLE IF NOT EXISTS leaderboard (
-    uid TEXT PRIMARY KEY REFERENCES users(uid) ON DELETE CASCADE,
+    uid TEXT REFERENCES users(uid) ON DELETE CASCADE,
     username TEXT,
     avatar TEXT,
     total_profit NUMERIC DEFAULT 0,
     total_balance NUMERIC DEFAULT 0,
     mode_type TEXT NOT NULL DEFAULT 'real', -- 'demo' or 'real'
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (uid, mode_type)
 );
 
 -- RLS Policies (example - strictly simplified for now)

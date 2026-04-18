@@ -63,9 +63,9 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
         .single();
       
       if (data) {
-        setDemoBalance(data.demoBalance);
+        setDemoBalance(data.demo_balance);
       } else {
-        await supabase.from('demo_wallets').upsert({ id: user.uid, demoBalance: 10000, updatedAt: new Date().toISOString() });
+        await supabase.from('demo_wallets').upsert({ id: user.uid, demo_balance: 10000, updated_at: new Date().toISOString() });
       }
     };
     fetchBalance();
@@ -73,7 +73,7 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
     const channel = supabase
       .channel('demo_wallet_trading')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'demo_wallets', filter: `id=eq.${user.uid}` }, (payload: any) => {
-        if (payload.new) setDemoBalance(payload.new.demoBalance);
+        if (payload.new) setDemoBalance(payload.new.demo_balance);
       })
       .subscribe();
 
@@ -88,17 +88,22 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
 
     const fetchLiveUpdates = async () => {
       const { data } = await supabase
-        .from('trade_live_updates')
+        .from('trades')
         .select('*')
         .eq('uid', user.uid)
-        .eq('modeType', mode);
+        .eq('mode_type', mode)
+        .eq('status', 'Running');
       
       if (data) {
-        const updates = data as LiveTradeUpdate[];
-        setLiveUpdates(updates);
+        const updates = data as any[];
+        setLiveUpdates(updates.map(u => ({
+          ...u,
+          floating_pnl: u.pnl,
+          updated_at: u.created_at
+        })));
         if (updates.length > 0) {
           setIsTrading(true);
-          const totalPnl = updates.reduce((acc, curr) => acc + curr.floatingPnl, 0);
+          const totalPnl = updates.reduce((acc, curr) => acc + (curr.pnl || 0), 0);
           setFloatingPnl(totalPnl);
         } else {
           setIsTrading(false);
@@ -110,7 +115,7 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
 
     const channel = supabase
       .channel('live_updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'trade_live_updates', filter: `uid=eq.${user.uid}` }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'trades', filter: `uid=eq.${user.uid}` }, () => {
         fetchLiveUpdates();
       })
       .subscribe();
@@ -129,8 +134,9 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
         .from('trades')
         .select('*')
         .eq('uid', user.uid)
-        .eq('modeType', mode)
-        .order('createdAt', { ascending: false })
+        .eq('mode_type', mode)
+        .eq('status', 'Completed')
+        .order('created_at', { ascending: false })
         .limit(50);
       
       if (data) {
@@ -517,21 +523,21 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
                     </tr>
                   ) : (
                     tradeHistory.map((trade) => (
-                      <tr key={trade.tradeId} className="border-b border-white/5 group hover:bg-white/[0.02] transition-all">
-                        <td className="py-4 font-bold">{trade.pair}</td>
+                      <tr key={trade.id} className="border-b border-white/5 group hover:bg-white/[0.02] transition-all">
+                        <td className="py-4 font-bold">{trade.pair || 'BTC/USDT'}</td>
                         <td className="py-4">
                           <span className="text-[10px] font-bold px-2 py-1 rounded bg-white/5 text-white/60 uppercase">
-                            {trade.tradeMode}
+                            {trade.trade_mode}
                           </span>
                         </td>
-                        <td className="py-4 font-mono text-xs">${trade.amount}</td>
+                        <td className="py-4 font-mono text-xs">${trade.size * 1000}</td>
                         <td className={cn(
                           "py-4 font-bold",
                           trade.pnl > 0 ? "text-green-500" : "text-red-500"
                         )}>
                           {trade.pnl > 0 ? '+' : ''}{trade.pnl.toFixed(2)}
                         </td>
-                        <td className="py-4 text-white/40 text-xs">{formatTime(trade.timeTaken)}</td>
+                        <td className="py-4 text-white/40 text-xs">{formatTime(trade.time_taken || 0)}</td>
                         <td className="py-4 text-right">
                           <span className="text-[10px] font-black text-green-500 uppercase tracking-widest px-2 py-1 bg-green-500/10 rounded-full">
                             {trade.status}

@@ -162,12 +162,12 @@ export default function App() {
           // User doesn't exist, create new
           const newUser: User = {
             uid: uniqueId,
-            walletAddress: safeAddress,
+            wallet_address: safeAddress,
             // PRIORITIZE GMAIL NAME AND PHOTO
             username: userInfo.name || `Quantum_${safeAddress.slice(2, 8)}`,
             avatar: userInfo.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${safeAddress}`,
-            createdAt: new Date().toISOString(),
-            tradeVolume: 0,
+            created_at: new Date().toISOString(),
+            trade_volume: 0,
             followers: [],
             following: [],
             location: location 
@@ -186,16 +186,16 @@ export default function App() {
           setLoadingMessage("PROVISIONING DIGITAL VAULT...");
           await supabase.from('demo_wallets').upsert({
             id: uniqueId,
-            demoBalance: 13300,
-            updatedAt: new Date().toISOString()
+            demo_balance: 13300,
+            updated_at: new Date().toISOString()
           });
 
           setUser(newUser);
         } else if (userDoc) {
           setLoadingMessage("SYNCING QUANTUM DATA...");
           const updatePayload: any = { 
-            walletAddress: address,
-            updatedAt: new Date().toISOString()
+            wallet_address: address,
+            updated_at: new Date().toISOString()
           };
           if (location) updatePayload.location = location;
           
@@ -371,7 +371,7 @@ export default function App() {
                 {user?.username || 'QUANTUM TRADER'}
               </span>
               <span className={cn("text-[10px] font-mono font-bold", theme === 'dark' ? "text-white/40" : "text-black/40")}>
-                {user?.walletAddress ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}` : 'CONNECTING...'}
+                {user?.wallet_address ? `${user.wallet_address.slice(0, 6)}...${user.wallet_address.slice(-4)}` : 'CONNECTING...'}
               </span>
             </div>
             <div className="relative">

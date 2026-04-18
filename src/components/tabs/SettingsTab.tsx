@@ -116,8 +116,8 @@ export default function SettingsTab({ user, setUser, mode, onLogout }: SettingsT
       const { error } = await supabase
         .from('demo_wallets')
         .update({
-          demoBalance: 10000,
-          updatedAt: new Date().toISOString()
+          demo_balance: 10000,
+          updated_at: new Date().toISOString()
         })
         .eq('id', user.uid);
       
@@ -133,8 +133,8 @@ export default function SettingsTab({ user, setUser, mode, onLogout }: SettingsT
       const { error } = await supabase
         .from('demo_wallets')
         .update({
-          demoBalance: 0,
-          updatedAt: new Date().toISOString()
+          demo_balance: 0,
+          updated_at: new Date().toISOString()
         })
         .eq('id', user.uid);
 
@@ -151,13 +151,13 @@ export default function SettingsTab({ user, setUser, mode, onLogout }: SettingsT
   const handleAddFunds = async () => {
     if (!user) return;
     try {
-      const { data: demoDoc } = await supabase.from('demo_wallets').select('demoBalance').eq('id', user.uid).single();
-      const currentBal = demoDoc ? demoDoc.demoBalance : 13300;
+      const { data: demoDoc } = await supabase.from('demo_wallets').select('demo_balance').eq('id', user.uid).single();
+      const currentBal = demoDoc ? demoDoc.demo_balance : 13300;
       const { error } = await supabase
         .from('demo_wallets')
         .update({
-          demoBalance: currentBal + 5000,
-          updatedAt: new Date().toISOString()
+          demo_balance: currentBal + 5000,
+          updated_at: new Date().toISOString()
         })
         .eq('id', user.uid);
       
@@ -221,7 +221,7 @@ export default function SettingsTab({ user, setUser, mode, onLogout }: SettingsT
             <div>
               <label className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2 block">Wallet Address</label>
               <div className="w-full bg-white/5 border border-white/5 rounded-xl p-4 text-xs font-mono text-white/40 break-all">
-                {user?.walletAddress}
+                {user?.wallet_address}
               </div>
             </div>
             <button 

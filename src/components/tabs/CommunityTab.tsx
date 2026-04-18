@@ -25,7 +25,7 @@ export default function CommunityTab({ user }: CommunityTabProps) {
       const { data, error } = await supabase
         .from('posts')
         .select('*, users:uid(username, avatar, trade_volume)')
-        .order('createdAt', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(50);
 
       if (data) {
@@ -47,7 +47,7 @@ export default function CommunityTab({ user }: CommunityTabProps) {
       const { data } = await supabase
         .from('users')
         .select('*')
-        .order('tradeVolume', { ascending: false })
+        .order('trade_volume', { ascending: false })
         .limit(5);
       if (data) setSuggestedUsers(data as User[]);
     };
@@ -79,8 +79,8 @@ export default function CommunityTab({ user }: CommunityTabProps) {
       const { error } = await supabase.from('posts').insert({
         uid: user.uid,
         content: newPostContent,
-        likeCount: 0,
-        commentCount: 0,
+        like_count: 0,
+        comment_count: 0,
       });
       if (error) throw error;
       setNewPostContent('');
@@ -94,19 +94,19 @@ export default function CommunityTab({ user }: CommunityTabProps) {
   const handleLike = async (postId: string) => {
     if (!user) return;
     try {
-      const post = posts.find(p => p.postId === postId);
+      const post = posts.find(p => p.id === postId);
       if (!post) return;
 
-      const isLiked = post.likedBy?.includes(user.uid);
+      const isLiked = post.liked_by?.includes(user.uid);
       const newLikedBy = isLiked 
-        ? post.likedBy?.filter(id => id !== user.uid)
-        : [...(post.likedBy || []), user.uid];
+        ? post.liked_by?.filter(id => id !== user.uid)
+        : [...(post.liked_by || []), user.uid];
 
       const { error } = await supabase
         .from('posts')
         .update({ 
-          likedBy: newLikedBy,
-          likeCount: isLiked ? post.likeCount - 1 : post.likeCount + 1
+          liked_by: newLikedBy,
+          like_count: isLiked ? post.like_count - 1 : post.like_count + 1
         })
         .eq('id', postId);
 
@@ -151,7 +151,7 @@ export default function CommunityTab({ user }: CommunityTabProps) {
     setIsCommenting(true);
     try {
       const { error } = await supabase.from('comments').insert({
-        postId,
+        post_id: postId,
         uid: user.uid,
         content: newComment,
       });
@@ -159,9 +159,9 @@ export default function CommunityTab({ user }: CommunityTabProps) {
       if (error) throw error;
 
       // Increment comment count
-      const post = posts.find(p => p.postId === postId);
+      const post = posts.find(p => p.id === postId);
       if (post) {
-        await supabase.from('posts').update({ comment_count: (post.commentCount || 0) + 1 }).eq('id', postId);
+        await supabase.from('posts').update({ comment_count: (post.comment_count || 0) + 1 }).eq('id', postId);
       }
       
       setNewComment("");
@@ -176,13 +176,12 @@ export default function CommunityTab({ user }: CommunityTabProps) {
     const { data } = await supabase
       .from('comments')
       .select('*, users:uid(username, avatar)')
-      .eq('postId', postId)
-      .order('createdAt', { ascending: true });
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true });
     
     if (data) {
       const formatted = data.map((c: any) => ({
         ...c,
-        commentId: c.id,
         username: c.users?.username,
         avatar: c.users?.avatar
       }));
@@ -245,7 +244,7 @@ export default function CommunityTab({ user }: CommunityTabProps) {
           ) : (
             posts.map((post) => (
               <motion.div 
-                key={post.postId}
+                key={post.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="p-6 rounded-[2.5rem] bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all group"
@@ -257,10 +256,10 @@ export default function CommunityTab({ user }: CommunityTabProps) {
                       <h4 className="font-bold text-sm tracking-tight">{post.username}</h4>
                       <p className={cn(
                         "text-[8px] uppercase tracking-widest font-black px-1.5 py-0.5 rounded",
-                        getRank(post.tradeVolume).bg,
-                        getRank(post.tradeVolume).color
+                        getRank(post.trade_volume || 0).bg,
+                        getRank(post.trade_volume || 0).color
                       )}>
-                        {getRank(post.tradeVolume).name}
+                        {getRank(post.trade_volume || 0).name}
                       </p>
                     </div>
                   </div>
@@ -273,25 +272,25 @@ export default function CommunityTab({ user }: CommunityTabProps) {
 
                 <div className="flex items-center gap-6 pt-4 border-t border-white/5">
                   <button 
-                    onClick={() => handleLike(post.postId)}
+                    onClick={() => handleLike(post.id)}
                     className={cn(
                       "flex items-center gap-2 transition-all group/btn",
-                      post.likedBy?.includes(user?.uid || '') ? "text-red-500" : "text-white/40 hover:text-red-500"
+                      post.liked_by?.includes(user?.uid || '') ? "text-red-500" : "text-white/40 hover:text-red-500"
                     )}
                   >
                     <div className="p-2 rounded-lg group-hover/btn:bg-red-500/10 transition-all">
                       <Heart className="w-5 h-5" />
                     </div>
-                    <span className="text-xs font-bold">{post.likeCount}</span>
+                    <span className="text-xs font-bold">{post.like_count}</span>
                   </button>
                   <button 
-                    onClick={() => toggleComments(post.postId)}
+                    onClick={() => toggleComments(post.id)}
                     className="flex items-center gap-2 text-white/40 hover:text-orange-500 transition-all group/btn"
                   >
                     <div className="p-2 rounded-lg group-hover/btn:bg-orange-500/10 transition-all">
                       <MessageSquare className="w-5 h-5" />
                     </div>
-                    <span className="text-xs font-bold">{post.commentCount}</span>
+                    <span className="text-xs font-bold">{post.comment_count}</span>
                   </button>
 
                   <button className="flex items-center gap-2 text-white/40 hover:text-green-500 transition-all group/btn ml-auto">
@@ -303,7 +302,7 @@ export default function CommunityTab({ user }: CommunityTabProps) {
 
                 {/* Comments Section */}
                 <AnimatePresence>
-                  {activeComments === post.postId && (
+                  {activeComments === post.id && (
                     <motion.div 
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
@@ -319,10 +318,10 @@ export default function CommunityTab({ user }: CommunityTabProps) {
                             onChange={(e) => setNewComment(e.target.value)}
                             placeholder="Write a comment..."
                             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-orange-500 transition-all"
-                            onKeyDown={(e) => e.key === 'Enter' && handleComment(post.postId)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleComment(post.id)}
                           />
                           <button 
-                            onClick={() => handleComment(post.postId)}
+                            onClick={() => handleComment(post.id)}
                             disabled={isCommenting || !newComment.trim()}
                             className="absolute right-2 top-1/2 -translate-y-1/2 text-orange-500 hover:text-orange-400 disabled:opacity-50"
                           >
@@ -332,8 +331,8 @@ export default function CommunityTab({ user }: CommunityTabProps) {
                       </div>
 
                       <div className="space-y-4 pt-2">
-                        {comments[post.postId]?.map((comment) => (
-                          <div key={comment.commentId} className="flex gap-3 group/cmt">
+                        {comments[post.id]?.map((comment) => (
+                          <div key={comment.id} className="flex gap-3 group/cmt">
                             <img src={comment.avatar} className="w-8 h-8 rounded-full border border-white/5" />
                             <div className="flex-1">
                               <div className="bg-white/5 rounded-2xl p-3">
@@ -382,7 +381,7 @@ export default function CommunityTab({ user }: CommunityTabProps) {
           </h3>
           <div className="space-y-4">
             {suggestedUsers.filter(u => u.uid !== user?.uid).map(u => {
-              const rank = getRank(u.tradeVolume);
+              const rank = getRank(u.trade_volume || 0);
               const isFollowing = user?.following?.includes(u.uid);
               return (
                 <div key={u.uid} className="flex items-center justify-between">

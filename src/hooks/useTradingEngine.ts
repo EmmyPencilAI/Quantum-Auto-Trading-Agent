@@ -79,15 +79,18 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
               setTradesCount(prev => prev + 1);
               
               // Sync to Supabase
-              await supabase.from('trade_live_updates').upsert({
+              await supabase.from('trades').upsert({
                 id: pos.id,
-                ...pos,
                 uid: user.uid,
+                type: pos.type,
                 pair: 'BTC/USDT',
-                floatingPnl: 0,
+                trade_mode: strategy,
+                entry_price: data.price,
+                size: pos.size,
+                pnl: 0,
+                mode_type: mode,
                 status: "Running",
-                startedAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
+                created_at: new Date().toISOString()
               });
             },
             onClose: async () => {
@@ -109,11 +112,11 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
                   creditUser: async (uid, amount) => {
                      const totalReturn = initialFunds + userProfit;
                      if (mode === 'demo') {
-                       const { data: demoDoc } = await supabase.from('demo_wallets').select('demoBalance').eq('id', uid).single();
-                       const currentBal = demoDoc ? demoDoc.demoBalance : 10000;
+                       const { data: demoDoc } = await supabase.from('demo_wallets').select('demo_balance').eq('id', uid).single();
+                       const currentBal = demoDoc ? demoDoc.demo_balance : 10000;
                        await supabase.from('demo_wallets').update({ 
-                         demoBalance: currentBal + totalReturn,
-                         updatedAt: new Date().toISOString()
+                         demo_balance: currentBal + totalReturn,
+                         updated_at: new Date().toISOString()
                        }).eq('id', uid);
                      }
                   },
@@ -127,23 +130,28 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
                 });
 
                 // Finalize trade history
-                await supabase.from('trades').insert({
+                await supabase.from('trades').upsert({
                   id: currentPosition.id,
-                  ...currentPosition,
                   uid: user.uid,
+                  type: currentPosition.type,
+                  pair: 'BTC/USDT',
+                  trade_mode: strategy,
+                  entry_price: currentPosition.entryPrice,
+                  size: currentPosition.size,
                   pnl,
+                  mode_type: mode,
                   status: "Completed",
-                  timeTaken: Math.floor((Date.now() - currentPosition.startTime) / 1000),
-                  createdAt: new Date().toISOString()
+                  time_taken: Math.floor((Date.now() - currentPosition.startTime) / 1000),
+                  created_at: new Date().toISOString()
                 });
 
                 // Update Leaderboard & Trade Volume
-                const { data: userData } = await supabase.from('users').select('tradeVolume').eq('uid', user.uid).single();
-                const currentVolume = userData?.tradeVolume || 0;
+                const { data: userData } = await supabase.from('users').select('trade_volume').eq('uid', user.uid).single();
+                const currentVolume = userData?.trade_volume || 0;
                 const tradeVolume = currentPosition.size * 100000; // Formula for volume calculation
 
                 await supabase.from('users').update({
-                  tradeVolume: currentVolume + tradeVolume
+                  trade_volume: currentVolume + tradeVolume
                 }).eq('uid', user.uid);
 
                 // Update Leaderboard per mode
@@ -154,20 +162,22 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
                   .eq('mode_type', mode)
                   .single();
                   
-                const currentProfit = leaderData ? leaderData.totalProfit : 0;
-                const currentBalance = leaderData ? leaderData.totalBalance : 0;
+                const currentProfit = leaderData ? leaderData.total_profit : 0;
+                const currentBalance = leaderData ? leaderData.total_balance : 0;
                 
                 await supabase.from('leaderboard').upsert({
                   uid: user.uid,
                   username: user.username,
                   avatar: user.avatar,
-                  totalProfit: currentProfit + pnl,
-                  totalBalance: currentBalance + pnl,
+                  total_profit: currentProfit + pnl,
+                  total_balance: currentBalance + pnl,
                   mode_type: mode,
-                  updatedAt: new Date().toISOString()
+                  updated_at: new Date().toISOString()
                 });
 
-                await supabase.from('trade_live_updates').delete().eq('id', currentPosition.id);
+                // Clean up any live/running record if it was in the same table
+                // Since we used 'Running' status in the same 'trades' table now, we don't strictly need to delete unless we want to keep it clean.
+                // But upsert handles it if we finalize.
                 
                 setTotalPnL(prev => prev + pnl);
                 

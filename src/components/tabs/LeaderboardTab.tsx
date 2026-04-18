@@ -18,7 +18,7 @@ export default function LeaderboardTab() {
         .from('leaderboard')
         .select('*')
         .eq('mode_type', mode)
-        .order('totalProfit', { ascending: false })
+        .order('total_profit', { ascending: false })
         .limit(10);
       
       if (data) {
@@ -115,7 +115,7 @@ export default function LeaderboardTab() {
             </div>
             <img src={topThree[1].avatar} alt="Avatar" className="w-24 h-24 rounded-full mx-auto mb-6 border-4 border-slate-400/20" />
             <h3 className="text-xl font-display mb-2">{topThree[1].username}</h3>
-            <p className="text-green-500 font-display text-2xl tracking-tighter">+${topThree[1].totalProfit.toLocaleString()}</p>
+            <p className="text-green-500 font-display text-2xl tracking-tighter">+${topThree[1].total_profit.toLocaleString()}</p>
             <p className="text-[10px] text-white/30 uppercase tracking-widest mt-2 font-display">Rank #2</p>
           </motion.div>
         )}
@@ -132,14 +132,14 @@ export default function LeaderboardTab() {
             </div>
             <img src={topThree[0].avatar} alt="Avatar" className="w-32 h-32 rounded-full mx-auto mb-6 border-4 border-yellow-500/20" />
             <h3 className="text-2xl font-display mb-2">{topThree[0].username}</h3>
-            <p className="text-green-500 font-display text-3xl tracking-tighter">+${topThree[0].totalProfit.toLocaleString()}</p>
+            <p className="text-green-500 font-display text-3xl tracking-tighter">+${topThree[0].total_profit.toLocaleString()}</p>
             <div className="mt-3">
               <span className={cn(
                 "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                getRank(tradersMetadata[topThree[0].uid]?.tradeVolume).bg,
-                getRank(tradersMetadata[topThree[0].uid]?.tradeVolume).color
+                getRank(tradersMetadata[topThree[0].uid]?.trade_volume || 0).bg,
+                getRank(tradersMetadata[topThree[0].uid]?.trade_volume || 0).color
               )}>
-                {getRank(tradersMetadata[topThree[0].uid]?.tradeVolume).name}
+                {getRank(tradersMetadata[topThree[0].uid]?.trade_volume || 0).name}
               </span>
             </div>
             <p className="text-xs text-orange-500 uppercase tracking-widest mt-2 font-display">Global Champion</p>
@@ -159,7 +159,7 @@ export default function LeaderboardTab() {
             </div>
             <img src={topThree[2].avatar} alt="Avatar" className="w-24 h-24 rounded-full mx-auto mb-6 border-4 border-amber-700/20" />
             <h3 className="text-xl font-display mb-2">{topThree[2].username}</h3>
-            <p className="text-green-500 font-display text-2xl tracking-tighter">+${topThree[2].totalProfit.toLocaleString()}</p>
+            <p className="text-green-500 font-display text-2xl tracking-tighter">+${topThree[2].total_profit.toLocaleString()}</p>
             <p className="text-[10px] text-white/30 uppercase tracking-widest mt-2 font-display">Rank #3</p>
           </motion.div>
         )}
@@ -200,9 +200,9 @@ export default function LeaderboardTab() {
                       <h4 className="font-bold text-sm tracking-tight">{entry.username}</h4>
                       <p className={cn(
                         "text-[8px] uppercase tracking-widest font-black",
-                        getRank(tradersMetadata[entry.uid]?.tradeVolume).color
+                        getRank(tradersMetadata[entry.uid]?.trade_volume || 0).color
                       )}>
-                        {getRank(tradersMetadata[entry.uid]?.tradeVolume).name}
+                        {getRank(tradersMetadata[entry.uid]?.trade_volume || 0).name}
                       </p>
                     </div>
                   </div>
@@ -211,11 +211,11 @@ export default function LeaderboardTab() {
                 <div className="flex items-center gap-12">
                   <div className="text-right hidden sm:block">
                     <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1">Total Balance</p>
-                    <p className="font-bold text-sm">${entry.totalBalance.toLocaleString()}</p>
+                    <p className="font-bold text-sm">${entry.total_balance.toLocaleString()}</p>
                   </div>
                   <div className="text-right min-w-[100px]">
                     <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1">Total Profit</p>
-                    <p className="font-black text-green-500 text-lg tracking-tighter">+${entry.totalProfit.toLocaleString()}</p>
+                    <p className="font-black text-green-500 text-lg tracking-tighter">+${entry.total_profit.toLocaleString()}</p>
                   </div>
                   <div className="p-2 bg-orange-500/10 rounded-lg text-orange-500 opacity-0 group-hover:opacity-100 transition-all">
                     <ArrowUpRight className="w-4 h-4" />
