@@ -1,6 +1,7 @@
 import { Web3Auth } from "@web3auth/modal";
 import { CHAIN_NAMESPACES, WEB3AUTH_NETWORK } from "@web3auth/base";
 import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
+import { OpenloginAdapter } from "@web3auth/openlogin-adapter";
 import { APP_CONFIG } from "../config";
 
 const clientId = APP_CONFIG.WEB3AUTH_CLIENT_ID;
@@ -147,6 +148,21 @@ export const initWeb3Auth = async () => {
     }
     
     try {
+      const openloginAdapter = new OpenloginAdapter({
+        adapterSettings: {
+          uxMode: "popup",
+          mfaLevel: "mandatory", // Trigger MFA for all users
+          whiteLabel: {
+            appName: APP_CONFIG.NAME,
+            logoLight: getSafeOrigin() + APP_CONFIG.LOGO,
+            logoDark: getSafeOrigin() + APP_CONFIG.LOGO,
+            defaultLanguage: "en",
+            mode: "dark",
+          },
+        },
+      } as any);
+      (web3auth as any).configureAdapter(openloginAdapter);
+
       await Promise.race([
         initMethod.call(web3auth),
         timeoutPromise
