@@ -137,7 +137,15 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
                   createdAt: new Date().toISOString()
                 });
 
-                // Update Leaderboard
+                // Update Leaderboard & Trade Volume
+                const { data: userData } = await supabase.from('users').select('tradeVolume').eq('uid', user.uid).single();
+                const currentVolume = userData?.tradeVolume || 0;
+                const tradeVolume = currentPosition.size * 100000; // Formula for volume calculation
+
+                await supabase.from('users').update({
+                  tradeVolume: currentVolume + tradeVolume
+                }).eq('uid', user.uid);
+
                 if (mode === 'real') {
                   const { data: leaderData } = await supabase.from('leaderboard').select('*').eq('uid', user.uid).single();
                   const currentProfit = leaderData ? leaderData.totalProfit : 0;
@@ -177,7 +185,7 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
           console.error("EXECUTION ENGINE ERROR:", error);
         }
 
-      }, 2000); 
+      }, strategy === 'Aggressive' ? 500 : 2000); 
     } else {
       if (engineLoopRef.current) clearInterval(engineLoopRef.current);
     }

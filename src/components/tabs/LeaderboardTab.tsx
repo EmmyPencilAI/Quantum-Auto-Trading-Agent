@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Trophy, Medal, TrendingUp, Search, Filter, ArrowUpRight, ArrowDownRight, Zap, Users } from 'lucide-react';
-import { cn } from '../../lib/utils';
-import { LeaderboardEntry } from '../../types';
+import { cn, getRank } from '../../lib/utils';
+import { LeaderboardEntry, User } from '../../types';
 import { supabase } from '../../lib/supabase';
 
 export default function LeaderboardTab() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tradersMetadata, setTradersMetadata] = useState<Record<string, User>>({});
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -19,6 +20,19 @@ export default function LeaderboardTab() {
       
       if (data) {
         setLeaderboard(data as LeaderboardEntry[]);
+        
+        // Fetch metadata (tradeVolume) for these users
+        const uids = (data as LeaderboardEntry[]).map(e => e.uid);
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('*')
+          .in('uid', uids);
+        
+        if (usersData) {
+          const meta: Record<string, User> = {};
+          usersData.forEach((u: any) => meta[u.uid] = u);
+          setTradersMetadata(meta);
+        }
       }
       setLoading(false);
     };
@@ -90,7 +104,16 @@ export default function LeaderboardTab() {
             <img src={topThree[0].avatar} alt="Avatar" className="w-32 h-32 rounded-full mx-auto mb-6 border-4 border-yellow-500/20" />
             <h3 className="text-2xl font-display mb-2">{topThree[0].username}</h3>
             <p className="text-green-500 font-display text-3xl tracking-tighter">+${topThree[0].totalProfit.toLocaleString()}</p>
-            <p className="text-xs text-orange-500 uppercase tracking-widest mt-3 font-display">Global Champion</p>
+            <div className="mt-3">
+              <span className={cn(
+                "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                getRank(tradersMetadata[topThree[0].uid]?.tradeVolume).bg,
+                getRank(tradersMetadata[topThree[0].uid]?.tradeVolume).color
+              )}>
+                {getRank(tradersMetadata[topThree[0].uid]?.tradeVolume).name}
+              </span>
+            </div>
+            <p className="text-xs text-orange-500 uppercase tracking-widest mt-2 font-display">Global Champion</p>
           </motion.div>
         )}
 
@@ -146,7 +169,12 @@ export default function LeaderboardTab() {
                     <img src={entry.avatar} alt="Avatar" className="w-10 h-10 rounded-full border border-white/10" />
                     <div>
                       <h4 className="font-bold text-sm tracking-tight">{entry.username}</h4>
-                      <p className="text-[10px] text-white/30 font-mono uppercase tracking-widest">Quantum Trader</p>
+                      <p className={cn(
+                        "text-[8px] uppercase tracking-widest font-black",
+                        getRank(tradersMetadata[entry.uid]?.tradeVolume).color
+                      )}>
+                        {getRank(tradersMetadata[entry.uid]?.tradeVolume).name}
+                      </p>
                     </div>
                   </div>
                 </div>

@@ -7,6 +7,9 @@ export interface User {
   username: string;
   avatar: string;
   createdAt: string;
+  tradeVolume?: number; // Total volume for ranking
+  followers?: string[]; // UIDs of followers
+  following?: string[]; // UIDs of following
 }
 
 export interface Trade {
@@ -50,6 +53,7 @@ export interface Post {
   createdAt: string;
   likeCount: number;
   commentCount: number;
+  likedBy?: string[]; // UIDs of users who liked
   username?: string;
   avatar?: string;
 }

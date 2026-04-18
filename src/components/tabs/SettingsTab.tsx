@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Settings, Shield, Bell, Globe, Trash2, RefreshCcw, Plus, Wallet, ChevronRight, Camera, Check, LogOut, X } from 'lucide-react';
+import { User, Settings, Shield, Bell, Globe, Trash2, RefreshCcw, Plus, Wallet, ChevronRight, Camera, Check, LogOut, X, Upload } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { User as UserType, ModeType } from '../../types';
 import { AVATARS, APP_CONFIG } from '../../config';
@@ -19,6 +19,53 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showWeb3AuthModal, setShowWeb3AuthModal] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [tempImage, setTempImage] = useState<string | null>(null);
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setTempImage(reader.result as string);
+        setShowCropModal(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleConfirmCrop = async () => {
+    if (!tempImage || !user) return;
+    setIsSaving(true);
+    setShowCropModal(false);
+    
+    try {
+      // Simulate upload process
+      setUploadProgress(0);
+      for (let i = 0; i <= 100; i += 20) {
+        setUploadProgress(i);
+        await new Promise(r => setTimeout(r, 200));
+      }
+
+      const { error } = await supabase
+        .from('users')
+        .update({ avatar: tempImage })
+        .eq('uid', user.uid);
+      
+      if (error) throw error;
+      
+      setUser({ ...user, avatar: tempImage });
+    } catch (error) {
+      console.error("Upload failed", error);
+    } finally {
+      setIsSaving(false);
+      setUploadProgress(null);
+      setTempImage(null);
+    }
+  };
 
   const handleUpdateProfile = async () => {
     if (!user) return;
@@ -105,13 +152,34 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
 
         <div className="flex flex-col md:flex-row items-center gap-8">
           <div className="relative group">
-            <img src={user?.avatar} alt="Avatar" className="w-32 h-32 rounded-full border-4 border-white/10 group-hover:border-orange-500 transition-all" />
+            <div className="w-32 h-32 rounded-full border-4 border-white/10 group-hover:border-orange-500 transition-all overflow-hidden relative">
+              <img src={user?.avatar} alt="Avatar" className="w-full h-full object-cover" />
+              {uploadProgress !== null && (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center p-4">
+                  <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
+                    <div className="h-full bg-orange-500 transition-all" style={{ width: `${uploadProgress}%` }} />
+                  </div>
+                </div>
+              )}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity flex-col gap-2">
+                <button onClick={() => fileInputRef.current?.click()} className="p-2 bg-orange-600 rounded-lg text-white hover:scale-110 transition-all">
+                  <Upload className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
             <button 
               onClick={() => setShowAvatarPicker(true)}
               className="absolute bottom-0 right-0 p-3 bg-orange-600 rounded-full text-white shadow-lg hover:scale-110 transition-all"
             >
               <Camera className="w-5 h-5" />
             </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={handleFileSelect}
+            />
           </div>
 
           <div className="flex-1 space-y-6 w-full">
@@ -248,6 +316,31 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
           </button>
         </div>
       </div>
+
+      {/* Crop Modal */}
+      <AnimatePresence>
+        {showCropModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
+          >
+            <motion.div className="bg-[#0a0a0a] border border-white/10 p-8 rounded-[3rem] max-w-md w-full text-center">
+              <h3 className="text-xl font-display uppercase tracking-tight mb-6">Crop Profile Picture</h3>
+              <div className="w-48 h-48 mx-auto rounded-full overflow-hidden border-2 border-orange-500 mb-8 relative">
+                <img src={tempImage || ''} className="w-full h-full object-cover scale-125" alt="Preview" />
+                <div className="absolute inset-0 border-[20px] border-black/40" />
+              </div>
+              <p className="text-xs text-white/40 mb-8">Quantum AI is auto-scaling your image for perfect profile fit.</p>
+              <div className="flex gap-4">
+                <button onClick={() => setShowCropModal(false)} className="flex-1 py-3 bg-white/5 rounded-xl font-bold">Cancel</button>
+                <button onClick={handleConfirmCrop} className="flex-1 py-3 bg-orange-600 rounded-xl font-bold">Apply & Save</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Avatar Picker Modal */}
       <AnimatePresence>

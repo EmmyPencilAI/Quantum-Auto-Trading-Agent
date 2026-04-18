@@ -67,6 +67,7 @@ export default function QuantumAgentOverlay() {
     setIsTyping(false);
   };
 
+  // Floating Chat Trigger
   return (
     <>
       {/* Global Notifications */}
@@ -87,6 +88,12 @@ export default function QuantumAgentOverlay() {
                 <div className="text-[10px] font-mono whitespace-pre-wrap leading-relaxed text-white/90">
                   {alert}
                 </div>
+                <button 
+                  onClick={() => setAlerts(prev => prev.filter((_, idx) => idx !== i))}
+                  className="ml-auto p-1 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <X className="w-3 h-3 text-white/40" />
+                </button>
               </div>
             </motion.div>
           ))}
