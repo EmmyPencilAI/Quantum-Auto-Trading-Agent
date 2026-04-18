@@ -73,19 +73,25 @@ CREATE TABLE IF NOT EXISTS leaderboard (
 
 -- RLS Policies (example - strictly simplified for now)
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on users" ON users;
 CREATE POLICY "Allow all on users" ON users FOR ALL USING (true);
 
 ALTER TABLE demo_wallets ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on demo_wallets" ON demo_wallets;
 CREATE POLICY "Allow all on demo_wallets" ON demo_wallets FOR ALL USING (true);
 
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on posts" ON posts;
 CREATE POLICY "Allow all on posts" ON posts FOR ALL USING (true);
 
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on comments" ON comments;
 CREATE POLICY "Allow all on comments" ON comments FOR ALL USING (true);
 
 ALTER TABLE trades ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on trades" ON trades;
 CREATE POLICY "Allow all on trades" ON trades FOR ALL USING (true);
 
 ALTER TABLE leaderboard ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on leaderboard" ON leaderboard;
 CREATE POLICY "Allow all on leaderboard" ON leaderboard FOR ALL USING (true);
