@@ -10,28 +10,18 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-  app.use(cors());
-  app.use(express.json());
+// API Routes
+app.post("/api/send-2fa", async (req, res) => {
+  const { email, code } = req.body;
+  console.log(`[2FA DEBUG] Sending code ${code} to email ${email}`);
+  res.json({ success: true, message: "Verification code sent to your email." });
+});
 
-  // API Routes
-  app.post("/api/send-2fa", async (req, res) => {
-    const { email, code } = req.body;
-    
-    console.log(`[2FA DEBUG] Sending code ${code} to email ${email}`);
-    
-    // In a real production app, you would integrate Resend, SendGrid, or AWS SES here
-    // Example with Resend:
-    // const resend = new Resend(process.env.RESEND_API_KEY);
-    // await resend.emails.send({ ... });
-
-    // For now, we simulate success
-    res.json({ success: true, message: "Verification code sent to your email." });
-  });
-
+async function setupApp() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -46,10 +36,17 @@ async function startServer() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Quantum Server running on http://0.0.0.0:${PORT}`);
-  });
 }
 
-startServer();
+// Export the app for Vercel
+export default app;
+
+// Only start the server if we're not running as a Vercel function (or if explicitly told to)
+if (process.env.AIS_SERVER === 'true' || !process.env.VERCEL) {
+  setupApp().then(() => {
+    const PORT = 3000;
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Quantum Server running on http://0.0.0.0:${PORT}`);
+    });
+  });
+}

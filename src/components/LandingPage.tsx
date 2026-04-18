@@ -42,12 +42,18 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
           <img src="/logo.png" alt="Quantum" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
           <span className="font-display text-2xl tracking-tighter uppercase">QUANTUM <span className="text-orange-500">FINANCE</span></span>
         </div>
-        <button 
-          onClick={onLogin}
-          className="px-6 py-2 bg-orange-600 rounded-full font-bold text-sm uppercase tracking-widest hover:bg-orange-500 transition-colors shadow-[0_0_20px_rgba(249,115,22,0.3)]"
-        >
-          Launch App
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex flex-col items-end">
+            <span className="text-[10px] font-mono text-orange-500 font-bold tracking-widest uppercase italic">Quantum Secure v1.0.8</span>
+            <span className="text-[8px] font-mono text-white/20 uppercase">MFA Protocol Active</span>
+          </div>
+          <button 
+            onClick={onLogin}
+            className="px-6 py-2 bg-orange-600 rounded-full font-bold text-sm uppercase tracking-widest hover:bg-orange-500 transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(249,115,22,0.3)]"
+          >
+            Launch Terminal
+          </button>
+        </div>
       </header>
 
       {/* Hero Section */}

@@ -531,6 +531,12 @@ export default function App() {
       </nav>
 
       <QuantumAgentOverlay />
+      {/* Footer / Version */}
+      <footer className="py-8 px-4 border-t border-white/5 text-center">
+        <p className="text-[8px] font-mono text-white/10 uppercase tracking-[0.5em] font-bold">
+          Quantum Terminal Protocol v1.0.8-SECURE (MFA ENFORCED)
+        </p>
+      </footer>
     </div>
   );
 }
