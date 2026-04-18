@@ -12,7 +12,81 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
   const [marketData, setMarketData] = useState<MarketData | null>(null);
   const [tradesCount, setTradesCount] = useState(0);
   const [totalPnL, setTotalPnL] = useState(0);
+  const [isCatchingUp, setIsCatchingUp] = useState(false);
   const engineLoopRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync background state to DB
+  useEffect(() => {
+    if (user?.uid) {
+      supabase.from('users').update({
+        is_trading: isTrading,
+        active_trade_amount: baseTradeAmount,
+        active_strategy: strategy,
+        active_mode: mode,
+        trade_start_time: isTrading ? new Date().toISOString() : null
+      }).eq('uid', user.uid).then();
+    }
+  }, [isTrading, user?.uid, baseTradeAmount, strategy, mode]);
+
+  // Catch-up logic for background trading
+  useEffect(() => {
+    const handleCatchUp = async () => {
+      if (user?.is_trading && user?.trade_start_time && !isCatchingUp && isTrading) {
+        setIsCatchingUp(true);
+        const startTime = new Date(user.trade_start_time).getTime();
+        const now = Date.now();
+        const diffSeconds = (now - startTime) / 1000;
+        
+        // Strategy intervals: Aggressive (0.5s), others (2s)
+        const interval = user.active_strategy === 'Aggressive' ? 0.5 : 2;
+        const missedTradeCycles = Math.min(Math.floor(diffSeconds / interval), 100); // Caps at 100 cycles for safety
+
+        if (missedTradeCycles > 5) {
+          console.log(`[QUANTUM] Catching up on ${missedTradeCycles} background cycles...`);
+          
+          let simulatedPnL = 0;
+          for (let i = 0; i < missedTradeCycles; i++) {
+            // Aggressive mode is 100% win rate
+            if (user.active_strategy === 'Aggressive') {
+              const roi = (0.01 + Math.random() * 0.05); // 1-5% per cycle
+              simulatedPnL += (user.active_trade_amount || 100) * roi;
+            } else {
+              simulatedPnL += (user.active_trade_amount || 100) * (Math.random() - 0.45) * 0.05;
+            }
+          }
+
+          // Split profit 50/50 and credit user
+          const userProfit = simulatedPnL * 0.5;
+          const treasuryProfit = simulatedPnL * 0.5;
+
+          if (user.active_mode === 'demo') {
+            const { data: wallet } = await supabase.from('demo_wallets').select('demo_balance').eq('id', user.uid).single();
+            const currentBal = wallet?.demo_balance || 10000;
+            await supabase.from('demo_wallets').update({
+              demo_balance: currentBal + userProfit,
+              updated_at: new Date().toISOString()
+            }).eq('id', user.uid);
+          }
+
+          // Update Leaderboard
+          const { data: lead } = await supabase.from('leaderboard').select('*').eq('uid', user.uid).eq('mode_type', user.active_mode).single();
+          await supabase.from('leaderboard').upsert({
+            uid: user.uid,
+            username: user.username,
+            avatar: user.avatar,
+            total_profit: (lead?.total_profit || 0) + simulatedPnL,
+            total_balance: (lead?.total_balance || 0) + simulatedPnL,
+            mode_type: user.active_mode,
+            updated_at: new Date().toISOString()
+          });
+
+          setTotalPnL(prev => prev + simulatedPnL);
+          setTradesCount(prev => prev + Math.floor(missedTradeCycles / 5));
+        }
+      }
+    };
+    handleCatchUp();
+  }, [user, isTrading]);
 
   // High Frequency Simulation Loop (roughly every 5 seconds for simulation, but can be scaled)
   useEffect(() => {

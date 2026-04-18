@@ -11,6 +11,13 @@ export interface User {
   followers?: string[]; // UIDs of followers
   following?: string[]; // UIDs of following
   location?: any;
+  is_verified?: boolean;
+  verification_code?: string;
+  is_trading?: boolean;
+  active_trade_amount?: number;
+  active_strategy?: TradingMode;
+  active_mode?: ModeType;
+  trade_start_time?: string;
 }
 
 export interface Trade {

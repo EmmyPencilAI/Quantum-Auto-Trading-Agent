@@ -12,6 +12,13 @@ CREATE TABLE IF NOT EXISTS users (
     followers TEXT[] DEFAULT '{}',
     following TEXT[] DEFAULT '{}',
     location JSONB,
+    is_verified BOOLEAN DEFAULT FALSE,
+    verification_code TEXT,
+    is_trading BOOLEAN DEFAULT FALSE,
+    active_trade_amount NUMERIC DEFAULT 100,
+    active_strategy TEXT DEFAULT 'Momentum',
+    active_mode TEXT DEFAULT 'demo',
+    trade_start_time TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

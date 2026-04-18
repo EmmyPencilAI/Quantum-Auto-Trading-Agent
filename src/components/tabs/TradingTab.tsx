@@ -52,6 +52,16 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
     };
   }, []);
 
+  // Restore persistent trading state
+  useEffect(() => {
+    if (user?.is_trading) {
+      setIsTrading(true);
+      if (user.active_strategy) setSelectedStrategy(user.active_strategy);
+      if (user.active_trade_amount) setTradeAmount(user.active_trade_amount);
+      if (user.active_mode) setMode(user.active_mode);
+    }
+  }, [user]);
+
   // Fetch Demo Balance
   useEffect(() => {
     if (!user) return;
