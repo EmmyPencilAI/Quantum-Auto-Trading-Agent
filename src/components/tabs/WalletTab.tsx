@@ -127,11 +127,45 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
     },
   ];
 
-  const transactions = [
-    { id: 1, type: 'received', amount: '+0.5 BNB', from: '0x71...3a2b', time: '2h ago', status: 'completed' },
-    { id: 2, type: 'sent', amount: '-100 USDT', to: '0x92...1f4e', time: '5h ago', status: 'completed' },
-    { id: 3, type: 'profit', amount: '+25.4 USDT', from: 'Trading Bot', time: '1d ago', status: 'completed' },
-  ];
+  const [transactions, setTransactions] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchTransactions = async () => {
+      const { data } = await supabase
+        .from('trades')
+        .select('*')
+        .eq('uid', user.uid)
+        .eq('modeType', mode)
+        .order('createdAt', { ascending: false })
+        .limit(10);
+      
+      if (data) {
+        const formatted = data.map((t: any) => ({
+          type: t.pnl >= 0 ? 'profit' : 'loss',
+          amount: `${t.pnl >= 0 ? '+' : ''}$${Math.abs(t.pnl).toLocaleString()}`,
+          time: new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          to: t.type === 'BUY' ? 'Long' : 'Short',
+          from: 'Quantum Engine'
+        }));
+        setTransactions(formatted);
+      }
+    };
+
+    fetchTransactions();
+
+    const channel = supabase
+      .channel('wallet_transactions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'trades', filter: `uid=eq.${user.uid}` }, () => {
+        fetchTransactions();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, mode]);
 
   return (
     <div className="space-y-6">

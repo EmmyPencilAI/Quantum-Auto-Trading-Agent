@@ -2,19 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Trophy, Medal, TrendingUp, Search, Filter, ArrowUpRight, ArrowDownRight, Zap, Users } from 'lucide-react';
 import { cn, getRank } from '../../lib/utils';
-import { LeaderboardEntry, User } from '../../types';
+import { LeaderboardEntry, User, ModeType } from '../../types';
 import { supabase } from '../../lib/supabase';
 
 export default function LeaderboardTab() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [tradersMetadata, setTradersMetadata] = useState<Record<string, User>>({});
+  const [mode, setMode] = useState<ModeType>('real');
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
+      setLoading(true);
       const { data, error } = await supabase
         .from('leaderboard')
         .select('*')
+        .eq('mode_type', mode)
         .order('totalProfit', { ascending: false })
         .limit(10);
       
@@ -23,16 +26,20 @@ export default function LeaderboardTab() {
         
         // Fetch metadata (tradeVolume) for these users
         const uids = (data as LeaderboardEntry[]).map(e => e.uid);
-        const { data: usersData } = await supabase
-          .from('users')
-          .select('*')
-          .in('uid', uids);
-        
-        if (usersData) {
-          const meta: Record<string, User> = {};
-          usersData.forEach((u: any) => meta[u.uid] = u);
-          setTradersMetadata(meta);
+        if (uids.length > 0) {
+          const { data: usersData } = await supabase
+            .from('users')
+            .select('*')
+            .in('uid', uids);
+          
+          if (usersData) {
+            const meta: Record<string, User> = {};
+            usersData.forEach((u: any) => meta[u.uid] = u);
+            setTradersMetadata(meta);
+          }
         }
+      } else {
+        setLeaderboard([]);
       }
       setLoading(false);
     };
@@ -41,8 +48,8 @@ export default function LeaderboardTab() {
 
     // Set up real-time subscription
     const channel = supabase
-      .channel('public:leaderboard')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leaderboard' }, () => {
+      .channel(`public:leaderboard:${mode}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leaderboard', filter: `mode_type=eq.${mode}` }, () => {
         fetchLeaderboard();
       })
       .subscribe();
@@ -50,7 +57,7 @@ export default function LeaderboardTab() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [mode]);
 
   const topThree = leaderboard.slice(0, 3);
   const others = leaderboard.slice(3);
@@ -68,7 +75,29 @@ export default function LeaderboardTab() {
           Global Rankings
         </motion.div>
         <h2 className="text-4xl md:text-6xl font-display tracking-tighter mb-4 uppercase">Quantum <span className="text-orange-600">Elite</span></h2>
-        <p className="text-white/50 text-lg font-sans">The top performing automated trading engines on the BNB Chain. Real mode data only.</p>
+        
+        <div className="flex items-center justify-center gap-2 mt-8 mb-12">
+          <button 
+            onClick={() => setMode('real')}
+            className={cn(
+              "px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+              mode === 'real' ? "bg-orange-600 text-white shadow-lg" : "bg-white/5 text-white/40 hover:bg-white/10"
+            )}
+          >
+            Real Mode
+          </button>
+          <button 
+            onClick={() => setMode('demo')}
+            className={cn(
+              "px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+              mode === 'demo' ? "bg-blue-600 text-white shadow-lg" : "bg-white/5 text-white/40 hover:bg-white/10"
+            )}
+          >
+            Demo Mode
+          </button>
+        </div>
+
+        <p className="text-white/50 text-lg font-sans">The top performing automated trading engines. {mode === 'real' ? 'Real mode data only.' : 'Demo competition data.'}</p>
       </div>
 
       {/* Top 3 Podium */}

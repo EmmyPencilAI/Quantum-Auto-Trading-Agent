@@ -24,7 +24,7 @@ export default function CommunityTab({ user }: CommunityTabProps) {
     const fetchPosts = async () => {
       const { data, error } = await supabase
         .from('posts')
-        .select('*, users:uid(username, avatar)')
+        .select('*, users:uid(username, avatar, trade_volume)')
         .order('createdAt', { ascending: false })
         .limit(50);
 
@@ -33,7 +33,8 @@ export default function CommunityTab({ user }: CommunityTabProps) {
           postId: post.id,
           ...post,
           username: post.users?.username,
-          avatar: post.users?.avatar
+          avatar: post.users?.avatar,
+          tradeVolume: post.users?.trade_volume || 0
         }));
         setPosts(formattedPosts as Post[]);
       }
@@ -57,6 +58,12 @@ export default function CommunityTab({ user }: CommunityTabProps) {
       .channel('public:posts')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
         fetchPosts();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, (payload: any) => {
+        if (payload.new && payload.new.postId) {
+          fetchComments(payload.new.postId);
+          fetchPosts(); // Refresh comment counts
+        }
       })
       .subscribe();
 
@@ -110,20 +117,30 @@ export default function CommunityTab({ user }: CommunityTabProps) {
   };
 
   const handleFollow = async (targetUid: string) => {
-    if (!user) return;
+    if (!user || targetUid === user.uid) return;
     try {
       const isFollowing = user.following?.includes(targetUid);
       const newFollowing = isFollowing
         ? user.following?.filter(id => id !== targetUid)
         : [...(user.following || []), targetUid];
 
-      const { error } = await supabase
+      // Update following list
+      const { error: followError } = await supabase
         .from('users')
         .update({ following: newFollowing })
         .eq('uid', user.uid);
       
-      if (error) throw error;
-      // In a real app we'd also update the target user's followers list
+      if (followError) throw followError;
+
+      // Update target user's followers list
+      const { data: targetUser } = await supabase.from('users').select('followers').eq('uid', targetUid).single();
+      const targetFollowers = targetUser?.followers || [];
+      const newFollowers = isFollowing 
+        ? targetFollowers.filter((id: string) => id !== user.uid)
+        : [...targetFollowers, user.uid];
+
+      await supabase.from('users').update({ followers: newFollowers }).eq('uid', targetUid);
+
     } catch (error) {
       console.error("Failed to follow", error);
     }
@@ -141,9 +158,13 @@ export default function CommunityTab({ user }: CommunityTabProps) {
 
       if (error) throw error;
 
-      await supabase.rpc('increment_comment_count', { row_id: postId });
+      // Increment comment count
+      const post = posts.find(p => p.postId === postId);
+      if (post) {
+        await supabase.from('posts').update({ comment_count: (post.commentCount || 0) + 1 }).eq('id', postId);
+      }
+      
       setNewComment("");
-      fetchComments(postId);
     } catch (error) {
       console.error("Failed to post comment", error);
     } finally {
@@ -236,10 +257,10 @@ export default function CommunityTab({ user }: CommunityTabProps) {
                       <h4 className="font-bold text-sm tracking-tight">{post.username}</h4>
                       <p className={cn(
                         "text-[8px] uppercase tracking-widest font-black px-1.5 py-0.5 rounded",
-                        getRank(post.uid === user?.uid ? user?.tradeVolume : 0).bg,
-                        getRank(post.uid === user?.uid ? user?.tradeVolume : 0).color
+                        getRank(post.tradeVolume).bg,
+                        getRank(post.tradeVolume).color
                       )}>
-                        {getRank(post.uid === user?.uid ? user?.tradeVolume : 0).name}
+                        {getRank(post.tradeVolume).name}
                       </p>
                     </div>
                   </div>

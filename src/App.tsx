@@ -146,7 +146,10 @@ export default function App() {
         
         // Use verifierId if it's a social login, otherwise use address
         const safeAddress = address || '0x0000000000000000000000000000000000000000';
+        // Web3Auth userInfo often has 'email' or 'verifierId' for unique identity
         const uniqueId = (userInfo.verifierId || userInfo.email || safeAddress.toLowerCase()).replace(/[^a-zA-Z0-9]/g, '_');
+
+        console.log("Login user info:", userInfo);
 
         const { data: userDoc, error: fetchError } = await supabase
           .from('users')
@@ -160,6 +163,7 @@ export default function App() {
           const newUser: User = {
             uid: uniqueId,
             walletAddress: safeAddress,
+            // PRIORITIZE GMAIL NAME AND PHOTO
             username: userInfo.name || `Quantum_${safeAddress.slice(2, 8)}`,
             avatar: userInfo.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${safeAddress}`,
             createdAt: new Date().toISOString(),
@@ -194,8 +198,14 @@ export default function App() {
             updatedAt: new Date().toISOString()
           };
           if (location) updatePayload.location = location;
-          if (!userDoc.username) updatePayload.username = userInfo.name || `Quantum_${safeAddress.slice(2, 8)}`;
-          if (!userDoc.avatar) updatePayload.avatar = userInfo.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${safeAddress}`;
+          
+          // SYNC GMAIL INFO IF CURRENT VALUES ARE EMPTY OR DUMMY
+          if (!userDoc.username || userDoc.username.startsWith('Quantum_')) {
+            if (userInfo.name) updatePayload.username = userInfo.name;
+          }
+          if (!userDoc.avatar || userDoc.avatar.includes('dicebear')) {
+            if (userInfo.profileImage) updatePayload.avatar = userInfo.profileImage;
+          }
           
           const { data: updatedUser, error: updateError } = await supabase
             .from('users')
@@ -236,9 +246,17 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    await web3auth.logout();
-    setIsLoggedIn(false);
-    setUser(null);
+    try {
+      setLoading(true);
+      await web3auth.logout();
+      setIsLoggedIn(false);
+      setUser(null);
+      setActiveTab('trading');
+    } catch (error) {
+      console.error("Logout failed", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -447,7 +465,7 @@ export default function App() {
           {activeTab === 'trading' && <TradingTab user={user} mode={mode} setMode={setMode} />}
           {activeTab === 'leaderboard' && <LeaderboardTab />}
           {activeTab === 'community' && <CommunityTab user={user} />}
-          {activeTab === 'settings' && <SettingsTab user={user} setUser={setUser} mode={mode} />}
+          {activeTab === 'settings' && <SettingsTab user={user} setUser={setUser} mode={mode} onLogout={handleLogout} />}
         </div>
       </main>
 

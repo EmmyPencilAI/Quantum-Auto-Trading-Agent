@@ -11,9 +11,10 @@ interface SettingsTabProps {
   user: UserType | null;
   setUser: (user: UserType | null) => void;
   mode: ModeType;
+  onLogout: () => void;
 }
 
-export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
+export default function SettingsTab({ user, setUser, mode, onLogout }: SettingsTabProps) {
   const [username, setUsername] = useState('');
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -144,8 +145,27 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
   };
 
   const handleLogout = async () => {
-    await web3auth.logout();
-    // Supabase signout if using Supabase Auth, but we use Web3Auth
+    onLogout();
+  };
+
+  const handleAddFunds = async () => {
+    if (!user) return;
+    try {
+      const { data: demoDoc } = await supabase.from('demo_wallets').select('demoBalance').eq('id', user.uid).single();
+      const currentBal = demoDoc ? demoDoc.demoBalance : 13300;
+      const { error } = await supabase
+        .from('demo_wallets')
+        .update({
+          demoBalance: currentBal + 5000,
+          updatedAt: new Date().toISOString()
+        })
+        .eq('id', user.uid);
+      
+      if (error) throw error;
+      alert("SUCCESS: +5,000 USDT added to Demo Wallet.");
+    } catch (error) {
+      console.error("Failed to add funds", error);
+    }
   };
 
   return (
@@ -222,6 +242,22 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button 
+            onClick={handleAddFunds}
+            className="p-6 rounded-3xl bg-white/5 border border-white/5 flex items-center justify-between hover:bg-green-500/10 hover:border-green-500/30 transition-all group"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-green-600/10 rounded-2xl flex items-center justify-center group-hover:bg-green-600 transition-colors">
+                <Plus className="w-6 h-6 text-green-500 group-hover:text-white" />
+              </div>
+              <div className="text-left">
+                <h4 className="font-bold">Add Funds</h4>
+                <p className="text-[10px] text-white/40 uppercase tracking-widest">+ $5,000 USDT</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-white/20" />
+          </button>
+
           <button 
             onClick={handleResetDemoBalance}
             className="p-6 rounded-3xl bg-white/5 border border-white/5 flex items-center justify-between hover:bg-orange-500/10 hover:border-orange-500/30 transition-all group"

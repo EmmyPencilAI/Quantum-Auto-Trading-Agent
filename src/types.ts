@@ -56,6 +56,7 @@ export interface Post {
   likedBy?: string[]; // UIDs of users who liked
   username?: string;
   avatar?: string;
+  tradeVolume?: number;
 }
 
 export interface Comment {

@@ -146,20 +146,26 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
                   tradeVolume: currentVolume + tradeVolume
                 }).eq('uid', user.uid);
 
-                if (mode === 'real') {
-                  const { data: leaderData } = await supabase.from('leaderboard').select('*').eq('uid', user.uid).single();
-                  const currentProfit = leaderData ? leaderData.totalProfit : 0;
-                  const currentBalance = leaderData ? leaderData.totalBalance : 0;
+                // Update Leaderboard per mode
+                const { data: leaderData } = await supabase
+                  .from('leaderboard')
+                  .select('*')
+                  .eq('uid', user.uid)
+                  .eq('mode_type', mode)
+                  .single();
                   
-                  await supabase.from('leaderboard').upsert({
-                    uid: user.uid,
-                    username: user.username,
-                    avatar: user.avatar,
-                    totalProfit: currentProfit + pnl,
-                    totalBalance: currentBalance + pnl,
-                    updatedAt: new Date().toISOString()
-                  });
-                }
+                const currentProfit = leaderData ? leaderData.totalProfit : 0;
+                const currentBalance = leaderData ? leaderData.totalBalance : 0;
+                
+                await supabase.from('leaderboard').upsert({
+                  uid: user.uid,
+                  username: user.username,
+                  avatar: user.avatar,
+                  totalProfit: currentProfit + pnl,
+                  totalBalance: currentBalance + pnl,
+                  mode_type: mode,
+                  updatedAt: new Date().toISOString()
+                });
 
                 await supabase.from('trade_live_updates').delete().eq('id', currentPosition.id);
                 
