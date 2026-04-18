@@ -101,15 +101,6 @@ export const initWeb3Auth = async () => {
   }
   
   try {
-    // Check if clientId is a placeholder
-    if (clientId.includes("p763p763p763p763p")) {
-      throw new Error("Web3Auth Client ID is a placeholder. Please configure VITE_WEB3AUTH_CLIENT_ID in the Secrets panel.");
-    }
-
-    if (clientId.length < 20) {
-      throw new Error("Web3Auth Client ID seems too short. Please verify your Client ID in the Secrets panel.");
-    }
-
     const network = APP_CONFIG.WEB3AUTH_NETWORK;
     const rawNetwork = (import.meta.env.VITE_WEB3AUTH_NETWORK || "").trim();
     
@@ -132,7 +123,7 @@ export const initWeb3Auth = async () => {
     // For v9+, initModal is the correct method
     // Add a timeout to prevent hanging on invalid client IDs or network issues
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error(`Web3Auth init timeout (60s exceeded). Status: ${web3auth.status}`)), 60000)
+      setTimeout(() => reject(new Error(`Web3Auth init timeout (15s exceeded). Status: ${web3auth.status}`)), 15000)
     );
     
     // Monitor status changes
@@ -148,10 +139,11 @@ export const initWeb3Auth = async () => {
     }
     
     try {
+      // Configuration moved to constructor if possible, but modal needs it here or before init
       const openloginAdapter = new OpenloginAdapter({
         adapterSettings: {
           uxMode: "popup",
-          mfaLevel: "mandatory", // Trigger MFA for all users
+          mfaLevel: "mandatory", 
           whiteLabel: {
             appName: APP_CONFIG.NAME,
             logoLight: getSafeOrigin() + APP_CONFIG.LOGO,
@@ -174,23 +166,7 @@ export const initWeb3Auth = async () => {
   } catch (error: any) {
     console.error("Error initializing Web3Auth:", error);
     
-    let safeOrigin = "unknown domain";
-    try {
-      safeOrigin = getSafeOrigin();
-    } catch (e) { /* ignore */ }
-
-    if (error?.message?.includes("failed to fetch project configurations")) {
-      console.warn("Web3Auth failed to fetch configurations. This usually means the Client ID is invalid or the domain is not allowlisted in the Web3Auth dashboard.");
-      console.warn(`Current domain: ${safeOrigin}`);
-      console.warn(`Current network: ${APP_CONFIG.WEB3AUTH_NETWORK}`);
-      
-      const helpMsg = `WEB3AUTH CONFIG ERROR: 
-1. Ensure your Client ID is correct for the "${APP_CONFIG.WEB3AUTH_NETWORK}" network.
-2. Ensure "${safeOrigin}" is allowlisted in your Web3Auth Dashboard (https://dashboard.web3auth.io/).
-3. If you just created the project, wait 5-10 minutes for the configuration to propagate.`;
-      
-      throw new Error(helpMsg);
-    }
-    throw error; // Re-throw to be caught by the UI
+    // We don't throw here to avoid blocking the whole app if individual init fails
+    // handleLogin will catch it if it tries to connect when not ready
   }
 };

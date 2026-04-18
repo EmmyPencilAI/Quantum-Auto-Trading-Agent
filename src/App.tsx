@@ -16,7 +16,8 @@ import {
   Globe,
   Clock,
   ArrowRight,
-  AlertTriangle
+  AlertTriangle,
+  ShieldCheck
 } from 'lucide-react';
 import { web3auth, initWeb3Auth } from './lib/web3auth';
 import { supabase } from './lib/supabase';
@@ -44,6 +45,7 @@ export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingMessage, setLoadingMessage] = useState<string>("INITIALIZING QUANTUM ENGINE...");
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const [isOnboarding, setIsOnboarding] = useState<boolean>(false);
   const [configError, setConfigError] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -89,20 +91,19 @@ export default function App() {
       console.log("Starting login flow...");
       setLoading(true);
       setLoginError(null);
-      setLoadingMessage("OPENING WALLET MODAL...");
       
-      // Ensure Web3Auth is initialized
-      console.log("Current Web3Auth status:", web3auth.status);
+      // Ensure Web3Auth is initialized - wait for it if it's already initializing
       if (web3auth.status === 'not_ready') {
-        console.log("Initializing Web3Auth...");
+        setLoadingMessage("BOOTING QUANTUM PROTOCOL...");
         await initWeb3Auth();
       }
 
-      console.log("Web3Auth status after init:", web3auth.status);
+      // Check status again
       if (web3auth.status === 'not_ready') {
-        throw new Error("Web3Auth failed to initialize. Check your Client ID and domain settings.");
+        throw new Error("Web3Auth failed to initialize. Please ensure your Client ID is valid and the domain is allowlisted in the Web3Auth Dashboard.");
       }
 
+      setLoadingMessage("OPENING SECURE TERMINAL...");
       console.log("Calling web3auth.connect()...");
       const web3authProvider = await web3auth.connect();
       
@@ -194,12 +195,14 @@ export default function App() {
 
           // FORCE LOGOUT as requested for onboarding verification
           setLoadingMessage("VERIFYING SECURITY PARAMETERS...");
+          setIsOnboarding(true);
           setTimeout(async () => {
              await web3auth.logout();
              setIsLoggedIn(false);
              setUser(null);
-             alert("Quantum Security Active. Account verified via Web3Auth MFA. Please login again to access your secure terminal.");
-          }, 2000);
+             setIsOnboarding(false);
+             setLoginError("Quantum Security Active. Identity verified via Web3Auth MFA. Account secured. Please login again.");
+          }, 4000);
 
           setUser(newUser);
         } else if (userDoc) {
@@ -295,6 +298,33 @@ export default function App() {
         <AlertTriangle className="w-16 h-16 text-red-500 mb-6" />
         <h1 className="text-2xl font-black text-white mb-4 uppercase tracking-tighter">Configuration Error</h1>
         <p className="text-white/60 max-w-md mb-8 leading-relaxed">{configError}</p>
+      </div>
+    );
+  }
+
+  if (isOnboarding) {
+    return (
+      <div className="fixed inset-0 bg-[#050505] flex items-center justify-center z-[100] p-4">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md bg-white/[0.02] border border-white/10 rounded-[2.5rem] p-12 backdrop-blur-3xl text-center space-y-8"
+        >
+          <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto shadow-[0_0_50px_rgba(34,197,94,0.3)]">
+            <ShieldCheck className="w-12 h-12 text-white" />
+          </div>
+          <div className="space-y-4">
+            <h2 className="text-4xl font-display font-black uppercase italic tracking-tighter">Identity Secured</h2>
+            <p className="text-white/40 text-sm font-medium leading-relaxed">
+              MFA authorization successful. Quantum protocols have been initialized. <br />
+              <span className="text-orange-500 block mt-2 font-mono">ENCRYPTING ACCOUNT...</span>
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-ping" />
+            <span className="text-[10px] font-mono text-white/20 uppercase tracking-[0.3em]">Session Terminating for Safety</span>
+          </div>
+        </motion.div>
       </div>
     );
   }
