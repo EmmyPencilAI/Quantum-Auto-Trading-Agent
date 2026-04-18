@@ -164,7 +164,7 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
 
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 px-4 py-2 bg-black/20 backdrop-blur-md rounded-xl border border-white/10 font-mono text-xs">
-              {user?.walletAddress.slice(0, 8)}...{user?.walletAddress.slice(-8)}
+              {user?.walletAddress ? `${user.walletAddress.slice(0, 8)}...${user.walletAddress.slice(-8)}` : '0x000...000'}
               <button onClick={handleCopy} className="hover:text-orange-300 transition-colors">
                 {copied ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
               </button>

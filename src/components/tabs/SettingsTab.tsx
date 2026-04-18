@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, Settings, Shield, Bell, Globe, Trash2, RefreshCcw, Plus, Wallet, ChevronRight, Camera, Check, LogOut, X, Upload } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -14,7 +14,7 @@ interface SettingsTabProps {
 }
 
 export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
-  const [username, setUsername] = useState(user?.username || '');
+  const [username, setUsername] = useState('');
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -22,6 +22,12 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
   const [tempImage, setTempImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.username) {
+      setUsername(user.username);
+    }
+  }, [user?.username]);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 

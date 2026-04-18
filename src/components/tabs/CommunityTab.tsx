@@ -161,6 +161,7 @@ export default function CommunityTab({ user }: CommunityTabProps) {
     if (data) {
       const formatted = data.map((c: any) => ({
         ...c,
+        commentId: c.id,
         username: c.users?.username,
         avatar: c.users?.avatar
       }));
@@ -311,7 +312,7 @@ export default function CommunityTab({ user }: CommunityTabProps) {
 
                       <div className="space-y-4 pt-2">
                         {comments[post.postId]?.map((comment) => (
-                          <div key={comment.id} className="flex gap-3 group/cmt">
+                          <div key={comment.commentId} className="flex gap-3 group/cmt">
                             <img src={comment.avatar} className="w-8 h-8 rounded-full border border-white/5" />
                             <div className="flex-1">
                               <div className="bg-white/5 rounded-2xl p-3">

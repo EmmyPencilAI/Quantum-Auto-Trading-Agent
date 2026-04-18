@@ -70,9 +70,7 @@ export default function App() {
         await initWeb3Auth();
 
         if (web3auth.status === 'connected') {
-          const userAccount = await web3auth.getUserInfo();
-          // We can use the userAccount info or address to find the user in Supabase
-          // For now, let's wait for the explicit handleLogin or session check
+          handleLogin();
         }
       } catch (error) {
         console.error("Failed to initialize Web3Auth:", error);
@@ -117,11 +115,16 @@ export default function App() {
       const ethersProvider = new ethers.BrowserProvider(web3authProvider);
       const signer = await ethersProvider.getSigner();
       const address = await signer.getAddress();
+      
+      if (!address) {
+        throw new Error("Failed to retrieve wallet address from Web3Auth.");
+      }
+      
       console.log("Connected address:", address);
 
       // Get user info from Web3Auth
-        const userInfo = await web3auth.getUserInfo();
-        console.log("User info retrieved:", userInfo.email || "No email");
+      const userInfo = await web3auth.getUserInfo();
+      console.log("User info retrieved:", userInfo.email || "No email");
 
         setLoadingMessage("DETECTING GEOLOCATION...");
         let location = null;
@@ -141,8 +144,9 @@ export default function App() {
         setLoadingMessage("AUTHENTICATING WITH QUANTUM...");
         console.log("Authenticating with Supabase...");
         
-        // Use wallet address + email as identifier in Supabase
-        const uniqueId = userInfo.verifierId || address.toLowerCase();
+        // Use verifierId if it's a social login, otherwise use address
+        const safeAddress = address || '0x0000000000000000000000000000000000000000';
+        const uniqueId = (userInfo.verifierId || userInfo.email || safeAddress.toLowerCase()).replace(/[^a-zA-Z0-9]/g, '_');
 
         const { data: userDoc, error: fetchError } = await supabase
           .from('users')
@@ -151,13 +155,17 @@ export default function App() {
           .single();
 
         if (fetchError && fetchError.code === 'PGRST116') {
+          setLoadingMessage("CREATING QUANTUM IDENTITY...");
           // User doesn't exist, create new
           const newUser: User = {
             uid: uniqueId,
-            walletAddress: address,
-            username: userInfo.name || `User_${address.slice(0, 6)}`,
-            avatar: userInfo.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${address}`,
+            walletAddress: safeAddress,
+            username: userInfo.name || `Quantum_${safeAddress.slice(2, 8)}`,
+            avatar: userInfo.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${safeAddress}`,
             createdAt: new Date().toISOString(),
+            tradeVolume: 0,
+            followers: [],
+            following: [],
             location: location 
           } as any;
 
@@ -165,9 +173,13 @@ export default function App() {
             .from('users')
             .upsert(newUser);
 
-          if (insertError) throw insertError;
+          if (insertError) {
+            console.error("Insert error:", insertError);
+            throw new Error(`Failed to create account: ${insertError.message}`);
+          }
           
           // Initialize demo wallet
+          setLoadingMessage("PROVISIONING DIGITAL VAULT...");
           await supabase.from('demo_wallets').upsert({
             id: uniqueId,
             demoBalance: 13300,
@@ -176,8 +188,14 @@ export default function App() {
 
           setUser(newUser);
         } else if (userDoc) {
-          const updatePayload: any = { walletAddress: address };
+          setLoadingMessage("SYNCING QUANTUM DATA...");
+          const updatePayload: any = { 
+            walletAddress: address,
+            updatedAt: new Date().toISOString()
+          };
           if (location) updatePayload.location = location;
+          if (!userDoc.username) updatePayload.username = userInfo.name || `Quantum_${safeAddress.slice(2, 8)}`;
+          if (!userDoc.avatar) updatePayload.avatar = userInfo.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${safeAddress}`;
           
           const { data: updatedUser, error: updateError } = await supabase
             .from('users')
@@ -186,8 +204,27 @@ export default function App() {
             .select()
             .single();
 
-          if (updateError) throw updateError;
-          setUser(updatedUser as User);
+          if (updateError) {
+            console.warn("Update error (non-fatal):", updateError);
+            setUser(userDoc as User);
+          } else {
+            setUser(updatedUser as User);
+          }
+
+          // Ensure demo wallet exists
+          const { data: walletData } = await supabase
+            .from('demo_wallets')
+            .select('id')
+            .eq('id', uniqueId)
+            .single();
+          
+          if (!walletData) {
+            await supabase.from('demo_wallets').upsert({
+              id: uniqueId,
+              demoBalance: 13300,
+              updatedAt: new Date().toISOString()
+            });
+          }
         }
         setIsLoggedIn(true);
     } catch (error: any) {
@@ -310,12 +347,19 @@ export default function App() {
             {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
 
-          <div className="hidden md:flex items-center gap-4">
+          <div className="flex items-center gap-4">
             <div className="flex flex-col items-end">
-              <span className={cn("text-xs font-medium", theme === 'dark' ? "text-white/70" : "text-black/70")}>{user?.username}</span>
-              <span className={cn("text-[10px] font-mono", theme === 'dark' ? "text-white/40" : "text-black/40")}>{user?.walletAddress.slice(0, 6)}...{user?.walletAddress.slice(-4)}</span>
+              <span className={cn("text-xs font-black tracking-tighter uppercase", theme === 'dark' ? "text-orange-500" : "text-orange-600")}>
+                {user?.username || 'QUANTUM TRADER'}
+              </span>
+              <span className={cn("text-[10px] font-mono font-bold", theme === 'dark' ? "text-white/40" : "text-black/40")}>
+                {user?.walletAddress ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}` : 'CONNECTING...'}
+              </span>
             </div>
-            <img src={user?.avatar} alt="Avatar" className={cn("w-8 h-8 rounded-full border", theme === 'dark' ? "border-white/10" : "border-black/10")} />
+            <div className="relative">
+              <img src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=fallback`} alt="Avatar" className={cn("w-10 h-10 rounded-full border-2", theme === 'dark' ? "border-orange-500/20" : "border-orange-600/20")} />
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-[#050505] animate-pulse" />
+            </div>
           </div>
         </div>
       </header>
