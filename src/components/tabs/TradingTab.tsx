@@ -176,7 +176,7 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
     };
   }, [isTrading, mode]);
 
-  const { marketData, currentPosition, tradesCount, totalPnL, currentLotSize } = useTradingEngine(user, mode, selectedStrategy, isTrading);
+  const { marketData, currentPosition, tradesCount, totalPnL, currentLotSize } = useTradingEngine(user, mode, selectedStrategy, isTrading, tradeAmount);
 
   // Sync floating PnL from engine if active
   useEffect(() => {

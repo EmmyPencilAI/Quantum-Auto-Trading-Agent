@@ -6,7 +6,7 @@ import { calculatePnL, settleTrade } from '../engine/settlement';
 import { MarketData, TradeSignal, Position, Candle, TradeMode, ModeType } from '../engine/types';
 import { supabase } from '../lib/supabase';
 
-export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode, isTrading: boolean) {
+export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode, isTrading: boolean, baseTradeAmount: number = 100) {
   const [currentLotSize, setCurrentLotSize] = useState(0.05);
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
   const [marketData, setMarketData] = useState<MarketData | null>(null);
@@ -47,17 +47,27 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
         
         // Forced "Win" Logic for simulation (overwrite signal to ensure profit if user requested aggressive)
         if (strategy === 'Aggressive' && currentPosition) {
-           // If we have a position, we only close it if we are in profit
            const pnl = calculatePnL(currentPosition.entryPrice, data.price, currentPosition.size, currentPosition.type);
-           // Aim for 200-400% ROI. High win probability for simulation.
-           if (pnl > 500 && Math.random() > 0.4) {
-              signal = { action: 'CLOSE', confidence: 1, lotSize: currentLotSize, reason: 'Quantum Alpha Target reached (320% ROI)' };
+           // Aim for 200-400% ROI.
+           const currentROI = (pnl / (baseTradeAmount || 100)) * 100;
+           
+           // Auto reversal or target peak
+           const peakReached = currentROI >= 380;
+           const shouldReverse = Math.random() > 0.95; // Auto reversal simulation
+           
+           if (peakReached || shouldReverse) {
+              signal = { 
+                action: shouldReverse ? 'REVERSE' : 'CLOSE', 
+                confidence: 1, 
+                lotSize: currentLotSize, 
+                reason: shouldReverse ? 'Quantum Pivot Detected (Auto-Reversal)' : 'Alpha Target Upper Bound Reached (400% ROI)' 
+              };
            } else {
-              signal = { action: 'HOLD', confidence: 1, lotSize: currentLotSize, reason: 'Scanning for Alpha Peak' };
+              signal = { action: 'HOLD', confidence: 1, lotSize: currentLotSize, reason: `Momentum Building (${currentROI.toFixed(1)}% ROI)` };
            }
         } else if (strategy === 'Aggressive' && !currentPosition) {
            // Open trade immediately if aggressive
-           signal = { action: Math.random() > 0.5 ? 'BUY' : 'SELL', confidence: 1, lotSize: currentLotSize, reason: 'Quantum Momentum Detected' };
+           signal = { action: Math.random() > 0.5 ? 'BUY' : 'SELL', confidence: 1, lotSize: currentLotSize, reason: 'Quantum Momentum Triggered (Aggressive Entry)' };
         }
 
         const startTime = Date.now();
@@ -99,14 +109,15 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
                 
                 // Force Win for Aggressive Strategy (200-400% ROI Simulation)
                 if (strategy === 'Aggressive') {
-                  pnl = Math.abs(pnl) * 4; 
+                  const targetROI = 2.0 + (Math.random() * 2.0); // 200% to 400%
+                  pnl = baseTradeAmount * targetROI;
                 }
 
                 // 4. Settlement (ACCOUNTING)
                 const totalProfit = pnl;
-                const userProfit = totalProfit * 0.5;
-                const treasuryProfit = totalProfit * 0.5;
-                const initialFunds = currentPosition.size * 1000; 
+                const userProfit = totalProfit * 0.5; // 50% split
+                const treasuryProfit = totalProfit * 0.5; // 50% split
+                const initialFunds = baseTradeAmount; 
 
                 await settleTrade(user, totalProfit, currentPosition.size, {
                   creditUser: async (uid, amount) => {
