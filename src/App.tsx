@@ -19,10 +19,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { web3auth, initWeb3Auth } from './lib/web3auth';
-import { auth, db } from './lib/firebase';
-import firebaseConfig from '../firebase-applet-config.json';
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { supabase } from './lib/supabase';
 import { ethers } from 'ethers';
 import { APP_CONFIG } from './config';
 import { cn } from './lib/utils';
@@ -61,17 +58,16 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Check for invalid config
-    if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes('TODO')) {
-      setConfigError("Firebase configuration is missing or invalid. Please set up Firebase via the AIS Agent.");
-      setLoading(false);
-      return;
-    }
-
     const init = async () => {
       try {
         setLoadingMessage("CONNECTING TO QUANTUM AUTOBOT...");
         await initWeb3Auth();
+
+        if (web3auth.status === 'connected') {
+          const userAccount = await web3auth.getUserInfo();
+          // We can use the userAccount info or address to find the user in Supabase
+          // For now, let's wait for the explicit handleLogin or session check
+        }
       } catch (error) {
         console.error("Failed to initialize Web3Auth:", error);
       } finally {
@@ -80,30 +76,8 @@ export default function App() {
     };
     init();
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          if (userDoc.exists()) {
-            setUser(userDoc.data() as User);
-            setIsLoggedIn(true);
-          } else if (web3auth.status === 'connected') {
-            // If Web3Auth is connected but no user doc yet, handleLogin will create it
-            setIsLoggedIn(true);
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-        }
-      } else {
-        // Only set logged out if Web3Auth is also not connected
-        if (web3auth.status !== 'connected') {
-          setIsLoggedIn(false);
-          setUser(null);
-        }
-      }
-    });
-
-    return () => unsubscribe();
+    // With Supabase, we rely more on the Web3Auth connection status and then syncing to Supabase
+    // But we can check if we have a "session" or if we can fetch the user by wallet address
   }, []);
 
   const handleLogin = async () => {
@@ -159,55 +133,60 @@ export default function App() {
         }
 
         setLoadingMessage("AUTHENTICATING WITH QUANTUM...");
-        console.log("Authenticating with Firebase...");
-        // Sign in to Firebase anonymously if not already signed in
-        // This ensures onAuthStateChanged doesn't kick the user out
-        let firebaseUser = auth.currentUser;
-        if (!firebaseUser) {
-          console.log("Signing in anonymously to Firebase...");
-          const { signInAnonymously } = await import('firebase/auth');
-          const cred = await signInAnonymously(auth);
-          firebaseUser = cred.user;
-        }
+        console.log("Authenticating with Supabase...");
+        
+        // Use wallet address + email as identifier in Supabase
+        const uniqueId = userInfo.verifierId || address.toLowerCase();
 
-        if (firebaseUser) {
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          if (!userDoc.exists()) {
-            const newUser: User = {
-              uid: firebaseUser.uid,
-              walletAddress: address,
-              username: userInfo.name || firebaseUser.displayName || `User_${address.slice(0, 6)}`,
-              avatar: userInfo.profileImage || firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${address}`,
-              createdAt: new Date().toISOString(),
-              location: location // Save location on registration
-            } as any;
-            await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
-            setUser(newUser);
-          } else {
-            const existingData = userDoc.data() as User;
-            const updatePayload: any = { walletAddress: address };
-            if (location) updatePayload.location = location; // Update location on login
-            
-            await updateDoc(doc(db, 'users', firebaseUser.uid), updatePayload);
-            setUser({ ...existingData, ...updatePayload });
-          }
-          setIsLoggedIn(true);
+        const { data: userDoc, error: fetchError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('uid', uniqueId)
+          .single();
+
+        if (fetchError && fetchError.code === 'PGRST116') {
+          // User doesn't exist, create new
+          const newUser: User = {
+            uid: uniqueId,
+            walletAddress: address,
+            username: userInfo.name || `User_${address.slice(0, 6)}`,
+            avatar: userInfo.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${address}`,
+            createdAt: new Date().toISOString(),
+            location: location 
+          } as any;
+
+          const { error: insertError } = await supabase
+            .from('users')
+            .upsert(newUser);
+
+          if (insertError) throw insertError;
+          
+          // Initialize demo wallet
+          await supabase.from('demo_wallets').upsert({
+            id: uniqueId,
+            demoBalance: 13300,
+            updatedAt: new Date().toISOString()
+          });
+
+          setUser(newUser);
+        } else if (userDoc) {
+          const updatePayload: any = { walletAddress: address };
+          if (location) updatePayload.location = location;
+          
+          const { data: updatedUser, error: updateError } = await supabase
+            .from('users')
+            .update(updatePayload)
+            .eq('uid', uniqueId)
+            .select()
+            .single();
+
+          if (updateError) throw updateError;
+          setUser(updatedUser as User);
         }
+        setIsLoggedIn(true);
     } catch (error: any) {
       console.error("Login failed", error);
-      
-      let errorMessage = error.message || "Login failed. Please try again.";
-      
-      // Specifically handle the admin-restricted-operation error which usually means 
-      // Anonymous Auth is not enabled in the Firebase Console
-      if (error.code === 'auth/admin-restricted-operation' || 
-          (error.message && error.message.includes('auth/admin-restricted-operation'))) {
-        errorMessage = "FISCAL AUTH ERROR: Anonymous Authentication is disabled in your Firebase project. Please enable it in the Firebase Console (Authentication > Sign-in method).";
-      }
-
-      setLoginError(errorMessage);
-      // Add a small delay so the user sees the transition
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setLoginError(error.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -215,8 +194,8 @@ export default function App() {
 
   const handleLogout = async () => {
     await web3auth.logout();
-    await signOut(auth);
     setIsLoggedIn(false);
+    setUser(null);
   };
 
   if (loading) {
@@ -244,9 +223,6 @@ export default function App() {
         <AlertTriangle className="w-16 h-16 text-red-500 mb-6" />
         <h1 className="text-2xl font-black text-white mb-4 uppercase tracking-tighter">Configuration Error</h1>
         <p className="text-white/60 max-w-md mb-8 leading-relaxed">{configError}</p>
-        <div className="p-4 bg-white/5 rounded-2xl border border-white/10 text-xs font-mono text-white/40 break-all">
-          {JSON.stringify(firebaseConfig)}
-        </div>
       </div>
     );
   }

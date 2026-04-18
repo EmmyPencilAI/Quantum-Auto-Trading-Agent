@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { MessageSquare, Heart, Share2, Send, Plus, Image as ImageIcon, MoreHorizontal, TrendingUp, Users } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { User, Post, Comment } from '../../types';
-import { db } from '../../lib/firebase';
-import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, increment, getDoc } from 'firebase/firestore';
+import { supabase } from '../../lib/supabase';
 
 interface CommunityTabProps {
   user: User | null;
@@ -17,43 +16,51 @@ export default function CommunityTab({ user }: CommunityTabProps) {
   const [isPosting, setIsPosting] = useState(false);
 
   useEffect(() => {
-    const q = query(
-      collection(db, 'posts'),
-      orderBy('createdAt', 'desc'),
-      limit(50)
-    );
+    const fetchPosts = async () => {
+      const { data, error } = await supabase
+        .from('posts')
+        .select('*, users:uid(username, avatar)')
+        .order('createdAt', { ascending: false })
+        .limit(50);
 
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const postsData = snapshot.docs.map(doc => ({ postId: doc.id, ...doc.data() } as Post));
-      
-      // Fetch user info for each post
-      const postsWithUser = await Promise.all(postsData.map(async (post) => {
-        const userDoc = await getDoc(doc(db, 'users', post.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          return { ...post, username: userData.username, avatar: userData.avatar };
-        }
-        return post;
-      }));
-
-      setPosts(postsWithUser);
+      if (data) {
+        const formattedPosts = data.map((post: any) => ({
+          postId: post.id,
+          ...post,
+          username: post.users?.username,
+          avatar: post.users?.avatar
+        }));
+        setPosts(formattedPosts as Post[]);
+      }
       setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    fetchPosts();
+
+    // Set up real-time subscription for posts
+    const channel = supabase
+      .channel('public:posts')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
+        fetchPosts();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleCreatePost = async () => {
     if (!user || !newPostContent.trim()) return;
     setIsPosting(true);
     try {
-      await addDoc(collection(db, 'posts'), {
+      const { error } = await supabase.from('posts').insert({
         uid: user.uid,
         content: newPostContent,
-        createdAt: serverTimestamp(),
         likeCount: 0,
         commentCount: 0,
       });
+      if (error) throw error;
       setNewPostContent('');
     } catch (error) {
       console.error("Failed to create post", error);
@@ -65,10 +72,8 @@ export default function CommunityTab({ user }: CommunityTabProps) {
   const handleLike = async (postId: string) => {
     if (!user) return;
     try {
-      await updateDoc(doc(db, 'posts', postId), {
-        likeCount: increment(1)
-      });
-      // Optionally track who liked in a subcollection
+      // In a real app we'd have a likes table to prevent double liking
+      await supabase.rpc('increment_like_count', { row_id: postId });
     } catch (error) {
       console.error("Failed to like post", error);
     }
@@ -76,17 +81,11 @@ export default function CommunityTab({ user }: CommunityTabProps) {
 
   const handleFollow = async (targetUid: string) => {
     if (!user) return;
-    // alert(`Following ${targetUid}`);
-    // Real implementation involves a 'following' collection
   };
 
   const handleComment = async (postId: string) => {
-    // const comment = prompt("Enter your comment on this Quantum Insight:");
     if (user) {
-      await updateDoc(doc(db, 'posts', postId), {
-        commentCount: increment(1)
-      });
-      // alert("Comment published to chain.");
+      await supabase.rpc('increment_comment_count', { row_id: postId });
     }
   };
 

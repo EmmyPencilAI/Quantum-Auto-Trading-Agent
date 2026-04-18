@@ -4,8 +4,7 @@ import { generateSignal } from '../engine/signalGenerator';
 import { executeTrade } from '../engine/executor';
 import { calculatePnL, settleTrade } from '../engine/settlement';
 import { MarketData, TradeSignal, Position, Candle, TradeMode, ModeType } from '../engine/types';
-import { db } from '../lib/firebase';
-import { doc, updateDoc, serverTimestamp, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 
 export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode, isTrading: boolean) {
   const [currentLotSize, setCurrentLotSize] = useState(0.05);
@@ -79,8 +78,9 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
               setCurrentPosition(pos);
               setTradesCount(prev => prev + 1);
               
-              // Sync to Firebase
-              await setDoc(doc(db, 'trade_live_updates', pos.id), {
+              // Sync to Supabase
+              await supabase.from('trade_live_updates').upsert({
+                id: pos.id,
                 ...pos,
                 uid: user.uid,
                 pair: 'BTC/USDT',
@@ -100,22 +100,21 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
                 }
 
                 // 4. Settlement (ACCOUNTING)
-                // USER REQUEST: 50/50 Profit Split, initial funds back to account
                 const totalProfit = pnl;
                 const userProfit = totalProfit * 0.5;
                 const treasuryProfit = totalProfit * 0.5;
-                const initialFunds = currentPosition.size * 1000; // Mock initial funds return
+                const initialFunds = currentPosition.size * 1000; 
 
                 await settleTrade(user, totalProfit, currentPosition.size, {
                   creditUser: async (uid, amount) => {
                      const totalReturn = initialFunds + userProfit;
                      if (mode === 'demo') {
-                       const demoDoc = await getDoc(doc(db, 'demo_wallets', uid));
-                       const currentBal = demoDoc.exists() ? demoDoc.data().demoBalance : 10000;
-                       await updateDoc(doc(db, 'demo_wallets', uid), { 
+                       const { data: demoDoc } = await supabase.from('demo_wallets').select('demoBalance').eq('id', uid).single();
+                       const currentBal = demoDoc ? demoDoc.demoBalance : 10000;
+                       await supabase.from('demo_wallets').update({ 
                          demoBalance: currentBal + totalReturn,
-                         updatedAt: serverTimestamp()
-                       });
+                         updatedAt: new Date().toISOString()
+                       }).eq('id', uid);
                      }
                   },
                   creditTreasury: async (amount) => {
@@ -128,7 +127,8 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
                 });
 
                 // Finalize trade history
-                await setDoc(doc(db, 'trades', currentPosition.id), {
+                await supabase.from('trades').insert({
+                  id: currentPosition.id,
                   ...currentPosition,
                   uid: user.uid,
                   pnl,
@@ -139,21 +139,21 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
 
                 // Update Leaderboard
                 if (mode === 'real') {
-                  const leaderboardDoc = await getDoc(doc(db, 'leaderboard', user.uid));
-                  const currentProfit = leaderboardDoc.exists() ? leaderboardDoc.data().totalProfit : 0;
-                  const currentBalance = leaderboardDoc.exists() ? leaderboardDoc.data().totalBalance : 0;
+                  const { data: leaderData } = await supabase.from('leaderboard').select('*').eq('uid', user.uid).single();
+                  const currentProfit = leaderData ? leaderData.totalProfit : 0;
+                  const currentBalance = leaderData ? leaderData.totalBalance : 0;
                   
-                  await setDoc(doc(db, 'leaderboard', user.uid), {
+                  await supabase.from('leaderboard').upsert({
                     uid: user.uid,
                     username: user.username,
                     avatar: user.avatar,
                     totalProfit: currentProfit + pnl,
                     totalBalance: currentBalance + pnl,
                     updatedAt: new Date().toISOString()
-                  }, { merge: true });
+                  });
                 }
 
-                await deleteDoc(doc(db, 'trade_live_updates', currentPosition.id));
+                await supabase.from('trade_live_updates').delete().eq('id', currentPosition.id);
                 
                 setTotalPnL(prev => prev + pnl);
                 

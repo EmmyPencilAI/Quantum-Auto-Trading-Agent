@@ -4,8 +4,7 @@ import { Zap, Play, Square, RefreshCcw, TrendingUp, TrendingDown, Clock, Activit
 import { cn } from '../../lib/utils';
 import { User, ModeType, TradingMode, Trade, LiveTradeUpdate } from '../../types';
 import { APP_CONFIG } from '../../config';
-import { db, auth } from '../../lib/firebase';
-import { collection, query, where, orderBy, limit, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, deleteDoc, getDoc, setDoc } from 'firebase/firestore';
+import { supabase } from '../../lib/supabase';
 import { ethers } from 'ethers';
 import HFTTradingView from '../HFTTradingView';
 import { useTradingEngine } from '../../hooks/useTradingEngine';
@@ -55,53 +54,101 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
   // Fetch Demo Balance
   useEffect(() => {
     if (!user) return;
-    const unsubscribe = onSnapshot(doc(db, 'demo_wallets', user.uid), (snapshot: any) => {
-      if (snapshot.exists()) {
-        setDemoBalance(snapshot.data().demoBalance);
+    
+    const fetchBalance = async () => {
+      const { data, error } = await supabase
+        .from('demo_wallets')
+        .select('*')
+        .eq('id', user.uid)
+        .single();
+      
+      if (data) {
+        setDemoBalance(data.demoBalance);
       } else {
-        setDoc(snapshot.ref, { uid: user.uid, demoBalance: 10000, updatedAt: serverTimestamp() });
+        await supabase.from('demo_wallets').upsert({ id: user.uid, demoBalance: 10000, updatedAt: new Date().toISOString() });
       }
-    });
-    return () => unsubscribe();
+    };
+    fetchBalance();
+
+    const channel = supabase
+      .channel('demo_wallet_trading')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'demo_wallets', filter: `id=eq.${user.uid}` }, (payload: any) => {
+        if (payload.new) setDemoBalance(payload.new.demoBalance);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   // Fetch Live Updates
   useEffect(() => {
     if (!user) return;
-    const q = query(
-      collection(db, 'trade_live_updates'),
-      where('uid', '==', user.uid),
-      where('modeType', '==', mode)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const updates = snapshot.docs.map(doc => doc.data() as LiveTradeUpdate);
-      setLiveUpdates(updates);
-      if (updates.length > 0) {
-        setIsTrading(true);
-        const totalPnl = updates.reduce((acc, curr) => acc + curr.floatingPnl, 0);
-        setFloatingPnl(totalPnl);
-      } else {
-        setIsTrading(false);
-        setFloatingPnl(0);
+
+    const fetchLiveUpdates = async () => {
+      const { data } = await supabase
+        .from('trade_live_updates')
+        .select('*')
+        .eq('uid', user.uid)
+        .eq('modeType', mode);
+      
+      if (data) {
+        const updates = data as LiveTradeUpdate[];
+        setLiveUpdates(updates);
+        if (updates.length > 0) {
+          setIsTrading(true);
+          const totalPnl = updates.reduce((acc, curr) => acc + curr.floatingPnl, 0);
+          setFloatingPnl(totalPnl);
+        } else {
+          setIsTrading(false);
+          setFloatingPnl(0);
+        }
       }
-    });
-    return () => unsubscribe();
+    };
+    fetchLiveUpdates();
+
+    const channel = supabase
+      .channel('live_updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'trade_live_updates', filter: `uid=eq.${user.uid}` }, () => {
+        fetchLiveUpdates();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, mode]);
 
   // Fetch Trade History
   useEffect(() => {
     if (!user) return;
-    const q = query(
-      collection(db, 'trades'),
-      where('uid', '==', user.uid),
-      where('modeType', '==', mode),
-      orderBy('createdAt', 'desc'),
-      limit(50)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setTradeHistory(snapshot.docs.map(doc => doc.data() as Trade));
-    });
-    return () => unsubscribe();
+
+    const fetchHistory = async () => {
+      const { data } = await supabase
+        .from('trades')
+        .select('*')
+        .eq('uid', user.uid)
+        .eq('modeType', mode)
+        .order('createdAt', { ascending: false })
+        .limit(50);
+      
+      if (data) {
+        setTradeHistory(data as Trade[]);
+      }
+    };
+    fetchHistory();
+
+    const channel = supabase
+      .channel('trade_history')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'trades', filter: `uid=eq.${user.uid}` }, () => {
+        fetchHistory();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, mode]);
 
   // Timer for active trade

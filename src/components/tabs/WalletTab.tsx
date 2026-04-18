@@ -5,8 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { cn } from '../../lib/utils';
 import { User, ModeType } from '../../types';
 import { APP_CONFIG } from '../../config';
-import { db } from '../../lib/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { supabase } from '../../lib/supabase';
 
 interface WalletTabProps {
   user: User | null;
@@ -24,12 +23,41 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
 
   useEffect(() => {
     if (!user || mode !== 'demo') return;
-    const unsubscribe = onSnapshot(doc(db, 'demo_wallets', user.uid), (snapshot) => {
-      if (snapshot.exists()) {
-        setDemoBalance(snapshot.data().demoBalance);
+
+    // Fetch initial balance
+    const fetchBalance = async () => {
+      const { data, error } = await supabase
+        .from('demo_wallets')
+        .select('demoBalance')
+        .eq('id', user.uid)
+        .single();
+      
+      if (data) {
+        setDemoBalance(data.demoBalance);
       }
-    });
-    return () => unsubscribe();
+    };
+    fetchBalance();
+
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('demo_balance_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'demo_wallets',
+          filter: `id=eq.${user.uid}`
+        },
+        (payload) => {
+          setDemoBalance(payload.new.demoBalance);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, mode]);
 
   const handleCopy = () => {

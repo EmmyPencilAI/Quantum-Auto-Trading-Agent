@@ -3,27 +3,39 @@ import { motion } from 'motion/react';
 import { Trophy, Medal, TrendingUp, Search, Filter, ArrowUpRight, ArrowDownRight, Zap, Users } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { LeaderboardEntry } from '../../types';
-import { db } from '../../lib/firebase';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { supabase } from '../../lib/supabase';
 
 export default function LeaderboardTab() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(
-      collection(db, 'leaderboard'),
-      orderBy('totalProfit', 'desc'),
-      limit(10)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const entries = snapshot.docs.map(doc => doc.data() as LeaderboardEntry);
-      setLeaderboard(entries);
+    const fetchLeaderboard = async () => {
+      const { data, error } = await supabase
+        .from('leaderboard')
+        .select('*')
+        .order('totalProfit', { ascending: false })
+        .limit(10);
+      
+      if (data) {
+        setLeaderboard(data as LeaderboardEntry[]);
+      }
       setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    fetchLeaderboard();
+
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('public:leaderboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leaderboard' }, () => {
+        fetchLeaderboard();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const topThree = leaderboard.slice(0, 3);

@@ -4,9 +4,7 @@ import { User, Settings, Shield, Bell, Globe, Trash2, RefreshCcw, Plus, Wallet, 
 import { cn } from '../../lib/utils';
 import { User as UserType, ModeType } from '../../types';
 import { AVATARS, APP_CONFIG } from '../../config';
-import { db, auth } from '../../lib/firebase';
-import { doc, updateDoc, deleteDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { signOut } from 'firebase/auth';
+import { supabase } from '../../lib/supabase';
 import { web3auth } from '../../lib/web3auth';
 
 interface SettingsTabProps {
@@ -26,12 +24,14 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
     if (!user) return;
     setIsSaving(true);
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        username,
-        updatedAt: serverTimestamp()
-      });
+      const { error } = await supabase
+        .from('users')
+        .update({ username })
+        .eq('uid', user.uid);
+      
+      if (error) throw error;
+      
       setUser({ ...user, username });
-      // alert("Profile updated successfully!");
     } catch (error) {
       console.error("Failed to update profile", error);
     } finally {
@@ -42,10 +42,13 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
   const handleUpdateAvatar = async (avatar: string) => {
     if (!user) return;
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        avatar,
-        updatedAt: serverTimestamp()
-      });
+      const { error } = await supabase
+        .from('users')
+        .update({ avatar })
+        .eq('uid', user.uid);
+
+      if (error) throw error;
+      
       setUser({ ...user, avatar });
       setShowAvatarPicker(false);
     } catch (error) {
@@ -56,10 +59,15 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
   const handleResetDemoBalance = async () => {
     if (!user) return;
     try {
-      await updateDoc(doc(db, 'demo_wallets', user.uid), {
-        demoBalance: 10000,
-        updatedAt: serverTimestamp()
-      });
+      const { error } = await supabase
+        .from('demo_wallets')
+        .update({
+          demoBalance: 10000,
+          updatedAt: new Date().toISOString()
+        })
+        .eq('id', user.uid);
+      
+      if (error) throw error;
     } catch (error) {
       console.error("Failed to reset demo balance", error);
     }
@@ -68,10 +76,15 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
   const handleEmptyDemoBalance = async () => {
     if (!user) return;
     try {
-      await updateDoc(doc(db, 'demo_wallets', user.uid), {
-        demoBalance: 0,
-        updatedAt: serverTimestamp()
-      });
+      const { error } = await supabase
+        .from('demo_wallets')
+        .update({
+          demoBalance: 0,
+          updatedAt: new Date().toISOString()
+        })
+        .eq('id', user.uid);
+
+      if (error) throw error;
     } catch (error) {
       console.error("Failed to empty demo wallet", error);
     }
@@ -79,7 +92,7 @@ export default function SettingsTab({ user, setUser, mode }: SettingsTabProps) {
 
   const handleLogout = async () => {
     await web3auth.logout();
-    await signOut(auth);
+    // Supabase signout if using Supabase Auth, but we use Web3Auth
   };
 
   return (
