@@ -59,6 +59,12 @@ export default function App() {
 
   useEffect(() => {
     const init = async () => {
+      if (!supabase) {
+        console.error("Supabase client is not initialized. Please check your environment variables.");
+        setConfigError("MODIFIER: Supabase configuration is missing or invalid. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in the Secrets panel and restart the application.");
+        setLoading(false);
+        return;
+      }
       try {
         setLoadingMessage("CONNECTING TO QUANTUM AUTOBOT...");
         await initWeb3Auth();
