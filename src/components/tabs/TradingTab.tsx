@@ -37,6 +37,7 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
   const [elapsedTime, setElapsedTime] = useState<number>(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isBlockchainSyncing, setIsBlockchainSyncing] = useState(false);
+  const [tradingLogs, setTradingLogs] = useState<{msg: string, time: string, type: 'info' | 'trade'}[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Monitor Network Status
@@ -157,11 +158,28 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
     };
   }, [user, mode]);
 
+  const { marketData, currentPosition, tradesCount, totalPnL, currentLotSize } = useTradingEngine(user, mode, selectedStrategy, isTrading, tradeAmount);
+
   // Timer for active trade
   useEffect(() => {
     if (isTrading) {
       timerRef.current = setInterval(() => {
         setElapsedTime(prev => prev + 1);
+        
+        // Add dynamic logs
+        if (Math.random() > 0.7) {
+          const timestamp = new Date().toLocaleTimeString([], { hour12: false });
+          const logTemplates = [
+            `Scanning ${selectedPair} liquidity...`,
+            `Order flow: ${marketData?.orderFlow || 'NEUTRAL'}`,
+            `Momentum shift detected at ${marketData?.price.toFixed(2) || '0.00'}`,
+            `Quantum layer validating trade trajectory...`,
+            `Sentiment analysis: BULLISH CONVERGENCE`
+          ];
+          const msg = logTemplates[Math.floor(Math.random() * logTemplates.length)];
+          setTradingLogs(prev => [{ msg, time: timestamp, type: 'info' as const }, ...prev].slice(0, 10));
+        }
+
         // Simulate floating PnL for demo mode
         if (mode === 'demo') {
           setFloatingPnl(prev => prev + (Math.random() - 0.48) * 2);
@@ -170,20 +188,24 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
       setElapsedTime(0);
+      setTradingLogs([]);
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isTrading, mode]);
+  }, [isTrading, mode, selectedPair, marketData]);
 
-  const { marketData, currentPosition, tradesCount, totalPnL, currentLotSize } = useTradingEngine(user, mode, selectedStrategy, isTrading, tradeAmount);
-
-  // Sync floating PnL from engine if active
+  // Sync floating PnL and trade logs from engine
   useEffect(() => {
-    if (isTrading && currentPosition) {
-       // Calculation happens in view but we can show engine stats
+    if (currentPosition) {
+      const timestamp = new Date(currentPosition.startTime).toLocaleTimeString([], { hour12: false });
+      const msg = `${currentPosition.type} order executed | Lot: ${currentPosition.size.toFixed(3)} | Amount: $${tradeAmount}`;
+      setTradingLogs(prev => {
+        if (prev[0]?.msg === msg) return prev;
+        return [{ msg, time: timestamp, type: 'trade' as const }, ...prev].slice(0, 10);
+      });
     }
-  }, [isTrading, currentPosition]);
+  }, [currentPosition, tradeAmount]);
 
   const startTrading = async () => {
     if (!user) return;
@@ -475,19 +497,34 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
                     <RefreshCcw className="w-3 h-3 animate-spin" /> Live Updates
                   </span>
                 </div>
-                <div className="space-y-3">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="flex items-center justify-between text-[10px] font-mono text-white/40">
-                      <span className="flex items-center gap-2">
-                        <div className={cn(
-                          "w-1 h-1 rounded-full",
-                          mode === 'real' ? "bg-orange-500" : "bg-blue-500"
-                        )} />
-                        Bot scanning {selectedPair} orderbook...
-                      </span>
-                      <span>{new Date().toLocaleTimeString()}</span>
+                <div className="space-y-3 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
+                  {tradingLogs.length > 0 ? (
+                    tradingLogs.map((log, i) => (
+                      <motion.div 
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        key={i} 
+                        className={cn(
+                          "flex items-center justify-between text-[10px] font-mono p-1 rounded",
+                          log.type === 'trade' ? "bg-white/5 border-l-2 border-orange-500" : "text-white/40"
+                        )}
+                      >
+                        <span className="flex items-center gap-2">
+                          <div className={cn(
+                            "w-1.5 h-1.5 rounded-full",
+                            log.type === 'trade' ? "bg-orange-500 animate-pulse" : mode === 'real' ? "bg-orange-500/40" : "bg-blue-500/40"
+                          )} />
+                          <span className={cn(log.type === 'trade' && "text-white font-bold")}>{log.msg}</span>
+                        </span>
+                        <span className="opacity-40">{log.time}</span>
+                      </motion.div>
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-6 gap-2">
+                       <RefreshCcw className="w-5 h-5 text-white/10 animate-spin-slow" />
+                       <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Awaiting execution...</span>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             )}

@@ -7,6 +7,7 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   --color-primary: #f97316; /* orange-500 */
   --color-primary-dark: #ea580c; /* orange-600 */
+  --animate-spin-slow: spin 3s linear infinite;
 }
 
 @layer base {
