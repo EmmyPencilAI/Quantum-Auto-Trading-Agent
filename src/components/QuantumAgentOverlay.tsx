@@ -3,8 +3,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Bot, X, Send, Zap, Bell, TrendingUp, MessageSquare } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { quantumAgent } from '../services/quantumAgent';
+import { User, ModeType } from '../types';
+import { supabase } from '../lib/supabase';
 
-export default function QuantumAgentOverlay() {
+interface QuantumAgentOverlayProps {
+  user: User | null;
+  mode: ModeType;
+}
+
+export default function QuantumAgentOverlay({ user, mode }: QuantumAgentOverlayProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{ role: 'user' | 'agent'; content: string }[]>([
     { role: 'agent', content: "Quantum Agent online. Real-time BNB Chain intelligence synced. How can I assist your alpha generation today?" }
@@ -14,6 +21,29 @@ export default function QuantumAgentOverlay() {
   const [alerts, setAlerts] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const lastMilestoneRef = useRef<number>(0);
+
+  // Milestone Checker
+  useEffect(() => {
+    if (!user) return;
+    
+    const checkMilestone = async () => {
+      const { data } = await supabase.from('leaderboard').select('total_profit').eq('uid', user.uid).eq('mode_type', mode).single();
+      const profit = data?.total_profit || 0;
+      
+      if (profit > 1000 && profit > lastMilestoneRef.current + 500) {
+        const milestone = quantumAgent.generateUserMilestone(user.username, profit, mode);
+        if (milestone) {
+          setAlerts(prev => [milestone, ...prev].slice(0, 3));
+          lastMilestoneRef.current = profit;
+          setTimeout(() => setAlerts(prev => prev.filter(a => a !== milestone)), 15000);
+        }
+      }
+    };
+
+    const interval = setInterval(checkMilestone, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, [user, mode]);
 
   useEffect(() => {
     // Initialize audio element
@@ -40,19 +70,24 @@ export default function QuantumAgentOverlay() {
     }
   }, [messages, isTyping]);
 
-  // Periodic Whale Alerts
+  // Periodic Updates (Whales & Market)
   useEffect(() => {
-    const interval = setInterval(() => {
+    const whaleInterval = setInterval(() => {
       const alert = quantumAgent.generateWhaleAlert();
       setAlerts(prev => [alert, ...prev].slice(0, 3));
-      
-      // Auto-dismiss alert after 10s
-      setTimeout(() => {
-        setAlerts(prev => prev.filter(a => a !== alert));
-      }, 10000);
-    }, 45000); // Every 45s a whale might move
+      setTimeout(() => setAlerts(prev => prev.filter(a => a !== alert)), 10000);
+    }, 60000); // 1 min
 
-    return () => clearInterval(interval);
+    const marketInterval = setInterval(async () => {
+      const update = await quantumAgent.generateMarketUpdate();
+      setAlerts(prev => [update, ...prev].slice(0, 3));
+      setTimeout(() => setAlerts(prev => prev.filter(a => a !== update)), 15000);
+    }, 120000); // 2 mins
+
+    return () => {
+      clearInterval(whaleInterval);
+      clearInterval(marketInterval);
+    };
   }, []);
 
   const handleSend = async () => {

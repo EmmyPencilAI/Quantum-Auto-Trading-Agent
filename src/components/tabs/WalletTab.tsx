@@ -12,9 +12,10 @@ import { ethers } from 'ethers';
 interface WalletTabProps {
   user: User | null;
   mode: ModeType;
+  realBalance?: string;
 }
 
-export default function WalletTab({ user, mode }: WalletTabProps) {
+export default function WalletTab({ user, mode, realBalance = "0.0000" }: WalletTabProps) {
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showSend, setShowSend] = useState(false);
@@ -74,8 +75,8 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
     { 
       symbol: 'BNB', 
       name: 'Binance Coin', 
-      balance: mode === 'demo' ? (demoBalance * 0.001).toFixed(4) : '0.0000', 
-      value: mode === 'demo' ? `$${(demoBalance * 0.6).toLocaleString()}` : '$0.00', 
+      balance: mode === 'demo' ? (demoBalance * 0.001).toFixed(4) : realBalance, 
+      value: mode === 'demo' ? `$${(demoBalance * 0.6).toLocaleString()}` : `$${(parseFloat(realBalance) * 600).toLocaleString()}`, 
       icon: getLogo('BNB') 
     },
     { 
@@ -194,7 +195,7 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
           <div className="mb-8">
             <p className="text-white/60 text-sm font-medium mb-1 uppercase tracking-widest">Total Balance</p>
             <h2 className="text-4xl md:text-5xl font-display tracking-tighter">
-              {mode === 'demo' ? `$${demoBalance.toLocaleString()}` : '$0.00'}
+              {mode === 'demo' ? `$${demoBalance.toLocaleString()}` : `$${(parseFloat(realBalance) * 600).toLocaleString()}`}
             </h2>
           </div>
 

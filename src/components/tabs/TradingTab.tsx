@@ -23,13 +23,24 @@ interface TradingTabProps {
   user: User | null;
   mode: ModeType;
   setMode: (mode: ModeType) => void;
+  realBalance?: string;
+  isTradingGlobal: boolean;
+  setIsTradingGlobal: (val: boolean) => void;
+  selectedPairGlobal: string;
+  setSelectedPairGlobal: (val: string) => void;
+  selectedStrategyGlobal: TradingMode;
+  setSelectedStrategyGlobal: (val: TradingMode) => void;
+  tradeAmountGlobal: number;
+  setTradeAmountGlobal: (val: number) => void;
 }
 
-export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
-  const [selectedPair, setSelectedPair] = useState(APP_CONFIG.SUPPORTED_PAIRS[0]);
-  const [selectedStrategy, setSelectedStrategy] = useState<TradingMode>("Aggressive");
-  const [isTrading, setIsTrading] = useState(false);
-  const [tradeAmount, setTradeAmount] = useState<number>(100);
+export default function TradingTab({ 
+  user, mode, setMode, realBalance = "0.0000",
+  isTradingGlobal, setIsTradingGlobal,
+  selectedPairGlobal, setSelectedPairGlobal,
+  selectedStrategyGlobal, setSelectedStrategyGlobal,
+  tradeAmountGlobal, setTradeAmountGlobal
+}: TradingTabProps) {
   const [liveUpdates, setLiveUpdates] = useState<LiveTradeUpdate[]>([]);
   const [tradeHistory, setTradeHistory] = useState<Trade[]>([]);
   const [demoBalance, setDemoBalance] = useState<number>(0);
@@ -39,6 +50,16 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
   const [isBlockchainSyncing, setIsBlockchainSyncing] = useState(false);
   const [tradingLogs, setTradingLogs] = useState<{msg: string, time: string, type: 'info' | 'trade'}[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Use alias for simpler internal usage
+  const isTrading = isTradingGlobal;
+  const setIsTrading = setIsTradingGlobal;
+  const selectedPair = selectedPairGlobal;
+  const setSelectedPair = setSelectedPairGlobal;
+  const selectedStrategy = selectedStrategyGlobal;
+  const setSelectedStrategy = setSelectedStrategyGlobal;
+  const tradeAmount = tradeAmountGlobal;
+  const setTradeAmount = setTradeAmountGlobal;
 
   // Monitor Network Status
   useEffect(() => {
@@ -148,7 +169,7 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
         .eq('mode_type', mode)
         .eq('status', 'Completed')
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(100);
       
       if (data) {
         setTradeHistory(data as Trade[]);
@@ -168,7 +189,7 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
     };
   }, [user, mode]);
 
-  const { marketData, currentPosition, tradesCount, totalPnL, currentLotSize } = useTradingEngine(user, mode, selectedStrategy, isTrading, tradeAmount);
+  const { marketData, currentPosition, tradesCount, totalPnL, currentLotSize } = useTradingEngine(user, mode, selectedStrategy, isTrading, tradeAmount, selectedPair);
 
   // Timer for active trade
   useEffect(() => {
@@ -226,10 +247,9 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
     }
 
     if (mode === 'real') {
-      // Check if real money is inside (simulated for now by checking a threshold or real balance)
-      // The user said: "Real Mode should have zero balance and shall only work when real money is inside"
-      const realBalance = 0; // In a real app we'd fetch actual BNB/USDT balance
-      if (realBalance <= 0) {
+      // Use realBalance prop
+      const bal = parseFloat(realBalance);
+      if (bal <= 0) {
         alert("REAL MODE INACTIVE: Insufficient Live Funds. Please deposit BNB or USDT to activate Quantum Hand.");
         return;
       }
@@ -313,13 +333,26 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
           <div className="text-right">
             <p className="text-xs font-display text-white/40 uppercase tracking-widest mb-1">Available Balance</p>
             <h3 className="text-3xl font-display tracking-tight">
-              {mode === 'demo' ? `$${demoBalance.toLocaleString()}` : `$0.00`}
+              {mode === 'demo' ? `$${demoBalance.toLocaleString()}` : `$${(parseFloat(realBalance) * 600).toLocaleString()}`}
             </h3>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Market Ticker */}
+        <div className="lg:col-span-3 flex items-center gap-4 overflow-x-auto pb-2 no-scrollbar">
+          {APP_CONFIG.SUPPORTED_PAIRS.map(pair => (
+            <div key={pair} className="px-4 py-2 bg-white/[0.03] border border-white/5 rounded-xl flex items-center gap-3 shrink-0 min-w-[140px]">
+              <img src={getLogo(pair)} className="w-5 h-5 rounded-full" />
+              <div className="flex flex-col">
+                <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">{pair}</span>
+                <span className="text-xs font-mono font-bold">$64,231.42</span> {/* Will be synced via market provider if needed, but for now showing the feel */}
+              </div>
+            </div>
+          ))}
+        </div>
+
         {/* Trading Controls */}
         <div className="lg:col-span-1 space-y-6">
           <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 space-y-6">

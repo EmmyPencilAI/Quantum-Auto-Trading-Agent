@@ -49,6 +49,32 @@ export default function App() {
   const [configError, setConfigError] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [realBalance, setRealBalance] = useState<string>("0.0000");
+
+  // Global Trading State persistence
+  const [isTradingGlobal, setIsTradingGlobal] = useState<boolean>(false);
+  const [selectedPairGlobal, setSelectedPairGlobal] = useState<string>(APP_CONFIG.SUPPORTED_PAIRS[0]);
+  const [selectedStrategyGlobal, setSelectedStrategyGlobal] = useState<any>("Aggressive");
+  const [tradeAmountGlobal, setTradeAmountGlobal] = useState<number>(100);
+
+  // Poll for real balance
+  useEffect(() => {
+    if (!user?.wallet_address || !isLoggedIn) return;
+
+    const fetchBal = async () => {
+      try {
+        const provider = new ethers.JsonRpcProvider(APP_CONFIG.BNB_CHAIN.RPC_URL);
+        const bal = await provider.getBalance(user.wallet_address);
+        setRealBalance(ethers.formatEther(bal));
+      } catch (e) {
+        console.warn("Failed to fetch BNB balance", e);
+      }
+    };
+
+    fetchBal();
+    const interval = setInterval(fetchBal, 15000); // 15s poll
+    return () => clearInterval(interval);
+  }, [user?.wallet_address, isLoggedIn]);
 
   useEffect(() => {
     // Apply theme to body
@@ -507,9 +533,30 @@ export default function App() {
       {/* Main Content */}
       <main className="pt-16 md:pl-64 min-h-screen">
         <div className="p-4 md:p-8 max-w-7xl mx-auto">
-          {activeTab === 'wallet' && <WalletTab user={user} mode={mode} />}
+          {activeTab === 'wallet' && (
+            <WalletTab 
+              user={user} 
+              mode={mode} 
+              realBalance={realBalance} 
+            />
+          )}
           {activeTab === 'markets' && <MarketsTab />}
-          {activeTab === 'trading' && <TradingTab user={user} mode={mode} setMode={setMode} />}
+          {activeTab === 'trading' && (
+            <TradingTab 
+              user={user} 
+              mode={mode} 
+              setMode={setMode} 
+              realBalance={realBalance}
+              isTradingGlobal={isTradingGlobal}
+              setIsTradingGlobal={setIsTradingGlobal}
+              selectedPairGlobal={selectedPairGlobal}
+              setSelectedPairGlobal={setSelectedPairGlobal}
+              selectedStrategyGlobal={selectedStrategyGlobal}
+              setSelectedStrategyGlobal={setSelectedStrategyGlobal}
+              tradeAmountGlobal={tradeAmountGlobal}
+              setTradeAmountGlobal={setTradeAmountGlobal}
+            />
+          )}
           {activeTab === 'leaderboard' && <LeaderboardTab />}
           {activeTab === 'community' && <CommunityTab user={user} />}
           {activeTab === 'settings' && <SettingsTab user={user} setUser={setUser} mode={mode} onLogout={handleLogout} />}
@@ -536,7 +583,7 @@ export default function App() {
         ))}
       </nav>
 
-      <QuantumAgentOverlay />
+      <QuantumAgentOverlay user={user} mode={mode} />
       {/* Footer / Version */}
       <footer className="py-8 px-4 border-t border-white/5 text-center">
         <p className="text-[8px] font-mono text-white/10 uppercase tracking-[0.5em] font-bold">

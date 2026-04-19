@@ -81,6 +81,16 @@ export async function sendQuantumTransaction(
   return tx;
 }
 
+export async function getBNBBalance(provider: ethers.Provider, address: string): Promise<string> {
+  try {
+    const balance = await provider.getBalance(address);
+    return ethers.formatEther(balance);
+  } catch (error) {
+    console.error("Error fetching BNB balance:", error);
+    return "0.0000";
+  }
+}
+
 export const TRADING_CONTRACT_ABI = [
   "function fund() public payable",
   "function startTrade(string pair, string strategy) public",

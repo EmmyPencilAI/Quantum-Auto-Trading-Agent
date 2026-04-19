@@ -3,7 +3,14 @@ import { supabase } from '../lib/supabase';
 import { APP_CONFIG } from '../config';
 import { Position, MarketData, Candle, ModeType, TradeMode, Trade } from '../engine/types';
 
-export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode, isTrading: boolean, baseTradeAmount: number = 100) {
+export function useTradingEngine(
+  user: any, 
+  mode: ModeType, 
+  strategy: TradeMode, 
+  isTrading: boolean, 
+  baseTradeAmount: number = 100,
+  selectedPairGlobal: string = 'BTC/USDT'
+) {
   const [currentLotSize, setCurrentLotSize] = useState(0.05);
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
   const [marketData, setMarketData] = useState<MarketData | null>(null);
@@ -44,22 +51,57 @@ export function useTradingEngine(user: any, mode: ModeType, strategy: TradeMode,
     }
   }, [isTrading, user?.uid, baseTradeAmount, strategy, mode]);
 
-  // 2. Real-time Market Data Simulation (kept for UI feel)
+  // 2. Real-time Market Data via Binance API
   useEffect(() => {
-    const interval = setInterval(() => {
-      const price = 64000 + (Math.random() - 0.5) * 50;
-      setMarketData({
-        price,
-        rsi: 45 + Math.random() * 10,
-        momentum: Math.random(),
-        liquidityZone: "NEUTRAL",
-        orderFlow: "NEUTRAL",
-        timestamp: Date.now(),
-        candles: []
-      });
-    }, 2000);
+    const symbol = selectedPairGlobal.replace('/', '');
+    
+    const fetchMarketData = async () => {
+      try {
+        // Fetch current price
+        const priceRes = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
+        const priceData = await priceRes.json();
+        const price = parseFloat(priceData.price);
+
+        // Fetch candles (1m interval)
+        const candleRes = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m&limit=30`);
+        const candleData = await candleRes.json();
+        const candles: Candle[] = candleData.map((c: any) => ({
+          time: c[0],
+          open: parseFloat(c[1]),
+          high: parseFloat(c[2]),
+          low: parseFloat(c[3]),
+          close: parseFloat(c[4])
+        }));
+
+        setMarketData({
+          price,
+          rsi: 45 + Math.random() * 10, // Simulated RSI for now
+          momentum: Math.random(),
+          liquidityZone: "NEUTRAL",
+          orderFlow: "NEUTRAL",
+          timestamp: Date.now(),
+          candles
+        });
+      } catch (e) {
+        console.warn("Market data fetch failed, using fallback", e);
+        // Fallback
+        const fallbackPrice = 64000 + (Math.random() - 0.5) * 50;
+        setMarketData(prev => ({
+          price: fallbackPrice,
+          rsi: 45 + Math.random() * 10,
+          momentum: Math.random(),
+          liquidityZone: "NEUTRAL",
+          orderFlow: "NEUTRAL",
+          timestamp: Date.now(),
+          candles: prev?.candles || []
+        }));
+      }
+    };
+
+    fetchMarketData();
+    const interval = setInterval(fetchMarketData, 5000); // 5s update
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedPairGlobal]);
 
   // 3. LISTEN for changes from the server engine
   useEffect(() => {
