@@ -48,8 +48,31 @@ export default function TradingTab({
   const [elapsedTime, setElapsedTime] = useState<number>(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isBlockchainSyncing, setIsBlockchainSyncing] = useState(false);
-  const [tradingLogs, setTradingLogs] = useState<{msg: string, time: string, type: 'info' | 'trade'}[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [tickerPrices, setTickerPrices] = useState<Record<string, string>>({});
+
+  // Fetch all ticker prices
+  useEffect(() => {
+    const fetchTickers = async () => {
+      try {
+        const res = await fetch('https://api.binance.com/api/v3/ticker/price');
+        const data = await res.json();
+        const prices: Record<string, string> = {};
+        APP_CONFIG.SUPPORTED_PAIRS.forEach(pair => {
+          const symbol = pair.replace('/', '');
+          const match = data.find((t: any) => t.symbol === symbol);
+          if (match) {
+            prices[pair] = parseFloat(match.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+        });
+        setTickerPrices(prices);
+      } catch (e) {
+        console.warn("Ticker fetch failed", e);
+      }
+    };
+    fetchTickers();
+    const interval = setInterval(fetchTickers, 10000); // 10s
+    return () => clearInterval(interval);
+  }, []);
 
   // Use alias for simpler internal usage
   const isTrading = isTradingGlobal;
@@ -169,7 +192,7 @@ export default function TradingTab({
         .eq('mode_type', mode)
         .eq('status', 'Completed')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(150);
       
       if (data) {
         setTradeHistory(data as Trade[]);
@@ -347,7 +370,7 @@ export default function TradingTab({
               <img src={getLogo(pair)} className="w-5 h-5 rounded-full" />
               <div className="flex flex-col">
                 <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">{pair}</span>
-                <span className="text-xs font-mono font-bold">$64,231.42</span> {/* Will be synced via market provider if needed, but for now showing the feel */}
+                <span className="text-xs font-mono font-bold">${tickerPrices[pair] || '---'}</span>
               </div>
             </div>
           ))}

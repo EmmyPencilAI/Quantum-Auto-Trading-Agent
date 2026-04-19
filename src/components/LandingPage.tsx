@@ -66,6 +66,10 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
             animate={{ opacity: 1, scale: 1 }}
             className="mb-12 inline-block"
           >
+            <div className="mb-4 inline-flex items-center gap-2 px-3 py-1 bg-green-500/10 border border-green-500/30 rounded-full">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">v1.1.0 Alpha - Real-Time Sync Active</span>
+            </div>
             <img src="/logo.png" alt="Quantum Logo" className="w-32 h-32 mx-auto object-contain drop-shadow-[0_0_30px_rgba(249,115,22,0.3)]" referrerPolicy="no-referrer" />
           </motion.div>
 

@@ -24,7 +24,7 @@ import { supabase } from './lib/supabase';
 import { ethers } from 'ethers';
 import { APP_CONFIG } from './config';
 import { cn } from './lib/utils';
-import { User, ModeType } from './types';
+import { User, ModeType, TradingMode } from './types';
 
 // Components
 import LandingPage from './components/LandingPage';
@@ -54,7 +54,7 @@ export default function App() {
   // Global Trading State persistence
   const [isTradingGlobal, setIsTradingGlobal] = useState<boolean>(false);
   const [selectedPairGlobal, setSelectedPairGlobal] = useState<string>(APP_CONFIG.SUPPORTED_PAIRS[0]);
-  const [selectedStrategyGlobal, setSelectedStrategyGlobal] = useState<any>("Aggressive");
+  const [selectedStrategyGlobal, setSelectedStrategyGlobal] = useState<TradingMode>("Aggressive");
   const [tradeAmountGlobal, setTradeAmountGlobal] = useState<number>(100);
 
   // Poll for real balance
@@ -309,7 +309,7 @@ export default function App() {
         </div>
         <div className="text-orange-500 font-mono text-xs tracking-[0.3em] uppercase space-y-2 text-center">
           <p className="animate-pulse">{loadingMessage}</p>
-          <p className="text-[8px] text-white/20 font-bold">QUANTUM ENGINE V1.0.4-STABLE</p>
+          <p className="text-[8px] text-white/20 font-bold">QUANTUM ENGINE V1.0.8-LIVE (SYNCED)</p>
         </div>
         <div className="mt-8 w-48 h-1 bg-white/5 rounded-full overflow-hidden">
           <div className="h-full bg-orange-600 w-1/3 animate-pulse" />
@@ -587,7 +587,7 @@ export default function App() {
       {/* Footer / Version */}
       <footer className="py-8 px-4 border-t border-white/5 text-center">
         <p className="text-[8px] font-mono text-white/10 uppercase tracking-[0.5em] font-bold">
-          Quantum Terminal Protocol v1.0.8-SECURE (MFA ENFORCED)
+          Quantum Terminal Protocol v1.1.0-ALPHA (REAL-TIME ENGINE)
         </p>
       </footer>
     </div>

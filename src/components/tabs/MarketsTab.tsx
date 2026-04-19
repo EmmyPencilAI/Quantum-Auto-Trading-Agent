@@ -1,10 +1,53 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Search, TrendingUp, TrendingDown, Globe, BarChart2, Zap } from 'lucide-react';
 import { cn, getLogo } from '../../lib/utils';
+import { APP_CONFIG } from '../../config';
+
+interface MarketStat {
+  symbol: string;
+  name: string;
+  price: string;
+  change: string;
+  rawPrice: number;
+}
 
 export default function MarketsTab() {
   const container = useRef<HTMLDivElement>(null);
+  const [marketData, setMarketData] = useState<MarketStat[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMarketData = async () => {
+      try {
+        const res = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+        const data = await res.json();
+        
+        const symbols = APP_CONFIG.SUPPORTED_PAIRS.map(p => p.replace('/', ''));
+        const filtered = data.filter((t: any) => symbols.includes(t.symbol));
+        
+        const mapped = filtered.map((t: any) => ({
+          symbol: t.symbol.replace('USDT', ''),
+          name: t.symbol.replace('USDT', ''),
+          price: parseFloat(t.lastPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          change: parseFloat(t.priceChangePercent) >= 0 ? `+${parseFloat(t.priceChangePercent).toFixed(2)}%` : `${parseFloat(t.priceChangePercent).toFixed(2)}%`,
+          rawPrice: parseFloat(t.lastPrice)
+        }));
+
+        setMarketData(mapped);
+        setLoading(false);
+      } catch (e) {
+        console.warn("Market data fetch failed", e);
+      }
+    };
+
+    fetchMarketData();
+    const interval = setInterval(fetchMarketData, 30000); // 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  const gainers = [...marketData].sort((a, b) => parseFloat(b.change) - parseFloat(a.change)).slice(0, 5);
+  const losers = [...marketData].sort((a, b) => parseFloat(a.change) - parseFloat(b.change)).slice(0, 5);
 
   useEffect(() => {
     const script = document.createElement("script");
@@ -119,32 +162,34 @@ export default function MarketsTab() {
             <TrendingUp className="w-5 h-5 text-green-500" /> Top Gainers
           </h3>
           <div className="space-y-4">
-            {[
-              { symbol: 'BTC', name: 'Bitcoin', price: '$64,231', change: '+2.4%' },
-              { symbol: 'ETH', name: 'Ethereum', price: '$3,452', change: '+3.2%' },
-              { symbol: 'SOL', name: 'Solana', price: '$145.23', change: '+12.4%' },
-              { symbol: 'BNB', name: 'Binance Coin', price: '$582.12', change: '+8.2%' },
-              { symbol: 'SUI', name: 'Sui', price: '$1.84', change: '+6.5%' },
-            ].map((asset, i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <img 
-                    src={getLogo(asset.symbol)} 
-                    className="coin-logo group-hover:scale-110 transition-transform" 
-                    onError={(e) => (e.currentTarget.src = 'https://api.dicebear.com/7.x/shapes/svg?seed=crypto')}
-                    referrerPolicy="no-referrer"
-                  />
-                  <div>
-                    <h4 className="font-bold text-sm tracking-tight">{asset.symbol}</h4>
-                    <p className="text-[10px] opacity-40 uppercase font-bold">{asset.name}</p>
+            {loading ? (
+               Array.from({ length: 5 }).map((_, i) => (
+                 <div key={i} className="h-16 w-full bg-white/5 animate-pulse rounded-2xl" />
+               ))
+            ) : gainers.length > 0 ? (
+              gainers.map((asset, i) => (
+                <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src={getLogo(asset.symbol)} 
+                      className="coin-logo group-hover:scale-110 transition-transform" 
+                      onError={(e) => (e.currentTarget.src = 'https://api.dicebear.com/7.x/shapes/svg?seed=crypto')}
+                      referrerPolicy="no-referrer"
+                    />
+                    <div>
+                      <h4 className="font-bold text-sm tracking-tight">{asset.symbol}</h4>
+                      <p className="text-[10px] opacity-40 uppercase font-bold">{asset.name}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-sm">${asset.price}</p>
+                    <p className="text-[10px] text-green-500 font-bold">{asset.change}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-sm">{asset.price}</p>
-                  <p className="text-[10px] text-green-500 font-bold">{asset.change}</p>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-center text-white/20 py-8">No data available</p>
+            )}
           </div>
         </div>
 
@@ -153,30 +198,34 @@ export default function MarketsTab() {
             <TrendingDown className="w-5 h-5 text-red-500" /> Top Losers
           </h3>
           <div className="space-y-4">
-            {[
-              { symbol: 'XRP', name: 'Ripple', price: '$0.62', change: '-4.2%' },
-              { symbol: 'ADA', name: 'Cardano', price: '$0.45', change: '-3.8%' },
-              { symbol: 'DOGE', name: 'Dogecoin', price: '$0.16', change: '-2.5%' },
-            ].map((asset, i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <img 
-                    src={getLogo(asset.symbol)} 
-                    className="coin-logo group-hover:scale-110 transition-transform" 
-                     onError={(e) => (e.currentTarget.src = 'https://api.dicebear.com/7.x/shapes/svg?seed=crypto')}
-                    referrerPolicy="no-referrer"
-                  />
-                  <div>
-                    <h4 className="font-bold text-sm tracking-tight">{asset.symbol}</h4>
-                    <p className="text-[10px] opacity-40 uppercase font-bold">{asset.name}</p>
+            {loading ? (
+               Array.from({ length: 5 }).map((_, i) => (
+                 <div key={i} className="h-16 w-full bg-white/5 animate-pulse rounded-2xl" />
+               ))
+            ) : losers.length > 0 ? (
+              losers.map((asset, i) => (
+                <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src={getLogo(asset.symbol)} 
+                      className="coin-logo group-hover:scale-110 transition-transform" 
+                       onError={(e) => (e.currentTarget.src = 'https://api.dicebear.com/7.x/shapes/svg?seed=crypto')}
+                      referrerPolicy="no-referrer"
+                    />
+                    <div>
+                      <h4 className="font-bold text-sm tracking-tight">{asset.symbol}</h4>
+                      <p className="text-[10px] opacity-40 uppercase font-bold">{asset.name}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-sm">${asset.price}</p>
+                    <p className="text-[10px] text-red-500 font-bold">{asset.change}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-sm">{asset.price}</p>
-                  <p className="text-[10px] text-red-500 font-bold">{asset.change}</p>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-center text-white/20 py-8">No data available</p>
+            )}
           </div>
         </div>
       </div>
