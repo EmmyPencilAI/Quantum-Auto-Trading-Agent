@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Zap, Play, Square, RefreshCcw, TrendingUp, TrendingDown, Clock, Activity, History, ChevronDown, AlertCircle, Info, Wifi, WifiOff } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, getLogo } from '../../lib/utils';
 import { User, ModeType, TradingMode, Trade, LiveTradeUpdate } from '../../types';
 import { APP_CONFIG } from '../../config';
 import { supabase } from '../../lib/supabase';
@@ -330,16 +330,28 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
             <div className="space-y-4">
               <div>
                 <label className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2 block">Asset Pair</label>
-                <select 
-                  value={selectedPair}
-                  onChange={(e) => setSelectedPair(e.target.value)}
-                  disabled={isTrading}
-                  className="w-full bg-black border border-white/10 rounded-xl p-4 text-sm font-bold focus:outline-none focus:border-orange-500 transition-all appearance-none cursor-pointer"
-                >
-                  {APP_CONFIG.SUPPORTED_PAIRS.map(pair => (
-                    <option key={pair} value={pair}>{pair}</option>
-                  ))}
-                </select>
+                <div className="relative group">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+                    <img 
+                      src={getLogo(selectedPair)} 
+                      alt="" 
+                      className="w-5 h-5 rounded-full object-cover"
+                      onError={(e) => (e.currentTarget.src = 'https://api.dicebear.com/7.x/shapes/svg?seed=crypto')}
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                  <select 
+                    value={selectedPair}
+                    onChange={(e) => setSelectedPair(e.target.value)}
+                    disabled={isTrading}
+                    className="w-full bg-black border border-white/10 rounded-xl p-4 pl-12 text-sm font-bold focus:outline-none focus:border-orange-500 transition-all appearance-none cursor-pointer"
+                  >
+                    {APP_CONFIG.SUPPORTED_PAIRS.map(pair => (
+                      <option key={pair} value={pair}>{pair}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40 group-hover:opacity-100 transition-opacity" />
+                </div>
               </div>
 
               <div>
@@ -471,9 +483,18 @@ export default function TradingTab({ user, mode, setMode }: TradingTabProps) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="p-6 rounded-3xl bg-black/40 border border-white/5">
-                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">Current Pair</p>
-                <p className="text-2xl font-black">{isTrading ? selectedPair : '---'}</p>
+              <div className="p-6 rounded-3xl bg-black/40 border border-white/5 flex items-center gap-4">
+                <img 
+                  src={getLogo(isTrading ? selectedPair : 'BTC')} 
+                  alt="" 
+                  className={cn("w-10 h-10 rounded-full", !isTrading && "grayscale")}
+                  onError={(e) => (e.currentTarget.src = 'https://api.dicebear.com/7.x/shapes/svg?seed=crypto')}
+                  referrerPolicy="no-referrer"
+                />
+                <div>
+                  <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Current Pair</p>
+                  <p className="text-xl font-black">{isTrading ? selectedPair : '---'}</p>
+                </div>
               </div>
               <div className="p-6 rounded-3xl bg-black/40 border border-white/5">
                 <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">Active Amount</p>

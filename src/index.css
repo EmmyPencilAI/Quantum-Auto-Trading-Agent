@@ -12,19 +12,35 @@
 
 @layer base {
   body {
-    @apply bg-[#050505] text-white antialiased transition-colors duration-300;
+    @apply bg-[#050505] text-white antialiased transition-colors duration-300 overflow-x-hidden;
   }
 
-  /* Responsive scaling for small screens (like smartwatches/tiny phones) */
+  /* Extreme Responsive scaling for all phone screens */
+  @media (max-width: 480px) {
+    html { font-size: 14px; }
+    .container { @apply px-4; }
+    /* Fix for large headers/titles on mobile */
+    .text-6xl, .text-5xl, .text-4xl { @apply text-3xl leading-tight tracking-tighter; }
+    .rounded-\[2\.5rem\], .rounded-\[3rem\] { border-radius: 1.5rem !important; }
+    /* Touch targets */
+    button, a { min-height: 44px; }
+  }
+
   @media (max-width: 320px) {
-    html { font-size: 10px; }
+    html { font-size: 11px; }
     .p-8, .p-10 { padding: 1rem !important; }
-    .p-6 { padding: 0.75rem !important; }
+    .p-6 { padding: 0.8rem !important; }
     .gap-8, .gap-12 { gap: 1rem !important; }
-    .text-6xl, .text-7xl { font-size: 2.2rem !important; }
-    .text-4xl { font-size: 1.8rem !important; }
-    .rounded-\[2\.5rem\], .rounded-\[3rem\] { border-radius: 1rem !important; }
-    header { height: 60px !important; }
+    header { height: 50px !important; }
+  }
+
+  /* Hide scrollbars but allow scrolling if needed */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Logo Utility */
+  .coin-logo { 
+    @apply w-6 h-6 rounded-full object-cover bg-white/5 p-1 border border-white/10 shadow-sm;
   }
 
   /* Responsive scaling for large screens */

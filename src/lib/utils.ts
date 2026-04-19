@@ -16,3 +16,9 @@ export const RANKINGS = [
 export function getRank(volume: number = 0) {
   return [...RANKINGS].reverse().find(r => volume >= r.minVolume) || RANKINGS[0];
 }
+
+export function getLogo(symbol: string) {
+  const cleanSymbol = symbol.split('/')[0].toLowerCase();
+  // Using high-quality crypto icon repository
+  return `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${cleanSymbol}.png`;
+}

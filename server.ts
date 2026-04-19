@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import cors from "cors";
 import dotenv from "dotenv";
+import { startTradingEngine } from "./src/services/tradingService";
 
 dotenv.config();
 
@@ -22,6 +23,9 @@ app.post("/api/send-2fa", async (req, res) => {
 });
 
 async function setupApp() {
+  // Start the Quantum Background Trading Engine
+  startTradingEngine();
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

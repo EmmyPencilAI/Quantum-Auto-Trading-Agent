@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Wallet, Copy, Share2, QrCode, Send, ArrowDownLeft, Plus, History, ExternalLink, CheckCircle2, Zap } from 'lucide-react';
+import { Wallet, Copy, Share2, QrCode, Send, ArrowDownLeft, Plus, History, ExternalLink, CheckCircle2, Zap, ArrowRight, Gauge } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { cn } from '../../lib/utils';
+import { cn, getLogo } from '../../lib/utils';
 import { User, ModeType } from '../../types';
 import { APP_CONFIG } from '../../config';
 import { supabase } from '../../lib/supabase';
+import { getSmartGasPrice } from '../../lib/blockchain';
+import { ethers } from 'ethers';
 
 interface WalletTabProps {
   user: User | null;
@@ -74,56 +76,56 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
       name: 'Binance Coin', 
       balance: mode === 'demo' ? (demoBalance * 0.001).toFixed(4) : '0.0000', 
       value: mode === 'demo' ? `$${(demoBalance * 0.6).toLocaleString()}` : '$0.00', 
-      icon: 'https://cryptologos.cc/logos/binance-coin-bnb-logo.png' 
+      icon: getLogo('BNB') 
     },
     { 
       symbol: 'USDT', 
       name: 'Tether', 
       balance: mode === 'demo' ? (demoBalance * 0.2).toFixed(2) : '0.00', 
       value: mode === 'demo' ? `$${(demoBalance * 0.2).toLocaleString()}` : '$0.00', 
-      icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png' 
+      icon: getLogo('USDT') 
     },
     { 
       symbol: 'USDC', 
       name: 'USD Coin', 
       balance: mode === 'demo' ? (demoBalance * 0.1).toFixed(2) : '0.00', 
       value: mode === 'demo' ? `$${(demoBalance * 0.1).toLocaleString()}` : '$0.00', 
-      icon: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png' 
+      icon: getLogo('USDC') 
     },
     { 
       symbol: 'SOL', 
       name: 'Solana', 
       balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(2) : '0.00', 
       value: mode === 'demo' ? `$${(demoBalance * 0.05).toLocaleString()}` : '$0.00', 
-      icon: 'https://cryptologos.cc/logos/solana-sol-logo.png' 
+      icon: getLogo('SOL') 
     },
     { 
       symbol: 'ETH', 
       name: 'Ethereum', 
       balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(4) : '0.0000', 
       value: mode === 'demo' ? `$${(demoBalance * 0.05).toLocaleString()}` : '$0.00', 
-      icon: 'https://cryptologos.cc/logos/ethereum-eth-logo.png' 
+      icon: getLogo('ETH') 
     },
     { 
       symbol: 'XRP', 
       name: 'Ripple', 
       balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(2) : '0.00', 
       value: mode === 'demo' ? `$${(demoBalance * 0.05).toLocaleString()}` : '$0.00', 
-      icon: 'https://cryptologos.cc/logos/xrp-xrp-logo.png' 
+      icon: getLogo('XRP') 
     },
     { 
       symbol: 'ADA', 
       name: 'Cardano', 
       balance: mode === 'demo' ? (demoBalance * 0.03).toFixed(2) : '0.00', 
       value: mode === 'demo' ? `$${(demoBalance * 0.03).toLocaleString()}` : '$0.00', 
-      icon: 'https://cryptologos.cc/logos/cardano-ada-logo.png' 
+      icon: getLogo('ADA') 
     },
     { 
       symbol: 'SUI', 
       name: 'Sui', 
       balance: mode === 'demo' ? (demoBalance * 0.02).toFixed(2) : '0.00', 
       value: mode === 'demo' ? `$${(demoBalance * 0.02).toLocaleString()}` : '$0.00', 
-      icon: 'https://cryptologos.cc/logos/sui-sui-logo.png' 
+      icon: getLogo('SUI') 
     },
   ];
 
@@ -243,6 +245,28 @@ export default function WalletTab({ user, mode }: WalletTabProps) {
                   placeholder="0.00" 
                   className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm focus:outline-none focus:border-orange-500 transition-all font-mono"
                 />
+              </div>
+
+              <div className="p-4 rounded-2xl bg-orange-500/5 border border-orange-500/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Gauge className="w-3 h-3 text-orange-500" />
+                    <span className="text-[10px] font-black uppercase text-orange-500 tracking-widest">Smart Gas Routing</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-white/40">FASTEST</span>
+                </div>
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-white/40">Estimated Fee:</span>
+                  <span className="font-mono text-green-500">~ 0.0005 BNB</span>
+                </div>
+                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="h-full bg-orange-500" 
+                  />
+                </div>
               </div>
             </div>
             <div className="flex gap-4">

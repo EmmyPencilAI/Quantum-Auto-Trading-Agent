@@ -420,6 +420,12 @@ export default function App() {
               <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-[#050505] animate-pulse" />
             </div>
           </div>
+          {user?.is_trading && (
+            <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full animate-pulse">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+              <span className="text-[8px] font-black text-green-500 uppercase tracking-widest">Live Engine</span>
+            </div>
+          )}
         </div>
       </header>
 

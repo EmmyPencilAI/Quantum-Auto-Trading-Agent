@@ -32,10 +32,18 @@ export interface TradeSignal {
 
 export interface Position {
   id: string;
-  type: 'LONG' | 'SHORT';
+  type: 'LONG' | 'SHORT' | 'BUY' | 'SELL';
   entryPrice: number;
   size: number;
   startTime: number;
   mode: TradeMode;
   modeType: ModeType;
+}
+
+export interface Trade extends Position {
+  pnl: number;
+  status: 'Running' | 'Completed';
+  pair: string;
+  time_taken?: number;
+  created_at: string;
 }
