@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Wallet, 
@@ -17,7 +17,8 @@ import {
   Clock,
   ArrowRight,
   AlertTriangle,
-  ShieldCheck
+  ShieldCheck,
+  RefreshCcw
 } from 'lucide-react';
 import { web3auth, initWeb3Auth } from './lib/web3auth';
 import { supabase } from './lib/supabase';
@@ -28,14 +29,22 @@ import { User, ModeType, TradingMode } from './types';
 
 // Components
 import LandingPage from './components/LandingPage';
-import WalletTab from './components/tabs/WalletTab';
-import MarketsTab from './components/tabs/MarketsTab';
-import TradingTab from './components/tabs/TradingTab';
-import LeaderboardTab from './components/tabs/LeaderboardTab';
-import CommunityTab from './components/tabs/CommunityTab';
-import SettingsTab from './components/tabs/SettingsTab';
 
-import QuantumAgentOverlay from './components/QuantumAgentOverlay';
+// Lazy loaded tabs
+const WalletTab = lazy(() => import('./components/tabs/WalletTab'));
+const MarketsTab = lazy(() => import('./components/tabs/MarketsTab'));
+const TradingTab = lazy(() => import('./components/tabs/TradingTab'));
+const LeaderboardTab = lazy(() => import('./components/tabs/LeaderboardTab'));
+const CommunityTab = lazy(() => import('./components/tabs/CommunityTab'));
+const SettingsTab = lazy(() => import('./components/tabs/SettingsTab'));
+const QuantumAgentOverlay = lazy(() => import('./components/QuantumAgentOverlay'));
+
+const LoadingFallback = () => (
+  <div className="flex flex-col items-center justify-center p-20 animate-pulse">
+    <RefreshCcw className="w-12 h-12 text-orange-500 animate-spin mb-4" />
+    <p className="text-xs font-mono text-white/20 uppercase tracking-[0.3em]">Quantum Feed Calibrating...</p>
+  </div>
+);
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
@@ -157,7 +166,11 @@ export default function App() {
         setLoadingMessage("DETECTING GEOLOCATION...");
         let location = null;
         try {
-          const geoResponse = await fetch('https://ipapi.co/json/');
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
+          
+          const geoResponse = await fetch('https://ipapi.co/json/', { signal: controller.signal });
+          clearTimeout(timeoutId);
           const geoData = await geoResponse.json();
           location = {
             country: geoData.country_name || 'Unknown',
@@ -166,7 +179,7 @@ export default function App() {
             ip: geoData.ip || 'Unknown'
           };
         } catch (e) {
-          console.warn("Geolocation fetch failed", e);
+          console.warn("Geolocation fetch failed or timed out", e);
         }
 
         setLoadingMessage("AUTHENTICATING WITH QUANTUM...");

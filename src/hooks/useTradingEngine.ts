@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { APP_CONFIG } from '../config';
-import { Position, MarketData, Candle, ModeType, TradeMode, Trade } from '../engine/types';
+import { Position, MarketData, ModeType, Trade, Candle } from '../engine/types';
+import { TradingMode } from '../types';
 
 export function useTradingEngine(
   user: any, 
   mode: ModeType, 
-  strategy: TradeMode, 
+  strategy: TradingMode, 
   isTrading: boolean, 
   baseTradeAmount: number = 100,
   selectedPairGlobal: string = 'BTC/USDT'
@@ -16,6 +17,8 @@ export function useTradingEngine(
   const [marketData, setMarketData] = useState<MarketData | null>(null);
   const [tradesCount, setTradesCount] = useState(0);
   const [totalPnL, setTotalPnL] = useState(0);
+  const [tradeHistory, setTradeHistory] = useState<Trade[]>([]);
+  const [liveTrades, setLiveTrades] = useState<Trade[]>([]);
 
   // 1. Sync local trading status to DB so server can pick it up
   useEffect(() => {
@@ -30,13 +33,14 @@ export function useTradingEngine(
 
       // If we just started trading, ensure a 'Running' trade exists in DB for the server to process
       if (isTrading) {
-        supabase.from('trades').select('*').eq('uid', user.uid).eq('status', 'Running').then(({ data }) => {
-           if (!data || data.length === 0) {
-             supabase.from('trades').upsert({
+        const checkAndStartTrade = async () => {
+          const { data } = await supabase.from('trades').select('*').eq('uid', user.uid).eq('status', 'Running');
+          if (!data || data.length === 0) {
+            await supabase.from('trades').upsert({
                 id: `bk_${Date.now()}_${user.uid}`,
                 uid: user.uid,
                 type: Math.random() > 0.5 ? 'BUY' : 'SELL',
-                pair: 'BTC/USDT',
+                pair: selectedPairGlobal,
                 trade_mode: strategy,
                 entry_price: marketData?.price || 64000,
                 size: 0.1, // Default lot
@@ -44,12 +48,13 @@ export function useTradingEngine(
                 mode_type: mode,
                 status: "Running",
                 created_at: new Date().toISOString()
-             }).then();
-           }
-        });
+            });
+          }
+        };
+        checkAndStartTrade();
       }
     }
-  }, [isTrading, user?.uid, baseTradeAmount, strategy, mode]);
+  }, [isTrading, user?.uid, baseTradeAmount, strategy, mode, selectedPairGlobal]);
 
   // 2. Real-time Market Data via Binance API
   useEffect(() => {
@@ -107,44 +112,49 @@ export function useTradingEngine(
   useEffect(() => {
     if (!user?.uid) return;
 
-    const fetchCurrentState = async () => {
+    const fetchAllTradingData = async () => {
       // Get all-time counts and PnL
-      const { data: allTrades } = await supabase.from('trades').select('pnl').eq('uid', user.uid).eq('status', 'Completed');
+      const { data: allTrades } = await supabase.from('trades').select('*').eq('uid', user.uid).eq('mode_type', mode);
+      
       if (allTrades) {
-         setTradesCount(allTrades.length);
-         setTotalPnL(allTrades.reduce((acc, t) => acc + (t.pnl || 0), 0));
-      }
+         const completed = allTrades.filter(t => t.status === 'Completed').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+         const running = allTrades.filter(t => t.status === 'Running');
+         
+         setTradeHistory(completed.slice(0, 150));
+         setLiveTrades(running);
+         setTradesCount(completed.length);
+         setTotalPnL(completed.reduce((acc, t) => acc + (t.pnl || 0), 0));
 
-      // Get current running trade
-      const { data: running } = await supabase.from('trades').select('*').eq('uid', user.uid).eq('status', 'Running').single();
-      if (running) {
-        setCurrentPosition({
-          id: running.id,
-          type: running.type as any,
-          entryPrice: running.entry_price,
-          size: running.size,
-          startTime: new Date(running.created_at).getTime(),
-          mode: running.trade_mode as any,
-          modeType: running.mode_type as any
-        });
-      } else {
-        setCurrentPosition(null);
+         if (running.length > 0) {
+           const first = running[0];
+           setCurrentPosition({
+             id: first.id,
+             type: first.type as any,
+             entryPrice: first.entry_price,
+             size: first.size,
+             startTime: new Date(first.created_at).getTime(),
+             mode: first.trade_mode as any,
+             modeType: first.mode_type as any
+           });
+         } else {
+           setCurrentPosition(null);
+         }
       }
     };
 
-    fetchCurrentState();
+    fetchAllTradingData();
 
     const channel = supabase
-      .channel('engine_sync')
+      .channel(`engine_sync_${user.uid}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'trades', filter: `uid=eq.${user.uid}` }, () => {
-        fetchCurrentState();
+        fetchAllTradingData();
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.uid]);
+  }, [user?.uid, mode]);
 
-  return { marketData, currentPosition, tradesCount, totalPnL, currentLotSize };
+  return { marketData, currentPosition, tradesCount, totalPnL, currentLotSize, tradeHistory, liveTrades };
 }

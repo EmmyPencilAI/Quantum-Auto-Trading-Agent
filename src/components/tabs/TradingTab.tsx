@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { ethers } from 'ethers';
 import HFTTradingView from '../HFTTradingView';
 import { useTradingEngine } from '../../hooks/useTradingEngine';
+import { useNetworkQuality } from '../../hooks/useNetworkQuality';
 
 // Mock ABI for the trading contract
 const TRADING_ABI = [
@@ -41,14 +42,17 @@ export default function TradingTab({
   selectedStrategyGlobal, setSelectedStrategyGlobal,
   tradeAmountGlobal, setTradeAmountGlobal
 }: TradingTabProps) {
-  const [liveUpdates, setLiveUpdates] = useState<LiveTradeUpdate[]>([]);
-  const [tradeHistory, setTradeHistory] = useState<Trade[]>([]);
+  const network = useNetworkQuality();
   const [demoBalance, setDemoBalance] = useState<number>(0);
   const [floatingPnl, setFloatingPnl] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isBlockchainSyncing, setIsBlockchainSyncing] = useState(false);
   const [tickerPrices, setTickerPrices] = useState<Record<string, string>>({});
+  const [tradingLogs, setTradingLogs] = useState<{ msg: string, time: string, type: 'info' | 'trade' | 'profit' | 'loss' }[]>([
+    { msg: 'Quantum Autobot Alpha Engine Warm-up...', time: new Date().toLocaleTimeString([], { hour12: false }), type: 'info' }
+  ]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch all ticker prices
   useEffect(() => {
@@ -137,82 +141,15 @@ export default function TradingTab({
     };
   }, [user]);
 
-  // Fetch Live Updates
-  useEffect(() => {
-    if (!user) return;
-
-    const fetchLiveUpdates = async () => {
-      const { data } = await supabase
-        .from('trades')
-        .select('*')
-        .eq('uid', user.uid)
-        .eq('mode_type', mode)
-        .eq('status', 'Running');
-      
-      if (data) {
-        const updates = data as any[];
-        setLiveUpdates(updates.map(u => ({
-          ...u,
-          floating_pnl: u.pnl,
-          updated_at: u.created_at
-        })));
-        if (updates.length > 0) {
-          setIsTrading(true);
-          const totalPnl = updates.reduce((acc, curr) => acc + (curr.pnl || 0), 0);
-          setFloatingPnl(totalPnl);
-        } else {
-          setIsTrading(false);
-          setFloatingPnl(0);
-        }
-      }
-    };
-    fetchLiveUpdates();
-
-    const channel = supabase
-      .channel('live_updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'trades', filter: `uid=eq.${user.uid}` }, () => {
-        fetchLiveUpdates();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, mode]);
-
-  // Fetch Trade History
-  useEffect(() => {
-    if (!user) return;
-
-    const fetchHistory = async () => {
-      const { data } = await supabase
-        .from('trades')
-        .select('*')
-        .eq('uid', user.uid)
-        .eq('mode_type', mode)
-        .eq('status', 'Completed')
-        .order('created_at', { ascending: false })
-        .limit(150);
-      
-      if (data) {
-        setTradeHistory(data as Trade[]);
-      }
-    };
-    fetchHistory();
-
-    const channel = supabase
-      .channel('trade_history')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'trades', filter: `uid=eq.${user.uid}` }, () => {
-        fetchHistory();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, mode]);
-
-  const { marketData, currentPosition, tradesCount, totalPnL, currentLotSize } = useTradingEngine(user, mode, selectedStrategy, isTrading, tradeAmount, selectedPair);
+  const { 
+    marketData, 
+    currentPosition, 
+    tradesCount, 
+    totalPnL, 
+    currentLotSize,
+    tradeHistory,
+    liveTrades 
+  } = useTradingEngine(user, mode, selectedStrategy, isTrading, tradeAmount, selectedPair);
 
   // Timer for active trade
   useEffect(() => {
@@ -251,6 +188,18 @@ export default function TradingTab({
 
   // Sync floating PnL and trade logs from engine
   useEffect(() => {
+    if (isTrading && mode === 'real' && currentPosition) {
+       // Real mode logic: floating pnl is derived from market price vs entry
+       if (marketData) {
+         const pnl = currentPosition.type === 'LONG' 
+           ? (marketData.price - currentPosition.entryPrice) * currentPosition.size * 10
+           : (currentPosition.entryPrice - marketData.price) * currentPosition.size * 10;
+         setFloatingPnl(pnl);
+       }
+    }
+  }, [currentPosition, marketData, isTrading, mode]);
+
+  useEffect(() => {
     if (currentPosition) {
       const timestamp = new Date(currentPosition.startTime).toLocaleTimeString([], { hour12: false });
       const msg = `${currentPosition.type} order executed | Lot: ${currentPosition.size.toFixed(3)} | Amount: $${tradeAmount}`;
@@ -266,6 +215,11 @@ export default function TradingTab({
     
     if (!isOnline) {
       alert("You are offline. Please check your internet connection.");
+      return;
+    }
+
+    if (mode === 'real' && !network.isSafe) {
+      alert(`NETWORK UNSTABLE: Your current connection (Latency: ${network.rtt}ms, Speed: ${network.downlink}Mbps) is not stable enough for high-frequency real mode trading. Please find a more reliable connection to prevent execution errors.`);
       return;
     }
 
@@ -335,18 +289,24 @@ export default function TradingTab({
 
         <div className="flex items-center gap-6">
           <div className="flex flex-col items-end">
-             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-white/5">
+             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-white/5 group relative">
               {isOnline ? (
-                <Wifi className="w-3 h-3 text-green-500" />
+                <Wifi className={cn("w-3 h-3", network.isSafe ? "text-green-500" : "text-yellow-500")} />
               ) : (
                 <WifiOff className="w-3 h-3 text-red-500" />
               )}
               <span className={cn(
                 "text-[10px] font-bold uppercase tracking-widest",
-                isOnline ? "text-green-500" : "text-red-500"
+                !isOnline ? "text-red-500" : network.isSafe ? "text-green-500" : "text-yellow-500"
               )}>
-                {isOnline ? 'Direct Execution Active' : 'Execution Offline'}
+                {!isOnline ? 'Offline' : network.isSafe ? 'Secure Connection' : 'Unstable Feed'}
               </span>
+              
+              {/* Network Tooltip */}
+              <div className="absolute top-full right-0 mt-2 p-3 bg-black border border-white/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none min-w-[120px]">
+                <p className="text-[8px] font-bold text-white/40 uppercase mb-1">Latency: {network.rtt}ms</p>
+                <p className="text-[8px] font-bold text-white/40 uppercase">Speed: {network.downlink}Mbps</p>
+              </div>
             </div>
             {isTrading && (
               <p className="text-[8px] font-mono text-white/30 truncate mt-1">Current Lot: {currentLotSize.toFixed(3)}</p>
@@ -651,7 +611,7 @@ export default function TradingTab({
                         <td className="py-4 font-bold">{trade.pair || 'BTC/USDT'}</td>
                         <td className="py-4">
                           <span className="text-[10px] font-bold px-2 py-1 rounded bg-white/5 text-white/60 uppercase">
-                            {trade.trade_mode}
+                            {trade.mode}
                           </span>
                         </td>
                         <td className="py-4 font-mono text-xs">${trade.size * 1000}</td>

@@ -23,6 +23,7 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
   const [sendAmount, setSendAmount] = useState('');
   const [sendAddress, setSendAddress] = useState('');
   const [demoBalance, setDemoBalance] = useState<number>(0);
+  const [tickerPrices, setTickerPrices] = useState<Record<string, number>>({ 'BNB': 600, 'BTC': 65000, 'SOL': 140, 'ETH': 3500, 'XRP': 0.6, 'ADA': 0.5, 'SUI': 1.5 });
 
   useEffect(() => {
     if (!user || mode !== 'demo') return;
@@ -76,61 +77,73 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
       symbol: 'BNB', 
       name: 'Binance Coin', 
       balance: mode === 'demo' ? (demoBalance * 0.001).toFixed(4) : realBalance, 
-      value: mode === 'demo' ? `$${(demoBalance * 0.6).toLocaleString()}` : `$${(parseFloat(realBalance) * 600).toLocaleString()}`, 
+      value: mode === 'demo' 
+        ? `$${(demoBalance * 0.001 * (tickerPrices['BNB'] || 600)).toLocaleString(undefined, { maximumFractionDigits: 2 })}` 
+        : `$${(parseFloat(realBalance) * (tickerPrices['BNB'] || 600)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 
       icon: getLogo('BNB') 
     },
     { 
       symbol: 'USDT', 
-      name: 'Tether', 
+      name: 'Tether International', 
       balance: mode === 'demo' ? (demoBalance * 0.2).toFixed(2) : '0.00', 
       value: mode === 'demo' ? `$${(demoBalance * 0.2).toLocaleString()}` : '$0.00', 
       icon: getLogo('USDT') 
     },
     { 
-      symbol: 'USDC', 
-      name: 'USD Coin', 
-      balance: mode === 'demo' ? (demoBalance * 0.1).toFixed(2) : '0.00', 
-      value: mode === 'demo' ? `$${(demoBalance * 0.1).toLocaleString()}` : '$0.00', 
-      icon: getLogo('USDC') 
+      symbol: 'ETH', 
+      name: 'Ethereum', 
+      balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(4) : '0.0000', 
+      value: mode === 'demo' ? `$${(demoBalance * 0.05 * (tickerPrices['ETH'] || 3500)).toLocaleString()}` : '$0.00', 
+      icon: getLogo('ETH') 
     },
     { 
       symbol: 'SOL', 
       name: 'Solana', 
       balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(2) : '0.00', 
-      value: mode === 'demo' ? `$${(demoBalance * 0.05).toLocaleString()}` : '$0.00', 
+      value: mode === 'demo' ? `$${(demoBalance * 0.05 * (tickerPrices['SOL'] || 140)).toLocaleString()}` : '$0.00', 
       icon: getLogo('SOL') 
-    },
-    { 
-      symbol: 'ETH', 
-      name: 'Ethereum', 
-      balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(4) : '0.0000', 
-      value: mode === 'demo' ? `$${(demoBalance * 0.05).toLocaleString()}` : '$0.00', 
-      icon: getLogo('ETH') 
     },
     { 
       symbol: 'XRP', 
       name: 'Ripple', 
       balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(2) : '0.00', 
-      value: mode === 'demo' ? `$${(demoBalance * 0.05).toLocaleString()}` : '$0.00', 
+      value: mode === 'demo' ? `$${(demoBalance * 0.05 * (tickerPrices['XRP'] || 0.6)).toLocaleString()}` : '$0.00', 
       icon: getLogo('XRP') 
     },
     { 
-      symbol: 'ADA', 
-      name: 'Cardano', 
-      balance: mode === 'demo' ? (demoBalance * 0.03).toFixed(2) : '0.00', 
-      value: mode === 'demo' ? `$${(demoBalance * 0.03).toLocaleString()}` : '$0.00', 
-      icon: getLogo('ADA') 
-    },
-    { 
       symbol: 'SUI', 
-      name: 'Sui', 
+      name: 'Sui Network', 
       balance: mode === 'demo' ? (demoBalance * 0.02).toFixed(2) : '0.00', 
-      value: mode === 'demo' ? `$${(demoBalance * 0.02).toLocaleString()}` : '$0.00', 
+      value: mode === 'demo' ? `$${(demoBalance * 0.02 * (tickerPrices['SUI'] || 1.5)).toLocaleString()}` : '$0.00', 
       icon: getLogo('SUI') 
     },
   ];
 
   const [transactions, setTransactions] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchPrices = async () => {
+      try {
+        const symbols = ['BNBUSDT', 'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'ADAUSDT', 'SUIUSDT'];
+        const res = await fetch('https://api.binance.com/api/v3/ticker/price');
+        const data = await res.json();
+        const prices: Record<string, number> = {};
+        symbols.forEach(s => {
+          const match = data.find((t: any) => t.symbol === s);
+          if (match) {
+            const sym = s.replace('USDT', '');
+            prices[sym] = parseFloat(match.price);
+          }
+        });
+        setTickerPrices(prev => ({ ...prev, ...prices }));
+      } catch (e) {
+        console.warn("Wallet price fetch failed", e);
+      }
+    };
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 30000); // 30s
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
