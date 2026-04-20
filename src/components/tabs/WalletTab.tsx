@@ -32,6 +32,7 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
   const [sendAsset, setSendAsset] = useState('BNB');
   const [demoBalance, setDemoBalance] = useState<number>(0);
   const [isBlockchainSyncing, setIsBlockchainSyncing] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [tickerPrices, setTickerPrices] = useState<Record<string, number>>({ 'BNB': 600, 'BTC': 65000, 'SOL': 140, 'ETH': 3500, 'XRP': 0.6, 'ADA': 0.5, 'SUI': 1.5, 'USDC': 1, 'USDT': 1 });
 
@@ -181,34 +182,51 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
     if (!user) return;
 
     const fetchTransactions = async () => {
-      const { data } = await supabase
-        .from('trades')
-        .select('*')
-        .eq('uid', user.uid)
-        .eq('mode_type', mode)
-        .order('created_at', { ascending: false })
-        .limit(100);
-      
-      if (data) {
-        const formatted = data.map((t: any) => {
-          const type = t.type.toLowerCase();
-          const isPositive = t.pnl >= 0 || type === 'received';
-          
-          let displayType = type;
-          if (type === 'buy' || type === 'sell') {
-            displayType = t.pnl >= 0 ? 'profit' : 'loss';
-          }
+      if (!user?.uid) return;
+      setIsLoadingHistory(true);
+      try {
+        const { data, error } = await supabase
+          .from('trades')
+          .select('*')
+          .eq('uid', user.uid)
+          .eq('mode_type', mode)
+          .order('created_at', { ascending: false })
+          .limit(100);
+        
+        if (error) throw error;
 
-          return {
-            id: t.id,
-            type: displayType,
-            amount: `${isPositive ? '+' : '-'}$${Math.abs(t.pnl || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
-            time: new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            to: t.pair,
-            from: type === 'received' ? 'External Wallet' : 'Quantum Engine'
-          };
-        });
-        setTransactions(formatted);
+        if (data) {
+          const formatted = data.map((t: any) => {
+            try {
+              const rawType = t.type || 'TRADE';
+              const typeLower = rawType.toLowerCase();
+              const pnlValue = t.pnl || 0;
+              const isPositive = pnlValue >= 0 || typeLower === 'received' || typeLower === 'profit';
+              
+              let displayType = typeLower;
+              if (typeLower === 'buy' || typeLower === 'sell') {
+                displayType = pnlValue >= 0 ? 'profit' : 'loss';
+              }
+
+              return {
+                id: t.id,
+                type: displayType,
+                amount: `${isPositive ? '+' : '-'}$${Math.abs(pnlValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+                time: t.created_at ? new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--',
+                to: t.pair || '---',
+                from: typeLower === 'received' ? 'External Wallet' : 'Quantum Engine'
+              };
+            } catch (err) {
+              console.error("Mapping error for trade:", t, err);
+              return null;
+            }
+          }).filter(Boolean);
+          setTransactions(formatted);
+        }
+      } catch (err: any) {
+        console.error("History fetch failed:", err);
+      } finally {
+        setIsLoadingHistory(false);
       }
     };
 
@@ -256,25 +274,49 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
 
         alert(`CONVERSION SUCCESS: ${amount} ${convertFrom} swapped for ${((amount * fromPrice) / toPrice).toFixed(4)} ${convertTo}`);
       } else {
+        setIsConverting(true);
         let pObj = (window as any).ethereum || web3auth.provider;
         if (!pObj && web3auth.status === 'ready') {
           try { pObj = await web3auth.connect(); } catch (e) { console.warn("Auto-connect failed", e); }
         }
         
         if (!pObj) {
-           alert("No crypto wallet detected. The Quantum Terminal is not yet authorized to sign transactions. Please ensure you are logged in via Google.");
+           alert("No crypto wallet detected. Please log in via Google to use your Quantum Wallet.");
            setIsConverting(false);
            return;
         }
-        const provider = new ethers.BrowserProvider(pObj);
-        const tx = await executeRealSwap(
-           provider,
-           convertFrom,
-           convertTo,
-           convertAmount,
-           user.wallet_address || ""
-        );
-        alert(`Real Swap Dispatching! Tx: ${tx.hash.slice(0,10)}...`);
+
+        try {
+          const provider = new ethers.BrowserProvider(pObj);
+          const tx = await executeRealSwap(
+             provider,
+             convertFrom,
+             convertTo,
+             convertAmount,
+             user.wallet_address || ""
+          );
+
+          // Log real conversion to Supabase so it shows in history
+          await supabase.from('trades').insert({
+            uid: user.uid,
+            type: 'CONVERT',
+            pair: `${convertFrom}/${convertTo}`,
+            trade_mode: 'Conservative',
+            entry_price: (tickerPrices[convertFrom] || 1) / (tickerPrices[convertTo] || 1),
+            size: amount,
+            pnl: 0,
+            mode_type: 'real',
+            status: 'Completed',
+            created_at: new Date().toISOString()
+          });
+
+          alert(`Quantum Swap Dispatched! Transaction Hash: ${tx.hash}`);
+          setShowConvert(false);
+          setConvertAmount('');
+        } catch (swapErr: any) {
+          console.error("Swap execution error:", swapErr);
+          alert(`Swap Failed: ${swapErr.message || "Unknown error occurred during interaction with the DEX."}`);
+        }
       }
       setShowConvert(false);
       setConvertAmount('');
@@ -688,7 +730,18 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
             <button className="text-orange-500 text-xs font-display hover:underline uppercase tracking-widest">History</button>
           </div>
           <div className="space-y-2">
-            {transactions.map((tx, i) => (
+            {isLoadingHistory && transactions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-20">
+                <RefreshCcw className="w-8 h-8 animate-spin" />
+                <p className="text-[10px] font-mono uppercase tracking-[0.3em]">Quantum Sync in progress...</p>
+              </div>
+            ) : transactions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-2 opacity-10">
+                 <History className="w-8 h-8" />
+                 <p className="text-[10px] font-mono uppercase tracking-[0.3em]">No records found</p>
+              </div>
+            ) : (
+              transactions.map((tx, i) => (
               <div key={i} className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between hover:bg-white/[0.05] transition-all group cursor-pointer">
                 <div className="flex items-center gap-4">
                   <div className={cn(
@@ -711,7 +764,8 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
                   <p className="text-[10px] opacity-40 uppercase tracking-widest">{tx.time}</p>
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
