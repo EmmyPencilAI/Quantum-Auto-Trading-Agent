@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Wallet, 
@@ -66,7 +66,8 @@ export default function App() {
   const [selectedStrategyGlobal, setSelectedStrategyGlobal] = useState<TradingMode>("Aggressive");
   const [tradeAmountGlobal, setTradeAmountGlobal] = useState<number>(100);
 
-  // Poll for real balance
+  // Poll for real balance and detect inbound transfers
+  const lastBalanceRef = useRef<number>(0);
   useEffect(() => {
     if (!user?.wallet_address || !isLoggedIn) return;
 
@@ -74,7 +75,29 @@ export default function App() {
       try {
         const provider = new ethers.JsonRpcProvider(APP_CONFIG.BNB_CHAIN.RPC_URL);
         const bal = await provider.getBalance(user.wallet_address);
-        setRealBalance(ethers.formatEther(bal));
+        const balString = ethers.formatEther(bal);
+        const balNum = parseFloat(balString);
+        
+        setRealBalance(balString);
+
+        // Detect significant inbound transfer (e.g., +0.3 BNB)
+        if (lastBalanceRef.current > 0 && balNum > (lastBalanceRef.current + 0.001)) {
+          const received = balNum - lastBalanceRef.current;
+          await supabase.from('trades').insert({
+            uid: user.uid,
+            type: 'RECEIVED',
+            pair: 'BNB',
+            trade_mode: 'Conservative',
+            entry_price: 600,
+            size: received,
+            pnl: received * 600,
+            mode_type: 'real',
+            status: 'Completed',
+            created_at: new Date().toISOString()
+          });
+        }
+        
+        lastBalanceRef.current = balNum;
       } catch (e) {
         console.warn("Failed to fetch BNB balance", e);
       }

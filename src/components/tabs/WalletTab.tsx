@@ -7,6 +7,7 @@ import { User, ModeType } from '../../types';
 import { APP_CONFIG } from '../../config';
 import { supabase } from '../../lib/supabase';
 import { getSmartGasPrice } from '../../lib/blockchain';
+import { web3auth } from '../../lib/web3auth';
 import { executeRealSwap } from '../../lib/dex';
 import { ethers } from 'ethers';
 
@@ -172,14 +173,24 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
         .limit(100);
       
       if (data) {
-        const formatted = data.map((t: any) => ({
-          id: t.id,
-          type: t.type === 'SEND' ? 'send' : (t.pnl >= 0 ? 'profit' : 'loss'),
-          amount: t.type === 'SEND' ? `-$${Math.abs(t.pnl).toLocaleString()}` : `${t.pnl >= 0 ? '+' : ''}$${Math.abs(t.pnl).toLocaleString()}`,
-          time: new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          to: t.type === 'SEND' ? t.pair : (t.type === 'BUY' ? 'Long' : 'Short'),
-          from: t.type === 'SEND' ? 'Self' : 'Quantum Engine'
-        }));
+        const formatted = data.map((t: any) => {
+          const type = t.type.toLowerCase();
+          const isPositive = t.pnl >= 0 || type === 'received';
+          
+          let displayType = type;
+          if (type === 'buy' || type === 'sell') {
+            displayType = t.pnl >= 0 ? 'profit' : 'loss';
+          }
+
+          return {
+            id: t.id,
+            type: displayType,
+            amount: `${isPositive ? '+' : '-'}$${Math.abs(t.pnl || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+            time: new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            to: t.pair,
+            from: type === 'received' ? 'External Wallet' : 'Quantum Engine'
+          };
+        });
         setTransactions(formatted);
       }
     };
@@ -212,11 +223,6 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
         const toPrice = tickerPrices[convertTo] || 1;
         const valueInUsd = amount * fromPrice;
         
-        if (valueInUsd > currentBal && convertFrom !== 'USDT') {
-           // This is a bit simplified since everything is measured in Demo USD balance
-           // but we'll allow it for demo feel if they have enough "total" balance.
-        }
-
         // Just simulate a successful conversion log
         await supabase.from('trades').insert({
           uid: user.uid,
@@ -233,11 +239,12 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
 
         alert(`CONVERSION SUCCESS: ${amount} ${convertFrom} swapped for ${((amount * fromPrice) / toPrice).toFixed(4)} ${convertTo}`);
       } else {
-        if (!(window as any).ethereum) {
-           alert("No crypto wallet detected.");
+        const providerObj = (window as any).ethereum || web3auth.provider;
+        if (!providerObj) {
+           alert("No crypto wallet detected. Please ensure you are logged in.");
            return;
         }
-        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        const provider = new ethers.BrowserProvider(providerObj);
         const tx = await executeRealSwap(
            provider,
            convertFrom,
@@ -263,16 +270,32 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
       const amount = parseFloat(sendAmount);
       
       if (mode === 'real') {
-        if (!(window as any).ethereum) {
-           alert("No crypto wallet detected.");
+        const providerObj = (window as any).ethereum || web3auth.provider;
+        if (!providerObj) {
+           alert("No crypto wallet detected. Please ensure you are logged in.");
            return;
         }
-        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        const provider = new ethers.BrowserProvider(providerObj);
         const signer = await provider.getSigner();
         const tx = await signer.sendTransaction({
           to: sendAddress,
           value: ethers.parseEther(sendAmount)
         });
+        
+        // Log real transaction to Supabase so it shows in history
+        await supabase.from('trades').insert({
+          uid: user.uid,
+          type: 'SEND',
+          pair: 'BNB',
+          trade_mode: 'Conservative',
+          entry_price: tickerPrices['BNB'] || 600,
+          size: amount,
+          pnl: -(amount * (tickerPrices['BNB'] || 600)),
+          mode_type: 'real',
+          status: 'Completed',
+          created_at: new Date().toISOString()
+        });
+
         alert(`Real Transaction Dispatching! Tx: ${tx.hash.slice(0,10)}...`);
       } else {
         const { data: wallet } = await supabase.from('demo_wallets').select('demo_balance').eq('id', user.uid).single();
