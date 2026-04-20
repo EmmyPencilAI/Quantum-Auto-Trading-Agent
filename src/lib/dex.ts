@@ -8,7 +8,7 @@ const ROUTERS: Record<string, string> = {
 };
 
 // Token Addresses (Dynamic based on Chain ID)
-const TOKEN_MAP: Record<string, Record<string, string>> = {
+export const TOKEN_MAP: Record<string, Record<string, string>> = {
   // Mainnet
   '0x38': {
     WBNB: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
@@ -33,16 +33,17 @@ const TOKEN_MAP: Record<string, Record<string, string>> = {
   }
 };
 
-const ROUTER_ABI = [
+export const ROUTER_ABI = [
   'function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)',
   'function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)',
   'function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)',
   'function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)'
 ];
 
-const ERC20_ABI = [
+export const ERC20_ABI = [
   'function approve(address spender, uint256 amount) external returns (bool)',
-  'function allowance(address owner, address spender) external view returns (uint256)'
+  'function allowance(address owner, address spender) external view returns (uint256)',
+  'function balanceOf(address account) external view returns (uint256)'
 ];
 
 export async function executeRealSwap(

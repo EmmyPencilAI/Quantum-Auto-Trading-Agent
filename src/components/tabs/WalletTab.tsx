@@ -8,7 +8,7 @@ import { APP_CONFIG } from '../../config';
 import { supabase } from '../../lib/supabase';
 import { getSmartGasPrice } from '../../lib/blockchain';
 import { web3auth } from '../../lib/web3auth';
-import { executeRealSwap } from '../../lib/dex';
+import { executeRealSwap, TOKEN_MAP, ERC20_ABI } from '../../lib/dex';
 import { ethers } from 'ethers';
 
 interface WalletTabProps {
@@ -35,6 +35,45 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [tickerPrices, setTickerPrices] = useState<Record<string, number>>({ 'BNB': 600, 'BTC': 65000, 'SOL': 140, 'ETH': 3500, 'XRP': 0.6, 'ADA': 0.5, 'SUI': 1.5, 'USDC': 1, 'USDT': 1 });
+  const [realTokenBalances, setRealTokenBalances] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!user?.wallet_address || mode !== 'real') return;
+
+    const fetchRealTokenBalances = async () => {
+      try {
+        const provider = new ethers.JsonRpcProvider(APP_CONFIG.BNB_CHAIN.RPC_URL);
+        const chainId = APP_CONFIG.BNB_CHAIN.CHAIN_ID;
+        const tokens = TOKEN_MAP[chainId];
+        
+        if (!tokens) return;
+
+        const newBalances: Record<string, string> = {};
+        
+        // Use Promise.all for speed
+        await Promise.all(Object.entries(tokens).map(async ([symbol, address]) => {
+          if (symbol === 'WBNB') return; // Skip WBNB as we show native BNB
+          
+          try {
+            const contract = new ethers.Contract(address, ERC20_ABI, provider);
+            const balance: bigint = await contract.balanceOf(user.wallet_address);
+            // Default to 18 decimals for most BSC tokens, but ideally check contract.decimals()
+            newBalances[symbol] = ethers.formatUnits(balance, 18);
+          } catch (tokenErr) {
+            console.warn(`Failed to fetch balance for ${symbol}:`, tokenErr);
+          }
+        }));
+
+        setRealTokenBalances(newBalances);
+      } catch (err) {
+        console.warn("Real token balances fetch failed", err);
+      }
+    };
+
+    fetchRealTokenBalances();
+    const interval = setInterval(fetchRealTokenBalances, 15000); // 15s
+    return () => clearInterval(interval);
+  }, [user?.wallet_address, mode]);
 
   useEffect(() => {
     if (!user || mode !== 'demo') return;
@@ -96,43 +135,43 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
     { 
       symbol: 'USDT', 
       name: 'Tether International', 
-      balance: mode === 'demo' ? (demoBalance * 0.2).toFixed(2) : '0.00', 
-      value: mode === 'demo' ? `$${(demoBalance * 0.2).toLocaleString()}` : '$0.00', 
+      balance: mode === 'demo' ? (demoBalance * 0.2).toFixed(2) : (realTokenBalances['USDT'] || '0.00'), 
+      value: mode === 'demo' ? `$${(demoBalance * 0.2).toLocaleString()}` : `$${(parseFloat(realTokenBalances['USDT'] || '0') * (tickerPrices['USDT'] || 1)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 
       icon: getLogo('USDT') 
     },
     { 
       symbol: 'USDC', 
       name: 'USD Coin', 
-      balance: mode === 'demo' ? (demoBalance * 0.1).toFixed(2) : '0.00', 
-      value: mode === 'demo' ? `$${(demoBalance * 0.1).toLocaleString()}` : '$0.00', 
+      balance: mode === 'demo' ? (demoBalance * 0.1).toFixed(2) : (realTokenBalances['USDC'] || '0.00'), 
+      value: mode === 'demo' ? `$${(demoBalance * 0.1).toLocaleString()}` : `$${(parseFloat(realTokenBalances['USDC'] || '0') * (tickerPrices['USDC'] || 1)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 
       icon: getLogo('USDC') 
     },
     { 
       symbol: 'ETH', 
       name: 'Ethereum', 
-      balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(4) : '0.0000', 
-      value: mode === 'demo' ? `$${(demoBalance * 0.05 * (tickerPrices['ETH'] || 3500)).toLocaleString()}` : '$0.00', 
+      balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(4) : (realTokenBalances['ETH'] || '0.0000'), 
+      value: mode === 'demo' ? `$${(demoBalance * 0.05 * (tickerPrices['ETH'] || 3500)).toLocaleString()}` : `$${(parseFloat(realTokenBalances['ETH'] || '0') * (tickerPrices['ETH'] || 3500)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 
       icon: getLogo('ETH') 
     },
     { 
       symbol: 'SOL', 
       name: 'Solana', 
-      balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(2) : '0.00', 
-      value: mode === 'demo' ? `$${(demoBalance * 0.05 * (tickerPrices['SOL'] || 140)).toLocaleString()}` : '$0.00', 
+      balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(2) : (realTokenBalances['SOL'] || '0.00'), 
+      value: mode === 'demo' ? `$${(demoBalance * 0.05 * (tickerPrices['SOL'] || 140)).toLocaleString()}` : `$${(parseFloat(realTokenBalances['SOL'] || '0') * (tickerPrices['SOL'] || 140)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 
       icon: getLogo('SOL') 
     },
     { 
       symbol: 'XRP', 
       name: 'Ripple', 
-      balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(2) : '0.00', 
-      value: mode === 'demo' ? `$${(demoBalance * 0.05 * (tickerPrices['XRP'] || 0.6)).toLocaleString()}` : '$0.00', 
+      balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(2) : (realTokenBalances['XRP'] || '0.00'), 
+      value: mode === 'demo' ? `$${(demoBalance * 0.05 * (tickerPrices['XRP'] || 0.6)).toLocaleString()}` : `$${(parseFloat(realTokenBalances['XRP'] || '0') * (tickerPrices['XRP'] || 0.6)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 
       icon: getLogo('XRP') 
     },
     { 
       symbol: 'SUI', 
       name: 'Sui Network', 
-      balance: mode === 'demo' ? (demoBalance * 0.02).toFixed(2) : '0.00', 
-      value: mode === 'demo' ? `$${(demoBalance * 0.02 * (tickerPrices['SUI'] || 1.5)).toLocaleString()}` : '$0.00', 
+      balance: mode === 'demo' ? (demoBalance * 0.02).toFixed(2) : (realTokenBalances['SUI'] || '0.00'), 
+      value: mode === 'demo' ? `$${(demoBalance * 0.02 * (tickerPrices['SUI'] || 1.5)).toLocaleString()}` : `$${(parseFloat(realTokenBalances['SUI'] || '0') * (tickerPrices['SUI'] || 1.5)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 
       icon: getLogo('SUI') 
     },
   ];
