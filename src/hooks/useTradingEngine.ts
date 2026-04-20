@@ -68,7 +68,7 @@ export function useTradingEngine(
         const price = parseFloat(priceData.price);
 
         // Fetch candles (1m interval)
-        const candleRes = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m&limit=30`);
+        const candleRes = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m&limit=80`);
         const candleData = await candleRes.json();
         const candles: Candle[] = candleData.map((c: any) => ({
           time: c[0],
@@ -120,7 +120,7 @@ export function useTradingEngine(
          const completed = allTrades.filter(t => t.status === 'Completed').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
          const running = allTrades.filter(t => t.status === 'Running');
          
-         setTradeHistory(completed.slice(0, 150));
+         setTradeHistory(completed.slice(0, 300));
          setLiveTrades(running);
          setTradesCount(completed.length);
          setTotalPnL(completed.reduce((acc, t) => acc + (t.pnl || 0), 0));

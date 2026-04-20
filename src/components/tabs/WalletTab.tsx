@@ -156,15 +156,16 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
         .eq('uid', user.uid)
         .eq('mode_type', mode)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(100);
       
       if (data) {
         const formatted = data.map((t: any) => ({
-          type: t.pnl >= 0 ? 'profit' : 'loss',
-          amount: `${t.pnl >= 0 ? '+' : ''}$${Math.abs(t.pnl).toLocaleString()}`,
+          id: t.id,
+          type: t.type === 'SEND' ? 'send' : (t.pnl >= 0 ? 'profit' : 'loss'),
+          amount: t.type === 'SEND' ? `-$${Math.abs(t.pnl).toLocaleString()}` : `${t.pnl >= 0 ? '+' : ''}$${Math.abs(t.pnl).toLocaleString()}`,
           time: new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          to: t.type === 'BUY' ? 'Long' : 'Short',
-          from: 'Quantum Engine'
+          to: t.type === 'SEND' ? t.pair : (t.type === 'BUY' ? 'Long' : 'Short'),
+          from: t.type === 'SEND' ? 'Self' : 'Quantum Engine'
         }));
         setTransactions(formatted);
       }
@@ -183,6 +184,64 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
       supabase.removeChannel(channel);
     };
   }, [user, mode]);
+
+  const handleSend = async () => {
+    if (!sendAmount || !sendAddress || !user) return;
+    
+    try {
+      const amount = parseFloat(sendAmount);
+      
+      if (mode === 'real') {
+        if (!(window as any).ethereum) {
+           alert("No crypto wallet detected.");
+           return;
+        }
+        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        const signer = await provider.getSigner();
+        const tx = await signer.sendTransaction({
+          to: sendAddress,
+          value: ethers.parseEther(sendAmount)
+        });
+        alert(`Real Transaction Dispatching! Tx: ${tx.hash.slice(0,10)}...`);
+      } else {
+        const { data: wallet } = await supabase.from('demo_wallets').select('demo_balance').eq('id', user.uid).single();
+        const currentBal = wallet?.demo_balance || 0;
+        const assetPrice = tickerPrices[sendAsset] || 1;
+        const totalValue = amount * assetPrice;
+
+        if (totalValue > currentBal) {
+          alert("Insufficient DEMO balance.");
+          return;
+        }
+
+        await supabase.from('demo_wallets').update({
+          demo_balance: currentBal - totalValue,
+          updated_at: new Date().toISOString()
+        }).eq('id', user.uid);
+
+        await supabase.from('trades').insert({
+          uid: user.uid,
+          type: 'SEND',
+          pair: sendAsset,
+          trade_mode: 'Conservative',
+          entry_price: assetPrice,
+          size: amount,
+          pnl: -totalValue,
+          mode_type: 'demo',
+          status: 'Completed',
+          created_at: new Date().toISOString()
+        });
+        
+        alert(`Demo Send Successful: ${amount} ${sendAsset}`);
+      }
+      setShowSend(false);
+      setSendAmount('');
+      setSendAddress('');
+    } catch (e: any) {
+      console.error("Transfer failed", e);
+      alert("Transfer Error: " + (e.message || "Unknown error"));
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -306,10 +365,7 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
                 Cancel
               </button>
               <button 
-                onClick={() => {
-                  alert(`Sending ${sendAmount} ${sendAsset} to ${sendAddress}`);
-                  setShowSend(false);
-                }}
+                onClick={handleSend}
                 className="flex-1 py-4 bg-orange-600 text-white rounded-2xl font-bold hover:bg-orange-700 transition-all"
               >
                 Confirm

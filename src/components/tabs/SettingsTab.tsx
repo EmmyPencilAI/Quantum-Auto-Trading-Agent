@@ -74,6 +74,28 @@ export default function SettingsTab({ user, setUser, mode, onLogout }: SettingsT
     }
   };
 
+  const handleBackup = async () => {
+    try {
+      if (!web3auth.provider) {
+        alert("Web3Auth provider not available. Please ensure you are logged in.");
+        return;
+      }
+      
+      const privateKey = await web3auth.provider.request({
+        method: "private_key",
+      });
+
+      if (privateKey) {
+        alert(`CRITICAL SECURITY INFO\n\nYour Secret Phrase (Private Key):\n${privateKey}\n\nWARNING: NEVER share this with anyone. Quantum Engine will NEVER ask for this key.`);
+      } else {
+        alert("Unable to fetch private key. This might be due to your login method configuration.");
+      }
+    } catch (error) {
+      console.error("Backup failed", error);
+      alert("Security Protocol failed to fetch key. Check console for details.");
+    }
+  };
+
   const handleUpdateProfile = async () => {
     if (!user) return;
     setIsSaving(true);
@@ -310,7 +332,7 @@ export default function SettingsTab({ user, setUser, mode, onLogout }: SettingsT
               </div>
             </div>
             <button 
-              onClick={() => alert("Launching Web3Auth Backup & Recovery Protocol...")}
+              onClick={handleBackup}
               className="px-6 py-2 bg-white/5 hover:bg-white/10 rounded-xl font-bold text-xs transition-all border border-white/10"
             >
               Manage

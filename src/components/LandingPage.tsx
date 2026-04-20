@@ -21,8 +21,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
   const steps = [
     { number: "01", title: "Connect Wallet", desc: "Sign in with your favorite social account to Quantum Autobot." },
     { number: "02", title: "Fund Account", desc: "Deposit BNB or USDT. Real mode requires living funds to operate." },
-    { number: "03", title: "Scale AI", desc: "Engine starts at 0.05 lot and scales aggressively with performance." },
-    { number: "04", title: "Live Execution", desc: "Watch high-frequency trades (up to 1600/day) in real-time." },
+    { number: "03", title: "Start Trading", desc: "Watch high-frequency trades (up to 1600/day) in real-time with AI scaling." },
   ];
 
   const tradingModes = [
@@ -66,10 +65,6 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
             animate={{ opacity: 1, scale: 1 }}
             className="mb-12 inline-block"
           >
-            <div className="mb-4 inline-flex items-center gap-2 px-3 py-1 bg-green-500/10 border border-green-500/30 rounded-full">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">v1.1.0 Alpha - Real-Time Sync Active</span>
-            </div>
             <img src="/logo.png" alt="Quantum Logo" className="w-32 h-32 mx-auto object-contain drop-shadow-[0_0_30px_rgba(249,115,22,0.3)]" referrerPolicy="no-referrer" />
           </motion.div>
 
