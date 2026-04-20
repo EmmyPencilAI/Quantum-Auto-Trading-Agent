@@ -7,6 +7,7 @@ import { User, ModeType } from '../../types';
 import { APP_CONFIG } from '../../config';
 import { supabase } from '../../lib/supabase';
 import { getSmartGasPrice } from '../../lib/blockchain';
+import { executeRealSwap } from '../../lib/dex';
 import { ethers } from 'ethers';
 
 interface WalletTabProps {
@@ -29,7 +30,7 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
   const [sendAddress, setSendAddress] = useState('');
   const [sendAsset, setSendAsset] = useState('BNB');
   const [demoBalance, setDemoBalance] = useState<number>(0);
-  const [tickerPrices, setTickerPrices] = useState<Record<string, number>>({ 'BNB': 600, 'BTC': 65000, 'SOL': 140, 'ETH': 3500, 'XRP': 0.6, 'ADA': 0.5, 'SUI': 1.5 });
+  const [tickerPrices, setTickerPrices] = useState<Record<string, number>>({ 'BNB': 600, 'BTC': 65000, 'SOL': 140, 'ETH': 3500, 'XRP': 0.6, 'ADA': 0.5, 'SUI': 1.5, 'USDC': 1, 'USDT': 1 });
 
   useEffect(() => {
     if (!user || mode !== 'demo') return;
@@ -96,6 +97,13 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
       icon: getLogo('USDT') 
     },
     { 
+      symbol: 'USDC', 
+      name: 'USD Coin', 
+      balance: mode === 'demo' ? (demoBalance * 0.1).toFixed(2) : '0.00', 
+      value: mode === 'demo' ? `$${(demoBalance * 0.1).toLocaleString()}` : '$0.00', 
+      icon: getLogo('USDC') 
+    },
+    { 
       symbol: 'ETH', 
       name: 'Ethereum', 
       balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(4) : '0.0000', 
@@ -130,7 +138,7 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
   useEffect(() => {
     const fetchPrices = async () => {
       try {
-        const symbols = ['BNBUSDT', 'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'ADAUSDT', 'SUIUSDT'];
+        const symbols = ['BNBUSDT', 'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'ADAUSDT', 'SUIUSDT', 'USDCUSDT'];
         const res = await fetch('https://api.binance.com/api/v3/ticker/price');
         const data = await res.json();
         const prices: Record<string, number> = {};
@@ -225,7 +233,19 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
 
         alert(`CONVERSION SUCCESS: ${amount} ${convertFrom} swapped for ${((amount * fromPrice) / toPrice).toFixed(4)} ${convertTo}`);
       } else {
-        alert("Real-mode swaps require interaction with the PancakeSwap Router. Please ensure your wallet has permission.");
+        if (!(window as any).ethereum) {
+           alert("No crypto wallet detected.");
+           return;
+        }
+        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        const tx = await executeRealSwap(
+           provider,
+           convertFrom,
+           convertTo,
+           convertAmount,
+           user.wallet_address || ""
+        );
+        alert(`Real Swap Dispatching! Tx: ${tx.hash.slice(0,10)}...`);
       }
       setShowConvert(false);
       setConvertAmount('');

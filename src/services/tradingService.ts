@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 
 // Simulation constants
 const TRADING_INTERVAL = 3000; // 3 seconds - Light speed execution for study
-const TREASURY_FEE_PERCENT = 30; // 30% goes to treasury, 70% to user
+const TREASURY_FEE_PERCENT = 50; // 50% goes to treasury, 50% to user
 
 export async function processBackgroundTrades() {
   if (!supabase) return;

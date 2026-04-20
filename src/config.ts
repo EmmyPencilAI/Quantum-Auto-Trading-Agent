@@ -49,7 +49,8 @@ export const APP_CONFIG = {
   SUPPORTED_ASSETS: ["BNB", "USDT", "USDC"],
   SUPPORTED_PAIRS: [
     "BTC/USDT", "ETH/USDT", "BNB/USDT", "SOL/USDT", "SUI/USDT",
-    "XRP/USDT", "ADA/USDT", "DOGE/USDT", "AVAX/USDT", "MATIC/USDT"
+    "XRP/USDT", "ADA/USDT", "DOGE/USDT", "AVAX/USDT", "MATIC/USDT",
+    "BTC/USDC", "ETH/USDC", "BNB/USDC"
   ],
   TRADING_MODES: ["Aggressive", "Momentum", "Scalping", "Conservative"],
 };
