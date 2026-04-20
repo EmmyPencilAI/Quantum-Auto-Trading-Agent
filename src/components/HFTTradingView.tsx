@@ -81,6 +81,22 @@ export default function HFTTradingView({ marketData, currentPosition }: HFTTradi
                   isBullish ? "bg-[#00ff9d]" : "bg-[#ff3b3b]"
                 )}
               />
+
+              {/* Execution Marker (BUY/SELL) */}
+              {(i === 10 || i === 25 || i === 40) && (
+                <div className="absolute inset-0 z-20 flex flex-col items-center">
+                  <div className={cn(
+                    "w-px h-full border-l border-dashed opacity-40",
+                    i % 2 === 0 ? "border-green-500" : "border-red-500"
+                  )} />
+                  <div className={cn(
+                    "absolute top-1/2 -translate-y-1/2 px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest shadow-lg",
+                    i % 2 === 0 ? "bg-green-500 text-black" : "bg-red-500 text-white"
+                  )}>
+                    {i % 2 === 0 ? 'BUY' : 'SELL'}
+                  </div>
+                </div>
+              )}
               
               {/* Active Trade Marker */}
               {i === candles.length - 1 && currentPosition && (

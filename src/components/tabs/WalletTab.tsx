@@ -22,6 +22,7 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
   const [showFund, setShowFund] = useState(false);
   const [sendAmount, setSendAmount] = useState('');
   const [sendAddress, setSendAddress] = useState('');
+  const [sendAsset, setSendAsset] = useState('BNB');
   const [demoBalance, setDemoBalance] = useState<number>(0);
   const [tickerPrices, setTickerPrices] = useState<Record<string, number>>({ 'BNB': 600, 'BTC': 65000, 'SOL': 140, 'ETH': 3500, 'XRP': 0.6, 'ADA': 0.5, 'SUI': 1.5 });
 
@@ -241,6 +242,20 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
             <h3 className="text-white font-display text-xl mb-6 uppercase tracking-tight">Send Assets</h3>
             <div className="space-y-4 mb-6">
               <div>
+                <label className="text-[10px] uppercase tracking-widest text-white/40 mb-2 block">Select Asset</label>
+                <select 
+                  value={sendAsset}
+                  onChange={(e) => setSendAsset(e.target.value)}
+                  className="w-full bg-[#111] border border-white/10 rounded-xl p-4 text-sm focus:outline-none focus:border-orange-500 transition-all font-bold cursor-pointer"
+                >
+                  {balances.map(b => (
+                    <option key={b.symbol} value={b.symbol} className="bg-[#111]">
+                      {b.symbol} - {b.name} ({b.balance})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="text-[10px] uppercase tracking-widest text-white/40 mb-2 block">Recipient Address</label>
                 <input 
                   type="text" 
@@ -292,7 +307,7 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
               </button>
               <button 
                 onClick={() => {
-                  alert(`Sending ${sendAmount} to ${sendAddress}`);
+                  alert(`Sending ${sendAmount} ${sendAsset} to ${sendAddress}`);
                   setShowSend(false);
                 }}
                 className="flex-1 py-4 bg-orange-600 text-white rounded-2xl font-bold hover:bg-orange-700 transition-all"

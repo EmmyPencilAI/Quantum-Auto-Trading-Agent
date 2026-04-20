@@ -23,13 +23,13 @@ export default function QuantumAgentOverlay({ user, mode }: QuantumAgentOverlayP
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastMilestoneRef = useRef<number>(0);
 
-  // Milestone Checker
+  // Milestone & Trade Alert Checker
   useEffect(() => {
     if (!user) return;
     
     const checkMilestone = async () => {
-      const { data } = await supabase.from('leaderboard').select('total_profit').eq('uid', user.uid).eq('mode_type', mode).single();
-      const profit = data?.total_profit || 0;
+      const { data: lead } = await supabase.from('leaderboard').select('total_profit').eq('uid', user.uid).eq('mode_type', mode).single();
+      const profit = lead?.total_profit || 0;
       
       if (profit > 1000 && profit > lastMilestoneRef.current + 500) {
         const milestone = quantumAgent.generateUserMilestone(user.username, profit, mode);
@@ -41,8 +41,24 @@ export default function QuantumAgentOverlay({ user, mode }: QuantumAgentOverlayP
       }
     };
 
+    // Real-time Trade Alert (Listening to completed trades)
+    const channel = supabase
+      .channel('trade_alerts')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trades', filter: `uid=eq.${user.uid}` }, (payload) => {
+        if (payload.new.status === 'Completed') {
+          const pnl = payload.new.pnl;
+          const msg = `[QUANTUM ALPHA] Trade Settled | Result: ${pnl > 0 ? 'PROFIT' : 'LOSS'} | PnL: ${pnl > 0 ? '+' : ''}$${pnl.toFixed(2)}`;
+          setAlerts(prev => [msg, ...prev].slice(0, 3));
+          setTimeout(() => setAlerts(prev => prev.filter(a => a !== msg)), 8000);
+        }
+      })
+      .subscribe();
+
     const interval = setInterval(checkMilestone, 30000); // Check every 30s
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, [user, mode]);
 
   useEffect(() => {

@@ -81,7 +81,7 @@ export default function App() {
     };
 
     fetchBal();
-    const interval = setInterval(fetchBal, 15000); // 15s poll
+    const interval = setInterval(fetchBal, 5000); // 5s poll for real-time feel
     return () => clearInterval(interval);
   }, [user?.wallet_address, isLoggedIn]);
 
