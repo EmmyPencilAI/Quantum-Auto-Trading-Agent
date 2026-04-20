@@ -31,6 +31,8 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
   const [sendAddress, setSendAddress] = useState('');
   const [sendAsset, setSendAsset] = useState('BNB');
   const [demoBalance, setDemoBalance] = useState<number>(0);
+  const [isBlockchainSyncing, setIsBlockchainSyncing] = useState(false);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [tickerPrices, setTickerPrices] = useState<Record<string, number>>({ 'BNB': 600, 'BTC': 65000, 'SOL': 140, 'ETH': 3500, 'XRP': 0.6, 'ADA': 0.5, 'SUI': 1.5, 'USDC': 1, 'USDT': 1 });
 
   useEffect(() => {
@@ -134,7 +136,22 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
     },
   ];
 
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const providerObj = (window as any).ethereum || web3auth.provider;
+  const hasWallet = !!providerObj;
+
+  const handleManualSync = async () => {
+    setIsBlockchainSyncing(true);
+    try {
+      if (web3auth.status !== 'connected' && mode === 'real') {
+        await web3auth.connect();
+      }
+      // fetchTransactions is local to the effect, I should move it or just ignore and rely on channel
+    } catch (e) {
+      console.warn("Manual sync failed", e);
+    } finally {
+      setIsBlockchainSyncing(false);
+    }
+  };
 
   useEffect(() => {
     const fetchPrices = async () => {
@@ -239,12 +256,17 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
 
         alert(`CONVERSION SUCCESS: ${amount} ${convertFrom} swapped for ${((amount * fromPrice) / toPrice).toFixed(4)} ${convertTo}`);
       } else {
-        const providerObj = (window as any).ethereum || web3auth.provider;
-        if (!providerObj) {
-           alert("No crypto wallet detected. Please ensure you are logged in.");
+        let pObj = (window as any).ethereum || web3auth.provider;
+        if (!pObj && web3auth.status === 'ready') {
+          try { pObj = await web3auth.connect(); } catch (e) { console.warn("Auto-connect failed", e); }
+        }
+        
+        if (!pObj) {
+           alert("No crypto wallet detected. The Quantum Terminal is not yet authorized to sign transactions. Please ensure you are logged in via Google.");
+           setIsConverting(false);
            return;
         }
-        const provider = new ethers.BrowserProvider(providerObj);
+        const provider = new ethers.BrowserProvider(pObj);
         const tx = await executeRealSwap(
            provider,
            convertFrom,
@@ -270,12 +292,16 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
       const amount = parseFloat(sendAmount);
       
       if (mode === 'real') {
-        const providerObj = (window as any).ethereum || web3auth.provider;
-        if (!providerObj) {
-           alert("No crypto wallet detected. Please ensure you are logged in.");
+        let pObj = providerObj;
+        if (!pObj && web3auth.status === 'ready') {
+          pObj = await web3auth.connect();
+        }
+        
+        if (!pObj) {
+           alert("No crypto wallet detected. Please ensure you are logged in via Google.");
            return;
         }
-        const provider = new ethers.BrowserProvider(providerObj);
+        const provider = new ethers.BrowserProvider(pObj);
         const signer = await provider.getSigner();
         const tx = await signer.sendTransaction({
           to: sendAddress,
@@ -361,9 +387,17 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
 
           <div className="mb-8">
             <p className="text-white/60 text-sm font-medium mb-1 uppercase tracking-widest">Total Balance</p>
-            <h2 className="text-4xl md:text-5xl font-display tracking-tighter">
-              {mode === 'demo' ? `$${demoBalance.toLocaleString()}` : `$${(parseFloat(realBalance) * 600).toLocaleString()}`}
-            </h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-4xl md:text-5xl font-display tracking-tighter">
+                {mode === 'demo' ? `$${demoBalance.toLocaleString()}` : `$${(parseFloat(realBalance) * (tickerPrices['BNB'] || 600)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+              </h2>
+              <button 
+                onClick={handleManualSync}
+                className={cn("p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all text-white/40 hover:text-white", isBlockchainSyncing && "animate-spin text-orange-500")}
+              >
+                <RefreshCcw className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">

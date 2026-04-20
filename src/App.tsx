@@ -66,10 +66,62 @@ export default function App() {
   const [selectedStrategyGlobal, setSelectedStrategyGlobal] = useState<TradingMode>("Aggressive");
   const [tradeAmountGlobal, setTradeAmountGlobal] = useState<number>(100);
 
-  // Poll for real balance and detect inbound transfers
+  // Poll for real balance and reconcile with history
+  const isReconcilingRef = useRef<boolean>(false);
   const lastBalanceRef = useRef<number>(0);
+
   useEffect(() => {
     if (!user?.wallet_address || !isLoggedIn) return;
+
+    const reconcileBalance = async (balNum: number) => {
+      if (isReconcilingRef.current) return;
+      isReconcilingRef.current = true;
+      
+      try {
+        // Fetch total logged RECEIVED/PROFIT vs SENT/LOSS
+        const { data: trades } = await supabase
+          .from('trades')
+          .select('pnl, type')
+          .eq('uid', user.uid)
+          .eq('mode_type', 'real')
+          .eq('status', 'Completed');
+
+        if (trades) {
+          // Calculate historical cumulative balance (in BNB equivalent roughly)
+          const totalReceived = trades.filter(t => t.type === 'RECEIVED').reduce((acc, t) => acc + (t.size || 0), 0);
+          const totalSent = trades.filter(t => t.type === 'SEND').reduce((acc, t) => acc + (t.size || 0), 0);
+          
+          // Account for net PnL from trading (approximate convert USDT back to BNB for reconciliation)
+          const netPnLUsdt = trades.filter(t => ['BUY', 'SELL', 'PROFIT', 'LOSS'].includes(t.type)).reduce((acc, t) => acc + (t.pnl || 0), 0);
+          const netPnLBNB = netPnLUsdt / 600;
+          
+          const recordedBal = totalReceived - totalSent + netPnLBNB;
+
+          // If current balance is significantly higher than what we recorded, log the difference as a deposit
+          if (balNum > recordedBal + 0.005) {
+            const diff = balNum - recordedBal;
+            console.log(`[QUANTUM] Balance reconciliation: Logging +${diff} BNB discrepancy as RECEIVED`);
+            
+            await supabase.from('trades').insert({
+              uid: user.uid,
+              type: 'RECEIVED',
+              pair: 'BNB',
+              trade_mode: 'Conservative',
+              entry_price: 600,
+              size: diff,
+              pnl: diff * 600,
+              mode_type: 'real',
+              status: 'Completed',
+              created_at: new Date().toISOString()
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("Reconciliation failed", e);
+      } finally {
+        isReconcilingRef.current = false;
+      }
+    };
 
     const fetchBal = async () => {
       try {
@@ -80,33 +132,20 @@ export default function App() {
         
         setRealBalance(balString);
 
-        // Detect significant inbound transfer (e.g., +0.3 BNB)
-        if (lastBalanceRef.current > 0 && balNum > (lastBalanceRef.current + 0.001)) {
-          const received = balNum - lastBalanceRef.current;
-          await supabase.from('trades').insert({
-            uid: user.uid,
-            type: 'RECEIVED',
-            pair: 'BNB',
-            trade_mode: 'Conservative',
-            entry_price: 600,
-            size: received,
-            pnl: received * 600,
-            mode_type: 'real',
-            status: 'Completed',
-            created_at: new Date().toISOString()
-          });
+        // Run reconciliation if balance changed or on first load
+        if (balNum !== lastBalanceRef.current) {
+          await reconcileBalance(balNum);
+          lastBalanceRef.current = balNum;
         }
-        
-        lastBalanceRef.current = balNum;
       } catch (e) {
         console.warn("Failed to fetch BNB balance", e);
       }
     };
 
     fetchBal();
-    const interval = setInterval(fetchBal, 5000); // 5s poll for real-time feel
+    const interval = setInterval(fetchBal, 10000); // 10s
     return () => clearInterval(interval);
-  }, [user?.wallet_address, isLoggedIn]);
+  }, [user?.wallet_address, isLoggedIn, user?.uid]);
 
   useEffect(() => {
     // Apply theme to body
