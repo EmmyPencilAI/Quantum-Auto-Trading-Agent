@@ -151,6 +151,8 @@ export default function TradingTab({
     liveTrades 
   } = useTradingEngine(user, mode, selectedStrategy, isTrading, tradeAmount, selectedPair);
 
+  const isSettling = !isTrading && liveTrades.length > 0;
+
   // Timer for active trade
   useEffect(() => {
     if (isTrading) {
@@ -179,7 +181,6 @@ export default function TradingTab({
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
       setElapsedTime(0);
-      setTradingLogs([]);
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -239,6 +240,7 @@ export default function TradingTab({
 
     try {
       setIsBlockchainSyncing(true);
+      setTradingLogs([]);
       setIsTrading(true);
     } catch (error) {
       console.error("Failed to start trade", error);
@@ -249,7 +251,15 @@ export default function TradingTab({
   };
 
   const stopTrading = async () => {
-    setIsTrading(false);
+    try {
+      setIsBlockchainSyncing(true);
+      setIsTrading(false);
+      setTradingLogs(prev => [{ msg: "STOP COMMAND ISSUED. QUANTUM ENGINE SETTLING POSITIONS...", time: new Date().toLocaleTimeString(), type: 'info' as const }, ...prev]);
+    } catch (error) {
+      console.error("Failed to stop trade", error);
+    } finally {
+      setIsBlockchainSyncing(false);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -419,18 +429,18 @@ export default function TradingTab({
 
             <button
               onClick={isTrading ? stopTrading : startTrading}
-              disabled={isBlockchainSyncing || !isOnline}
+              disabled={isBlockchainSyncing || isSettling || !isOnline}
               className={cn(
                 "w-full py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg",
                 isTrading 
                   ? "bg-red-600 hover:bg-red-700 shadow-red-600/20" 
-                  : "bg-orange-600 hover:bg-orange-700 shadow-orange-600/20",
+                  : isSettling ? "bg-white/10 text-white/40 cursor-wait" : "bg-orange-600 hover:bg-orange-700 shadow-orange-600/20",
                 (isBlockchainSyncing || !isOnline) && "opacity-50 cursor-not-allowed"
               )}
             >
-              {isBlockchainSyncing ? (
+              {isBlockchainSyncing || isSettling ? (
                 <>
-                  <RefreshCcw className="w-6 h-6 animate-spin" /> SYNCING...
+                  <RefreshCcw className="w-6 h-6 animate-spin" /> {isSettling ? 'PROTOCOL SETTLING...' : 'SYNCING...'}
                 </>
               ) : isTrading ? (
                 <>

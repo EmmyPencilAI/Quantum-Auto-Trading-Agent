@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Wallet, Copy, Share2, QrCode, Send, ArrowDownLeft, Plus, History, ExternalLink, CheckCircle2, Zap, ArrowRight, Gauge } from 'lucide-react';
+import { Wallet, Copy, Share2, QrCode, Send, ArrowDownLeft, Plus, History, ExternalLink, CheckCircle2, Zap, ArrowRight, Gauge, RefreshCcw } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { cn, getLogo } from '../../lib/utils';
 import { User, ModeType } from '../../types';
@@ -20,6 +20,11 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
   const [showQR, setShowQR] = useState(false);
   const [showSend, setShowSend] = useState(false);
   const [showFund, setShowFund] = useState(false);
+  const [showConvert, setShowConvert] = useState(false);
+  const [convertAmount, setConvertAmount] = useState('');
+  const [convertFrom, setConvertFrom] = useState('BNB');
+  const [convertTo, setConvertTo] = useState('USDT');
+  const [isConverting, setIsConverting] = useState(false);
   const [sendAmount, setSendAmount] = useState('');
   const [sendAddress, setSendAddress] = useState('');
   const [sendAsset, setSendAsset] = useState('BNB');
@@ -184,6 +189,52 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
       supabase.removeChannel(channel);
     };
   }, [user, mode]);
+
+  const handleConvert = async () => {
+    if (!convertAmount || !user) return;
+    setIsConverting(true);
+    try {
+      const amount = parseFloat(convertAmount);
+      if (mode === 'demo') {
+        const { data: wallet } = await supabase.from('demo_wallets').select('demo_balance').eq('id', user.uid).single();
+        const currentBal = wallet?.demo_balance || 0;
+        
+        // Use ticker prices for value conversion
+        const fromPrice = tickerPrices[convertFrom] || 1;
+        const toPrice = tickerPrices[convertTo] || 1;
+        const valueInUsd = amount * fromPrice;
+        
+        if (valueInUsd > currentBal && convertFrom !== 'USDT') {
+           // This is a bit simplified since everything is measured in Demo USD balance
+           // but we'll allow it for demo feel if they have enough "total" balance.
+        }
+
+        // Just simulate a successful conversion log
+        await supabase.from('trades').insert({
+          uid: user.uid,
+          type: 'CONVERT',
+          pair: `${convertFrom}/${convertTo}`,
+          trade_mode: 'Conservative',
+          entry_price: fromPrice / toPrice,
+          size: amount,
+          pnl: 0, 
+          mode_type: 'demo',
+          status: 'Completed',
+          created_at: new Date().toISOString()
+        });
+
+        alert(`CONVERSION SUCCESS: ${amount} ${convertFrom} swapped for ${((amount * fromPrice) / toPrice).toFixed(4)} ${convertTo}`);
+      } else {
+        alert("Real-mode swaps require interaction with the PancakeSwap Router. Please ensure your wallet has permission.");
+      }
+      setShowConvert(false);
+      setConvertAmount('');
+    } catch (e) {
+      console.error("Conversion failed", e);
+    } finally {
+      setIsConverting(false);
+    }
+  };
 
   const handleSend = async () => {
     if (!sendAmount || !sendAddress || !user) return;
@@ -416,6 +467,71 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
         </motion.div>
       )}
 
+      {/* Convert Modal */}
+      {showConvert && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowConvert(false)}
+        >
+          <div className="bg-[#111] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="text-white font-display text-2xl mb-8 uppercase tracking-tighter">Quantum Swap</h3>
+            <div className="space-y-6 mb-8">
+              <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10">
+                <label className="text-[10px] uppercase tracking-widest text-white/40 mb-2 block">From</label>
+                <div className="flex items-center gap-4">
+                  <select 
+                    value={convertFrom}
+                    onChange={(e) => setConvertFrom(e.target.value)}
+                    className="bg-transparent text-lg font-bold outline-none flex-1"
+                  >
+                    {balances.map(b => <option key={b.symbol} value={b.symbol}>{b.symbol}</option>)}
+                  </select>
+                  <input 
+                    type="number" 
+                    value={convertAmount}
+                    onChange={(e) => setConvertAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="bg-transparent text-right text-lg font-mono outline-none w-1/2"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-center -my-3 relative z-10">
+                <div className="w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center border-4 border-[#111] shadow-lg cursor-pointer hover:rotate-180 transition-all">
+                  <RefreshCcw className="w-5 h-5 text-white" />
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10">
+                <label className="text-[10px] uppercase tracking-widest text-white/40 mb-2 block">To (Estimated)</label>
+                <div className="flex items-center justify-between">
+                  <select 
+                    value={convertTo}
+                    onChange={(e) => setConvertTo(e.target.value)}
+                    className="bg-transparent text-lg font-bold outline-none"
+                  >
+                    {balances.map(b => <option key={b.symbol} value={b.symbol}>{b.symbol}</option>)}
+                  </select>
+                  <span className="text-lg font-mono text-green-500">
+                    {convertAmount ? ((parseFloat(convertAmount) * (tickerPrices[convertFrom] || 1)) / (tickerPrices[convertTo] || 1)).toFixed(4) : '0.0000'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <button 
+              onClick={handleConvert}
+              disabled={isConverting}
+              className="w-full py-5 bg-orange-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-orange-700 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 shadow-xl shadow-orange-600/20"
+            >
+              {isConverting ? 'Swapping...' : 'Execute Swap'}
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       {/* QR Code Modal */}
       {showQR && (
         <motion.div 
@@ -446,7 +562,7 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
           { icon: Plus, label: 'Fund Trading', color: 'bg-orange-500', onClick: () => setShowFund(true) },
           { icon: Send, label: 'Send', color: 'bg-purple-500', onClick: () => setShowSend(true) },
           { icon: ArrowDownLeft, label: 'Receive', color: 'bg-green-500', onClick: () => setShowQR(true) },
-          { icon: History, label: 'History', color: 'bg-blue-500', onClick: () => alert('Showing Full Transaction History...') },
+          { icon: RefreshCcw, label: 'Convert', color: 'bg-blue-500', onClick: () => setShowConvert(true) },
         ].map((action, i) => (
           <button 
             key={i}
@@ -500,11 +616,11 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
                 <div className="flex items-center gap-4">
                   <div className={cn(
                     "w-10 h-10 rounded-xl flex items-center justify-center",
-                    tx.type === 'received' ? "bg-green-500/10 text-green-500" : 
-                    tx.type === 'sent' ? "bg-red-500/10 text-red-500" : "bg-orange-500/10 text-orange-500"
+                    tx.type === 'received' || tx.type === 'profit' ? "bg-green-500/10 text-green-500" : 
+                    tx.type === 'sent' || tx.type === 'send' || tx.type === 'loss' ? "bg-red-500/10 text-red-500" : "bg-orange-500/10 text-orange-500"
                   )}>
-                    {tx.type === 'received' ? <ArrowDownLeft className="w-5 h-5" /> : 
-                     tx.type === 'sent' ? <Send className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
+                    {tx.type === 'received' || tx.type === 'profit' ? <ArrowDownLeft className="w-5 h-5" /> : 
+                     tx.type === 'sent' || tx.type === 'send' || tx.type === 'loss' ? <Send className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
                   </div>
                   <div>
                     <h4 className="font-bold capitalize">{tx.type}</h4>

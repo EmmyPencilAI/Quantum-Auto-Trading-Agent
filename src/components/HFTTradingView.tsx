@@ -30,13 +30,22 @@ export default function HFTTradingView({ marketData, currentPosition }: HFTTradi
     );
   }
 
-  const maxHigh = Math.max(...candles.map(c => c.high));
-  const minLow = Math.min(...candles.map(c => c.low));
+  const maxHigh = candles.length > 0 ? Math.max(...candles.map(c => c.high)) : (marketData.price + 10);
+  const minLow = candles.length > 0 ? Math.min(...candles.map(c => c.low)) : (marketData.price - 10);
   const range = (maxHigh - minLow) || 1;
 
   const getY = (price: number) => {
-    return ((maxHigh - price) / range) * 100;
+    const pos = ((maxHigh - price) / range) * 100;
+    return Math.max(0, Math.min(100, pos));
   };
+
+  const currentCandles = candles.length > 0 ? candles : [{
+    time: Date.now(),
+    open: marketData.price,
+    high: marketData.price + 2,
+    low: marketData.price - 2,
+    close: marketData.price + 1
+  }];
 
   return (
     <div className="relative h-96 w-full bg-[#050505] rounded-[2.5rem] border border-white/10 overflow-hidden group shadow-2xl">
@@ -56,7 +65,7 @@ export default function HFTTradingView({ marketData, currentPosition }: HFTTradi
 
       {/* Main Chart Stage */}
       <div className="relative h-full w-full flex items-end gap-[3px] p-8 pb-12">
-        {candles.map((candle, i) => {
+        {currentCandles.map((candle, i) => {
           const isBullish = candle.close >= candle.open;
           const bodyTop = getY(Math.max(candle.open, candle.close));
           const bodyBottom = getY(Math.min(candle.open, candle.close));
