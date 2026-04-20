@@ -52,13 +52,19 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
         
         // Use Promise.all for speed
         await Promise.all(Object.entries(tokens).map(async ([symbol, address]) => {
-          if (symbol === 'WBNB') return; // Skip WBNB as we show native BNB
+          if (symbol === 'WBNB') return; 
           
           try {
-            const contract = new ethers.Contract(address, ERC20_ABI, provider);
-            const balance: bigint = await contract.balanceOf(user.wallet_address);
-            // Default to 18 decimals for most BSC tokens, but ideally check contract.decimals()
-            newBalances[symbol] = ethers.formatUnits(balance, 18);
+            const abi = [
+              ...ERC20_ABI,
+              'function decimals() external view returns (uint8)'
+            ];
+            const contract = new ethers.Contract(address, abi, provider);
+            const [balance, dec]: [bigint, number] = await Promise.all([
+              contract.balanceOf(user.wallet_address),
+              contract.decimals().catch(() => 18)
+            ]);
+            newBalances[symbol] = ethers.formatUnits(balance, dec);
           } catch (tokenErr) {
             console.warn(`Failed to fetch balance for ${symbol}:`, tokenErr);
           }
@@ -654,6 +660,17 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
                     className="bg-transparent text-right text-lg font-mono outline-none w-1/2"
                   />
                 </div>
+                <div className="flex items-center justify-between mt-2">
+                   <p className="text-[10px] text-white/20 font-mono">
+                      ≈ ${convertAmount ? (parseFloat(convertAmount) * (tickerPrices[convertFrom] || 1)).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0.00'}
+                   </p>
+                   <button 
+                      onClick={() => setConvertAmount(balances.find(b => b.symbol === convertFrom)?.balance.replace(/,/g, '') || '0')}
+                      className="text-[10px] text-orange-500 font-black uppercase tracking-widest hover:underline"
+                   >
+                      Max Available
+                   </button>
+                </div>
               </div>
 
               <div className="flex justify-center -my-3 relative z-10">
@@ -686,6 +703,9 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
             >
               {isConverting ? 'Swapping...' : 'Execute Swap'}
             </button>
+            <p className="mt-4 text-[9px] text-white/30 text-center leading-relaxed italic">
+               Note: Swaps incur BNB gas fees. Testnet liquidity may be limited, potentially causing slippage between estimated and actual received amounts.
+            </p>
           </div>
         </motion.div>
       )}

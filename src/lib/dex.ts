@@ -73,13 +73,25 @@ export async function executeRealSwap(
   }
 
   const path = [fromAddress, toAddress];
-  const amountIn = ethers.parseUnits(amount, 18); // Default to 18 for BSC tokens
+  
+  // Dynamic decimal detection for 'from' asset
+  let decimals = 18;
+  if (fromSymbol !== 'BNB') {
+    try {
+      const tokenContract = new ethers.Contract(fromAddress, [...ERC20_ABI, 'function decimals() view returns (uint8)'], signer);
+      decimals = await tokenContract.decimals();
+    } catch (e) {
+      console.warn("Could not fetch decimals, defaulting to 18", e);
+    }
+  }
+
+  const amountIn = ethers.parseUnits(amount, decimals);
   
   try {
     if (fromSymbol === 'BNB') {
       console.log(`[DEX] Swapping BNB...`);
       return await router.swapExactETHForTokens(
-        0,
+        0, // amountOutMin (0 is risky on mainnet but often necessary on testnets with low liquidity)
         path,
         userAddress,
         deadline,

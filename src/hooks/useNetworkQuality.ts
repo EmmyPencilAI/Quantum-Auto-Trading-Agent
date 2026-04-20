@@ -22,8 +22,8 @@ export function useNetworkQuality() {
     const updateQuality = () => {
       if (connection) {
         const { downlink, rtt, effectiveType } = connection;
-        // Logic: Safe if RTT < 300 and downlink > 1Mbps
-        const isSafe = rtt < 300 && downlink > 1;
+        // Relaxed Logic: Safe if RTT < 600ms (was 300) and downlink > 0.5Mbps (was 1)
+        const isSafe = rtt < 600 && downlink > 0.5;
         setQuality({ downlink, rtt, effectiveType, isSafe });
       }
     };
