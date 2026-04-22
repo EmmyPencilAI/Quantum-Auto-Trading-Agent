@@ -3,11 +3,8 @@ import { ethers } from 'ethers';
 import { executeBuyTrade, executeSellTrade, validateTradeAmount, isValidAddress } from '../lib/contract';
 import { APP_CONFIG } from '../config';
 import { web3auth } from '../lib/web3auth';
+import { ROUTER_ABI, TOKEN_MAP } from '../lib/dex';
 
-/**
- * Execution Engine (HAND)
- * Handles real blockchain trade execution via TradingVault contract
- */
 export async function executeTrade(
   signal: TradeSignal,
   currentPosition: Position | null,
@@ -21,45 +18,24 @@ export async function executeTrade(
 ): Promise<{ success: boolean; transactionHash?: string; error?: string }> {
   const { action, lotSize } = signal;
 
-  // Validate inputs
-  if (!isValidAddress(callbacks.userAddress)) {
-    return { success: false, error: 'Invalid user address' };
-  }
+  if (!isValidAddress(callbacks.userAddress)) return { success: false, error: 'Invalid user address' };
+  if (!validateTradeAmount(lotSize.toString())) return { success: false, error: 'Invalid trade amount' };
 
-  if (!validateTradeAmount(lotSize.toString())) {
-    return { success: false, error: 'Invalid trade amount' };
-  }
-
-  // For demo mode, just simulate with callbacks
   if (callbacks.modeType === 'demo') {
-    if (action === "BUY" && !currentPosition) {
-      await callbacks.onOpen("LONG", lotSize);
-      return { success: true };
-    }
-
-    if (action === "SELL" && !currentPosition) {
-      await callbacks.onOpen("SHORT", lotSize);
-      return { success: true };
-    }
-
+    // Demo mode bypass
+    if (action === "BUY" && !currentPosition) { await callbacks.onOpen("LONG", lotSize); return { success: true }; }
+    if (action === "SELL" && !currentPosition) { await callbacks.onOpen("SHORT", lotSize); return { success: true }; }
+    if (action === "CLOSE" && currentPosition) { await callbacks.onClose(); return { success: true }; }
     if (action === "REVERSE" && currentPosition) {
       await callbacks.onClose();
-      const oppositeType = currentPosition.type === "LONG" ? "SHORT" : "LONG";
-      await callbacks.onOpen(oppositeType, lotSize);
+      await callbacks.onOpen(currentPosition.type === "LONG" ? "SHORT" : "LONG", lotSize);
       return { success: true };
     }
-
-    if (action === "CLOSE" && currentPosition) {
-      await callbacks.onClose();
-      return { success: true };
-    }
-
     return { success: false, error: 'Invalid trade action' };
   }
 
   // REAL MODE: Execute on blockchain
   try {
-    // Get signer from window.ethereum or web3auth
     let provider;
     if ((window as any).ethereum) {
       provider = new ethers.BrowserProvider((window as any).ethereum);
@@ -69,14 +45,12 @@ export async function executeTrade(
       return { success: false, error: 'No wallet provider available' };
     }
     const signer = await provider.getSigner();
-
-    // Determine token based on pair (assuming USDT/USDC pairs)
     const token = callbacks.pair.includes('/USDT') ? 'USDT' : 'USDC';
-    const amountIn = lotSize.toString(); // Convert to string for ethers parsing
+    const amountIn = lotSize.toString(); 
 
-    // Calculate minAmountOut with slippage (1% slippage tolerance)
-    // In production, we should fetch price from oracle or DEX router
-    const minAmountOut = '0'; // TODO: Calculate proper slippage protection
+    // Fetch dynamic slippage from chain
+    const slippageData = await getSlippageEstimate(callbacks.pair, amountIn, action === "BUY", provider);
+    const minAmountOut = slippageData.minOutWithSlippage;
 
     if (action === "BUY" && !currentPosition) {
       const receipt = await executeBuyTrade(signer, callbacks.pair, token, amountIn, minAmountOut);
@@ -91,62 +65,67 @@ export async function executeTrade(
     }
 
     if (action === "CLOSE" && currentPosition) {
-      // For closing, we need to execute opposite trade
-      // In a real implementation, we'd track position token amounts
       const receipt = currentPosition.type === 'LONG'
         ? await executeSellTrade(signer, callbacks.pair, token, amountIn, minAmountOut)
         : await executeBuyTrade(signer, callbacks.pair, token, amountIn, minAmountOut);
-
       await callbacks.onClose(receipt.hash);
       return { success: true, transactionHash: receipt.hash };
     }
 
     if (action === "REVERSE" && currentPosition) {
-      // Close current position
       const closeReceipt = currentPosition.type === 'LONG'
         ? await executeSellTrade(signer, callbacks.pair, token, amountIn, minAmountOut)
         : await executeBuyTrade(signer, callbacks.pair, token, amountIn, minAmountOut);
-
       await callbacks.onClose(closeReceipt.hash);
 
-      // Open opposite position
       const oppositeType = currentPosition.type === "LONG" ? "SHORT" : "LONG";
       const openReceipt = oppositeType === 'SHORT'
         ? await executeSellTrade(signer, callbacks.pair, token, amountIn, minAmountOut)
         : await executeBuyTrade(signer, callbacks.pair, token, amountIn, minAmountOut);
-
       await callbacks.onOpen(oppositeType, lotSize, openReceipt.hash);
       return { success: true, transactionHash: openReceipt.hash };
     }
 
-    return { success: false, error: 'Invalid trade action or state' };
+    return { success: false, error: 'Invalid trade action' };
   } catch (error: any) {
     console.error('Trade execution failed:', error);
     return { success: false, error: error.message || 'Transaction failed' };
   }
 }
 
-/**
- * Get estimated slippage for a trade
- */
 export async function getSlippageEstimate(
   pair: string,
   amountIn: string,
-  isBuy: boolean
+  isBuy: boolean,
+  provider: ethers.Provider
 ): Promise<{ expectedOut: string; minOutWithSlippage: string; slippagePercent: number }> {
   try {
-    // TODO: Implement using PancakeSwap router getAmountsOut
-    // For now, return default values
+    const chainId = APP_CONFIG.BNB_CHAIN.CHAIN_ID;
+    const routerAddress = chainId === '0x38' ? '0x10ED43C718714eb63d5aA57B78B54704E256024E' : '0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3';
+    const tokens = TOKEN_MAP[chainId] || TOKEN_MAP['0x38'];
+    
+    const router = new ethers.Contract(routerAddress, ROUTER_ABI, provider);
+    const tokenAddr = pair.includes('/USDT') ? tokens.USDT : tokens.USDC;
+    
+    const path = isBuy ? [tokens.WBNB, tokenAddr] : [tokenAddr, tokens.WBNB];
+    const amountInWei = ethers.parseEther(amountIn);
+
+    const amountsOut = await router.getAmountsOut(amountInWei, path);
+    const expectedOutWei = amountsOut[1];
+    
+    // 1% slippage calculation
+    const minOutWei = (expectedOutWei * 99n) / 100n;
+
     return {
-      expectedOut: amountIn,
-      minOutWithSlippage: (parseFloat(amountIn) * 0.99).toString(), // 1% slippage
+      expectedOut: ethers.formatEther(expectedOutWei),
+      minOutWithSlippage: ethers.formatEther(minOutWei),
       slippagePercent: 1.0
     };
   } catch (error) {
-    console.error('Slippage estimation failed:', error);
+    console.error('Slippage calculation failed, returning strict defaults:', error);
     return {
       expectedOut: amountIn,
-      minOutWithSlippage: (parseFloat(amountIn) * 0.95).toString(), // 5% max slippage
+      minOutWithSlippage: (parseFloat(amountIn) * 0.95).toString(),
       slippagePercent: 5.0
     };
   }
