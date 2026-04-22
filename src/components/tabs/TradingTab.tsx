@@ -9,6 +9,7 @@ import { ethers } from 'ethers';
 import HFTTradingView from '../HFTTradingView';
 import { useTradingEngine } from '../../hooks/useTradingEngine';
 import { useNetworkQuality } from '../../hooks/useNetworkQuality';
+import { getUserRealBalance } from '../../services/tradingService';
 
 // Mock ABI for the trading contract
 const TRADING_ABI = [
@@ -24,7 +25,7 @@ interface TradingTabProps {
   user: User | null;
   mode: ModeType;
   setMode: (mode: ModeType) => void;
-  realBalance?: string;
+  realBalance?: string; // Deprecated: use contract balance instead
   isTradingGlobal: boolean;
   setIsTradingGlobal: (val: boolean) => void;
   selectedPairGlobal: string;
@@ -43,7 +44,7 @@ export default function TradingTab({
   tradeAmountGlobal, setTradeAmountGlobal
 }: TradingTabProps) {
   const network = useNetworkQuality();
-  const [demoBalance, setDemoBalance] = useState<number>(0);
+  const [balance, setBalance] = useState<string>('0');
   const [floatingPnl, setFloatingPnl] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -110,35 +111,21 @@ export default function TradingTab({
     }
   }, [user]);
 
-  // Fetch Demo Balance
+  // Fetch real contract balance
   useEffect(() => {
-    if (!user) return;
-    
+    if (!user?.wallet_address) return;
     const fetchBalance = async () => {
-      const { data, error } = await supabase
-        .from('demo_wallets')
-        .select('*')
-        .eq('id', user.uid)
-        .single();
-      
-      if (data) {
-        setDemoBalance(data.demo_balance);
-      } else {
-        await supabase.from('demo_wallets').upsert({ id: user.uid, demo_balance: 10000, updated_at: new Date().toISOString() });
+      try {
+        const bal = await getUserRealBalance(user.wallet_address);
+        setBalance(bal);
+      } catch (error) {
+        console.error('Failed to fetch contract balance:', error);
+        setBalance('0');
       }
     };
     fetchBalance();
-
-    const channel = supabase
-      .channel('demo_wallet_trading')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'demo_wallets', filter: `id=eq.${user.uid}` }, (payload: any) => {
-        if (payload.new) setDemoBalance(payload.new.demo_balance);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const interval = setInterval(fetchBalance, 15000); // 15s
+    return () => clearInterval(interval);
   }, [user]);
 
   const { 
@@ -173,10 +160,6 @@ export default function TradingTab({
           setTradingLogs(prev => [{ msg, time: timestamp, type: 'info' as const }, ...prev].slice(0, 10));
         }
 
-        // Simulate floating PnL for demo mode
-        if (mode === 'demo') {
-          setFloatingPnl(prev => prev + (Math.random() - 0.48) * 2);
-        }
       }, 1000);
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -189,7 +172,7 @@ export default function TradingTab({
 
   // Sync floating PnL and trade logs from engine
   useEffect(() => {
-    if (isTrading && mode === 'real' && currentPosition) {
+    if (isTrading && currentPosition) {
        // Real mode logic: floating pnl is derived from market price vs entry
        if (marketData) {
          const pnl = currentPosition.type === 'LONG' 
@@ -198,7 +181,7 @@ export default function TradingTab({
          setFloatingPnl(pnl);
        }
     }
-  }, [currentPosition, marketData, isTrading, mode]);
+  }, [currentPosition, marketData, isTrading]);
 
   useEffect(() => {
     if (currentPosition) {
@@ -219,22 +202,15 @@ export default function TradingTab({
       return;
     }
 
-    if (mode === 'real' && !network.isSafe) {
+    if (!network.isSafe) {
       alert(`NETWORK UNSTABLE: Your current connection (Latency: ${network.rtt}ms, Speed: ${network.downlink}Mbps) is not stable enough for high-frequency real mode trading. Please find a more reliable connection to prevent execution errors.`);
       return;
     }
 
-    if (mode === 'real') {
-      // Use realBalance prop
-      const bal = parseFloat(realBalance);
-      if (bal <= 0) {
-        alert("REAL MODE INACTIVE: Insufficient Live Funds. Please deposit BNB or USDT to activate Quantum Hand.");
-        return;
-      }
-    }
-
-    if (mode === 'demo' && demoBalance < tradeAmount) {
-      alert("Insufficient demo balance!");
+    // Use contract balance
+    const bal = parseFloat(balance);
+    if (bal <= 0) {
+      alert("INSUFFICIENT FUNDS: Please deposit BNB or USDT to activate Quantum Hand.");
       return;
     }
 
@@ -273,28 +249,9 @@ export default function TradingTab({
       {/* Mode Switcher & Balance */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-[2.5rem] bg-white/[0.02] border border-white/5">
         <div className="flex items-center gap-2 p-1 bg-black rounded-2xl border border-white/5">
-          <button 
-            onClick={() => !isTrading && setMode('demo')}
-            disabled={isTrading}
-            className={cn(
-              "px-6 py-3 rounded-xl font-bold text-sm transition-all uppercase tracking-widest",
-              mode === 'demo' ? "bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)]" : "text-white/40 hover:text-white",
-              isTrading && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            Demo Trade
-          </button>
-          <button 
-            onClick={() => !isTrading && setMode('real')}
-            disabled={isTrading}
-            className={cn(
-              "px-6 py-3 rounded-xl font-bold text-sm transition-all uppercase tracking-widest",
-              mode === 'real' ? "bg-orange-600 text-white shadow-[0_0_20px_rgba(249,115,22,0.3)]" : "text-white/40 hover:text-white",
-              isTrading && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            Real Trade
-          </button>
+          <div className="px-6 py-3 rounded-xl font-bold text-sm uppercase tracking-widest bg-orange-600 text-white shadow-[0_0_20px_rgba(249,115,22,0.3)]">
+            REAL MODE
+          </div>
         </div>
 
         <div className="flex items-center gap-6">
@@ -326,7 +283,7 @@ export default function TradingTab({
           <div className="text-right">
             <p className="text-xs font-display text-white/40 uppercase tracking-widest mb-1">Available Balance</p>
             <h3 className="text-3xl font-display tracking-tight">
-              {mode === 'demo' ? `$${demoBalance.toLocaleString()}` : `$${(parseFloat(realBalance) * 600).toLocaleString()}`}
+              ${(parseFloat(balance) * 600).toLocaleString()}
             </h3>
           </div>
         </div>
@@ -453,14 +410,6 @@ export default function TradingTab({
               )}
             </button>
 
-            {mode === 'demo' && (
-              <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 flex items-start gap-3">
-                <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-                <p className="text-[10px] text-blue-500/70 leading-relaxed">
-                  You are currently in <strong>DEMO MODE</strong>. All trades are simulated and do not affect real assets. You can reset your demo balance in Settings.
-                </p>
-              </div>
-            )}
           </div>
         </div>
 
@@ -474,7 +423,7 @@ export default function TradingTab({
             {isTrading && (
               <div className={cn(
                 "absolute top-0 left-0 w-full h-1 animate-pulse",
-                mode === 'real' ? "bg-orange-600" : "bg-blue-600"
+                "bg-orange-600"
               )} />
             )}
             
@@ -483,7 +432,7 @@ export default function TradingTab({
                 <div className={cn(
                   "w-12 h-12 rounded-2xl flex items-center justify-center",
                   isTrading 
-                    ? mode === 'real' ? "bg-orange-600 animate-pulse" : "bg-blue-600 animate-pulse"
+                    ? "bg-orange-600 animate-pulse"
                     : "bg-white/5"
                 )}>
                   <Activity className="w-6 h-6 text-white" />
@@ -499,7 +448,7 @@ export default function TradingTab({
                   <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Elapsed Time</p>
                   <div className={cn(
                     "flex items-center gap-2 font-mono text-xl font-bold",
-                    mode === 'real' ? "text-orange-500" : "text-blue-500"
+                    "text-orange-500"
                   )}>
                     <Clock className="w-4 h-4" />
                     {formatTime(elapsedTime)}
@@ -543,16 +492,16 @@ export default function TradingTab({
             {isTrading && (
               <div className={cn(
                 "mt-8 p-6 rounded-3xl border",
-                mode === 'real' ? "bg-orange-600/5 border-orange-600/20" : "bg-blue-600/5 border-blue-600/20"
+                "bg-orange-600/5 border-orange-600/20"
               )}>
                 <div className="flex items-center justify-between mb-4">
                   <span className={cn(
                     "text-xs font-bold uppercase tracking-widest",
-                    mode === 'real' ? "text-orange-500" : "text-blue-500"
+                    "text-orange-500"
                   )}>Execution Feed</span>
                   <span className={cn(
                     "flex items-center gap-1 text-[10px] uppercase font-mono",
-                    mode === 'real' ? "text-orange-500/60" : "text-blue-500/60"
+                    "text-orange-500/60"
                   )}>
                     <RefreshCcw className="w-3 h-3 animate-spin" /> Live Updates
                   </span>
@@ -572,7 +521,7 @@ export default function TradingTab({
                         <span className="flex items-center gap-2">
                           <div className={cn(
                             "w-1.5 h-1.5 rounded-full",
-                            log.type === 'trade' ? "bg-orange-500 animate-pulse" : mode === 'real' ? "bg-orange-500/40" : "bg-blue-500/40"
+                            log.type === 'trade' ? "bg-orange-500 animate-pulse" : "bg-orange-500/40"
                           )} />
                           <span className={cn(log.type === 'trade' && "text-white font-bold")}>{log.msg}</span>
                         </span>
@@ -613,7 +562,7 @@ export default function TradingTab({
                 <thead>
                   <tr className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5">
                     <th className="pb-4 font-black">Pair</th>
-                    <th className="pb-4 font-black">Mode</th>
+                    <th className="pb-4 font-black">Strategy</th>
                     <th className="pb-4 font-black">Amount</th>
                     <th className="pb-4 font-black">Result</th>
                     <th className="pb-4 font-black">Time</th>

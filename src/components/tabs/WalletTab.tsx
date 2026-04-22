@@ -10,6 +10,7 @@ import { getSmartGasPrice } from '../../lib/blockchain';
 import { web3auth } from '../../lib/web3auth';
 import { executeRealSwap, TOKEN_MAP, ERC20_ABI } from '../../lib/dex';
 import { ethers } from 'ethers';
+import { getUserRealBalance } from '../../services/tradingService';
 
 interface WalletTabProps {
   user: User | null;
@@ -30,95 +31,71 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
   const [sendAmount, setSendAmount] = useState('');
   const [sendAddress, setSendAddress] = useState('');
   const [sendAsset, setSendAsset] = useState('BNB');
-  const [demoBalance, setDemoBalance] = useState<number>(0);
   const [isBlockchainSyncing, setIsBlockchainSyncing] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [tickerPrices, setTickerPrices] = useState<Record<string, number>>({ 'BNB': 600, 'BTC': 65000, 'SOL': 140, 'ETH': 3500, 'XRP': 0.6, 'ADA': 0.5, 'SUI': 1.5, 'USDC': 1, 'USDT': 1 });
   const [realTokenBalances, setRealTokenBalances] = useState<Record<string, string>>({});
+  const [contractBalance, setContractBalance] = useState<string>('0');
 
   useEffect(() => {
-    if (!user?.wallet_address || mode !== 'real') return;
+    if (!user?.wallet_address) return;
 
-    const fetchRealTokenBalances = async () => {
+    const fetchRealBalances = async () => {
       try {
         const provider = new ethers.JsonRpcProvider(APP_CONFIG.BNB_CHAIN.RPC_URL);
         const chainId = APP_CONFIG.BNB_CHAIN.CHAIN_ID;
         const tokens = TOKEN_MAP[chainId];
-        
+
         if (!tokens) return;
 
         const newBalances: Record<string, string> = {};
-        
+
         // Use Promise.all for speed
-        await Promise.all(Object.entries(tokens).map(async ([symbol, address]) => {
-          if (symbol === 'WBNB') return; 
-          
-          try {
-            const abi = [
-              ...ERC20_ABI,
-              'function decimals() external view returns (uint8)'
-            ];
-            const contract = new ethers.Contract(address, abi, provider);
-            const [balance, dec]: [bigint, number] = await Promise.all([
-              contract.balanceOf(user.wallet_address),
-              contract.decimals().catch(() => 18)
-            ]);
-            newBalances[symbol] = ethers.formatUnits(balance, dec);
-          } catch (tokenErr) {
-            console.warn(`Failed to fetch balance for ${symbol}:`, tokenErr);
-          }
-        }));
+        await Promise.all([
+          // Fetch user balance from TradingVault contract
+          (async () => {
+            try {
+              const balance = await getUserRealBalance(user.wallet_address);
+              setContractBalance(balance);
+            } catch (err) {
+              console.warn('Failed to fetch contract balance:', err);
+              setContractBalance('0');
+            }
+          })(),
+
+          // Fetch token balances
+          ...Object.entries(tokens).map(async ([symbol, address]) => {
+            if (symbol === 'WBNB') return;
+
+            try {
+              const abi = [
+                ...ERC20_ABI,
+                'function decimals() external view returns (uint8)'
+              ];
+              const contract = new ethers.Contract(address, abi, provider);
+              const [balance, dec]: [bigint, number] = await Promise.all([
+                contract.balanceOf(user.wallet_address),
+                contract.decimals().catch(() => 18)
+              ]);
+              newBalances[symbol] = ethers.formatUnits(balance, dec);
+            } catch (tokenErr) {
+              console.warn(`Failed to fetch balance for ${symbol}:`, tokenErr);
+            }
+          })
+        ]);
 
         setRealTokenBalances(newBalances);
       } catch (err) {
-        console.warn("Real token balances fetch failed", err);
+        console.warn("Real balances fetch failed", err);
       }
     };
 
-    fetchRealTokenBalances();
-    const interval = setInterval(fetchRealTokenBalances, 15000); // 15s
+    fetchRealBalances();
+    const interval = setInterval(fetchRealBalances, 15000); // 15s
     return () => clearInterval(interval);
-  }, [user?.wallet_address, mode]);
+  }, [user?.wallet_address]);
 
-  useEffect(() => {
-    if (!user || mode !== 'demo') return;
-
-    // Fetch initial balance
-    const fetchBalance = async () => {
-      const { data, error } = await supabase
-        .from('demo_wallets')
-        .select('demo_balance')
-        .eq('id', user.uid)
-        .single();
-      
-      if (data) {
-        setDemoBalance(data.demo_balance);
-      }
-    };
-    fetchBalance();
-
-    // Set up real-time subscription
-    const channel = supabase
-      .channel('demo_balance_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'demo_wallets',
-          filter: `id=eq.${user.uid}`
-        },
-        (payload) => {
-          setDemoBalance(payload.new.demo_balance);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, mode]);
 
   const handleCopy = () => {
     if (user?.wallet_address) {
@@ -129,56 +106,54 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
   };
 
   const balances = [
-    { 
-      symbol: 'BNB', 
-      name: 'Binance Coin', 
-      balance: mode === 'demo' ? (demoBalance * 0.001).toFixed(4) : realBalance, 
-      value: mode === 'demo' 
-        ? `$${(demoBalance * 0.001 * (tickerPrices['BNB'] || 600)).toLocaleString(undefined, { maximumFractionDigits: 2 })}` 
-        : `$${(parseFloat(realBalance) * (tickerPrices['BNB'] || 600)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 
-      icon: getLogo('BNB') 
+    {
+      symbol: 'BNB',
+      name: 'Binance Coin',
+      balance: parseFloat(contractBalance).toFixed(4),
+      value: `$${(parseFloat(contractBalance) * (tickerPrices['BNB'] || 600)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+      icon: getLogo('BNB')
     },
-    { 
-      symbol: 'USDT', 
-      name: 'Tether International', 
-      balance: mode === 'demo' ? (demoBalance * 0.2).toFixed(2) : (realTokenBalances['USDT'] || '0.00'), 
-      value: mode === 'demo' ? `$${(demoBalance * 0.2).toLocaleString()}` : `$${(parseFloat(realTokenBalances['USDT'] || '0') * (tickerPrices['USDT'] || 1)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 
-      icon: getLogo('USDT') 
+    {
+      symbol: 'USDT',
+      name: 'Tether International',
+      balance: realTokenBalances['USDT'] || '0.00',
+      value: `$${(parseFloat(realTokenBalances['USDT'] || '0') * (tickerPrices['USDT'] || 1)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+      icon: getLogo('USDT')
     },
-    { 
-      symbol: 'USDC', 
-      name: 'USD Coin', 
-      balance: mode === 'demo' ? (demoBalance * 0.1).toFixed(2) : (realTokenBalances['USDC'] || '0.00'), 
-      value: mode === 'demo' ? `$${(demoBalance * 0.1).toLocaleString()}` : `$${(parseFloat(realTokenBalances['USDC'] || '0') * (tickerPrices['USDC'] || 1)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 
-      icon: getLogo('USDC') 
+    {
+      symbol: 'USDC',
+      name: 'USD Coin',
+      balance: realTokenBalances['USDC'] || '0.00',
+      value: `$${(parseFloat(realTokenBalances['USDC'] || '0') * (tickerPrices['USDC'] || 1)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+      icon: getLogo('USDC')
     },
-    { 
-      symbol: 'ETH', 
-      name: 'Ethereum', 
-      balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(4) : (realTokenBalances['ETH'] || '0.0000'), 
-      value: mode === 'demo' ? `$${(demoBalance * 0.05 * (tickerPrices['ETH'] || 3500)).toLocaleString()}` : `$${(parseFloat(realTokenBalances['ETH'] || '0') * (tickerPrices['ETH'] || 3500)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 
-      icon: getLogo('ETH') 
+    {
+      symbol: 'ETH',
+      name: 'Ethereum',
+      balance: realTokenBalances['ETH'] || '0.0000',
+      value: `$${(parseFloat(realTokenBalances['ETH'] || '0') * (tickerPrices['ETH'] || 3500)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+      icon: getLogo('ETH')
     },
-    { 
-      symbol: 'SOL', 
-      name: 'Solana', 
-      balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(2) : (realTokenBalances['SOL'] || '0.00'), 
-      value: mode === 'demo' ? `$${(demoBalance * 0.05 * (tickerPrices['SOL'] || 140)).toLocaleString()}` : `$${(parseFloat(realTokenBalances['SOL'] || '0') * (tickerPrices['SOL'] || 140)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 
-      icon: getLogo('SOL') 
+    {
+      symbol: 'SOL',
+      name: 'Solana',
+      balance: realTokenBalances['SOL'] || '0.00',
+      value: `$${(parseFloat(realTokenBalances['SOL'] || '0') * (tickerPrices['SOL'] || 140)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+      icon: getLogo('SOL')
     },
-    { 
-      symbol: 'XRP', 
-      name: 'Ripple', 
-      balance: mode === 'demo' ? (demoBalance * 0.05).toFixed(2) : (realTokenBalances['XRP'] || '0.00'), 
-      value: mode === 'demo' ? `$${(demoBalance * 0.05 * (tickerPrices['XRP'] || 0.6)).toLocaleString()}` : `$${(parseFloat(realTokenBalances['XRP'] || '0') * (tickerPrices['XRP'] || 0.6)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 
-      icon: getLogo('XRP') 
+    {
+      symbol: 'XRP',
+      name: 'Ripple',
+      balance: realTokenBalances['XRP'] || '0.00',
+      value: `$${(parseFloat(realTokenBalances['XRP'] || '0') * (tickerPrices['XRP'] || 0.6)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+      icon: getLogo('XRP')
     },
-    { 
-      symbol: 'SUI', 
-      name: 'Sui Network', 
-      balance: mode === 'demo' ? (demoBalance * 0.02).toFixed(2) : (realTokenBalances['SUI'] || '0.00'), 
-      value: mode === 'demo' ? `$${(demoBalance * 0.02 * (tickerPrices['SUI'] || 1.5)).toLocaleString()}` : `$${(parseFloat(realTokenBalances['SUI'] || '0') * (tickerPrices['SUI'] || 1.5)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 
-      icon: getLogo('SUI') 
+    {
+      symbol: 'SUI',
+      name: 'Sui Network',
+      balance: realTokenBalances['SUI'] || '0.00',
+      value: `$${(parseFloat(realTokenBalances['SUI'] || '0') * (tickerPrices['SUI'] || 1.5)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+      icon: getLogo('SUI')
     },
   ];
 
@@ -188,7 +163,7 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
   const handleManualSync = async () => {
     setIsBlockchainSyncing(true);
     try {
-      if (web3auth.status !== 'connected' && mode === 'real') {
+      if (web3auth.status !== 'connected') {
         await web3auth.connect();
       }
       // fetchTransactions is local to the effect, I should move it or just ignore and rely on channel
@@ -234,7 +209,7 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
           .from('trades')
           .select('*')
           .eq('uid', user.uid)
-          .eq('mode_type', mode)
+          .eq('mode_type', 'real')
           .order('created_at', { ascending: false })
           .limit(100);
         
@@ -476,7 +451,7 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
             <p className="text-white/60 text-sm font-medium mb-1 uppercase tracking-widest">Total Balance</p>
             <div className="flex items-center gap-3">
               <h2 className="text-4xl md:text-5xl font-display tracking-tighter">
-                {mode === 'demo' ? `$${demoBalance.toLocaleString()}` : `$${(parseFloat(realBalance) * (tickerPrices['BNB'] || 600)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+                {mode === 'demo' ? `$${demoBalance.toLocaleString()}` : `$${(parseFloat(contractBalance) * (tickerPrices['BNB'] || 600)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
               </h2>
               <button 
                 onClick={handleManualSync}

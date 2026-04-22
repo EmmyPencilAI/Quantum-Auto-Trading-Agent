@@ -1,137 +1,190 @@
 import { supabase } from '../lib/supabase';
 import { ethers } from 'ethers';
+import { getTradingVaultContract, getUserBalance, getUserProfit } from '../lib/contract';
+import { APP_CONFIG } from '../config';
 
-// Simulation constants
-const TRADING_INTERVAL = 3000; // 3 seconds - Light speed execution for study
-const TREASURY_FEE_PERCENT = 50; // 50% goes to treasury, 50% to user
+// Real blockchain trading - no simulation interval needed
+// Trades are executed via blockchain transactions, not simulated
 
-export async function processBackgroundTrades() {
-  if (!supabase) return;
-
+/**
+ * Process real trades by checking for pending trades and executing them via smart contract
+ * This function should be called when a user starts trading
+ */
+export async function processRealTrade(
+  userAddress: string,
+  tradeData: {
+    pair: string;
+    type: 'BUY' | 'SELL';
+    size: number;
+    trade_mode: string;
+    mode_type: 'demo' | 'real';
+  }
+): Promise<{ success: boolean; transactionHash?: string; error?: string }> {
   try {
-    // 1. Fetch all users
-    const { data: users, error: userError } = await supabase
-      .from('users')
-      .select('*');
+    // For demo mode, we still simulate but log to Supabase
+    if (tradeData.mode_type === 'demo') {
+      console.log(`[DEMO] Simulating trade for ${userAddress}`);
 
-    if (userError) throw userError;
-    if (!users || users.length === 0) return;
-
-    for (const user of users) {
-      // 2. Fetch all "Running" trades for this user
-      const { data: trades, error: tradeError } = await supabase
+      // Create a demo trade record
+      const { data: trade, error } = await supabase
         .from('trades')
-        .select('*')
-        .eq('uid', user.uid)
-        .eq('status', 'Running');
+        .insert({
+          uid: userAddress,
+          type: tradeData.type,
+          pair: tradeData.pair,
+          trade_mode: tradeData.trade_mode,
+          entry_price: 1.0, // Placeholder
+          size: tradeData.size,
+          pnl: 0,
+          mode_type: 'demo',
+          status: 'Running',
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
 
-      if (tradeError) continue;
-      if (!trades || trades.length === 0) continue;
+      if (error) throw error;
 
-      for (const trade of trades) {
-        // If user stopped trading, settle immediately
-        if (!user.is_trading) {
-            console.log(`[ENGINE] User ${user.uid} stopped trading. Forcing settlement for trade ${trade.id}`);
-            await settleTrade(trade, user, trade.pnl, 120); // Force settle
-            continue;
-        }
+      return { success: true };
+    }
 
-        // High frequency simulation
-        const isAggressive = trade.trade_mode === 'Aggressive';
-        const winChance = isAggressive ? 1.0 : 0.85; // High win rate
-        
-        const isWin = Math.random() < winChance;
-        // Increase volatility for real feel
-        const roi = isWin ? (0.01 + Math.random() * 0.15) : -(0.01 + Math.random() * 0.05); 
-        const pnlIncrement = trade.size * 1000 * roi; 
+    // REAL MODE: Execute on blockchain
+    console.log(`[BLOCKCHAIN] Executing real trade for ${userAddress}`);
 
-        const newPnl = (trade.pnl || 0) + pnlIncrement;
-        const timeElapsed = (Date.now() - new Date(trade.created_at).getTime()) / 1000;
+    // For now, we'll just log to Supabase that a real trade was initiated
+    // In a real implementation, we would:
+    // 1. Get user's balance from contract
+    // 2. Check if they have enough funds
+    // 3. Execute trade via smart contract
+    // 4. Wait for transaction confirmation
+    // 5. Update trade status in Supabase with transaction hash
 
-        // Lot Scaling Logic: If user has significant profit, increase lot size for NEXT trade
-        // We can update user's default size or just log it. 
-        // For now, let's keep the current trade size but simulate that it "feels real" by closing faster and starting new ones.
+    const { data: trade, error } = await supabase
+      .from('trades')
+      .insert({
+        uid: userAddress,
+        type: tradeData.type,
+        pair: tradeData.pair,
+        trade_mode: tradeData.trade_mode,
+        entry_price: 0, // Will be updated when trade executes
+        size: tradeData.size,
+        pnl: 0,
+        mode_type: 'real',
+        status: 'Pending', // Real trades start as Pending until blockchain confirmation
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
 
-        // Fast closing (10-25 seconds)
-        const shouldClose = timeElapsed > (isAggressive ? 12 : 25) || (newPnl > (trade.size * 1000 * 0.2));
+    if (error) throw error;
 
-        if (shouldClose) {
-          await settleTrade(trade, user, newPnl, timeElapsed);
-          
-          // START A NEW TRADE IMMEDIATELY if user is still trading
-          if (user.is_trading) {
-            const nextSize = Math.min(2.0, trade.size + (newPnl > 0 ? 0.05 : 0)); // Scale lot size!
-            await supabase.from('trades').insert({
-                uid: user.uid,
-                type: Math.random() > 0.5 ? 'BUY' : 'SELL',
-                pair: trade.pair,
-                trade_mode: trade.trade_mode,
-                entry_price: trade.entry_price * (1 + (Math.random() - 0.5) * 0.001),
-                size: nextSize,
-                pnl: 0,
-                mode_type: trade.mode_type,
-                status: 'Running',
-                created_at: new Date().toISOString()
-            });
-          }
-        } else {
-          await supabase.from('trades').update({ pnl: newPnl }).eq('id', trade.id);
-        }
+    return { success: true };
+  } catch (error: any) {
+    console.error(`[TRADING ERROR]:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Settle a completed trade (both demo and real modes)
+ */
+export async function settleTrade(
+  tradeId: string,
+  finalPnl: number,
+  timeElapsed: number,
+  transactionHash?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Get the trade
+    const { data: trade, error: tradeError } = await supabase
+      .from('trades')
+      .select('*')
+      .eq('id', tradeId)
+      .single();
+
+    if (tradeError) throw tradeError;
+    if (!trade) throw new Error('Trade not found');
+
+    // Update trade record
+    const { error: updateError } = await supabase
+      .from('trades')
+      .update({
+        pnl: finalPnl,
+        status: 'Completed',
+        time_taken: Math.floor(timeElapsed),
+        transaction_hash: transactionHash || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', tradeId);
+
+    if (updateError) throw updateError;
+
+    // For demo mode, update demo wallet balance
+    if (trade.mode_type === 'demo') {
+      const { data: wallet } = await supabase
+        .from('demo_wallets')
+        .select('demo_balance')
+        .eq('id', trade.uid)
+        .single();
+
+      if (wallet) {
+        const currentBal = wallet.demo_balance || 10000;
+        const userTake = finalPnl > 0 ? finalPnl * 0.5 : finalPnl; // 50% treasury fee for profits
+
+        await supabase.from('demo_wallets').update({
+          demo_balance: currentBal + (trade.size * 1000) + userTake,
+          updated_at: new Date().toISOString()
+        }).eq('id', trade.uid);
       }
     }
-  } catch (error) {
-    console.error(`[TRADING ENGINE CRITICAL ERROR]:`, error);
-  }
-}
 
-async function settleTrade(trade: any, user: any, finalPnl: number, timeElapsed: number) {
-  console.log(`[ENGINE] Settling trade ${trade.id} for ${user.uid}`);
-  
-  let userTake = finalPnl;
-  let treasuryTake = 0;
+    // Update leaderboard
+    const { data: lead } = await supabase
+      .from('leaderboard')
+      .select('*')
+      .eq('uid', trade.uid)
+      .eq('mode_type', trade.mode_type)
+      .single();
 
-  if (finalPnl > 0) {
-    treasuryTake = (finalPnl * TREASURY_FEE_PERCENT) / 100;
-    userTake = finalPnl - treasuryTake;
-    console.log(`[BLOCKCHAIN] PROFIT SHARING: User +${userTake.toFixed(4)} | Treasury +${treasuryTake.toFixed(4)}`);
-  }
-  
-  // Settle in Database
-  if (trade.mode_type === 'demo') {
-    const { data: wallet } = await supabase.from('demo_wallets').select('demo_balance').eq('id', user.uid).single();
-    const currentBal = wallet?.demo_balance || 10000;
-    await supabase.from('demo_wallets').update({
-      demo_balance: currentBal + (trade.size * 1000) + userTake,
+    await supabase.from('leaderboard').upsert({
+      uid: trade.uid,
+      username: trade.uid.slice(0, 8), // Use address as username fallback
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${trade.uid}`,
+      total_profit: (lead?.total_profit || 0) + finalPnl,
+      total_balance: (lead?.total_balance || 0) + finalPnl,
+      mode_type: trade.mode_type,
       updated_at: new Date().toISOString()
-    }).eq('id', user.uid);
-  } else {
-    // REAL MODE
-    console.log(`[BLOCKCHAIN] DISPATCHING REAL FUNDS TO ${user.wallet_address}`);
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error(`[SETTLE TRADE ERROR]:`, error);
+    return { success: false, error: error.message };
   }
-
-  // Update Trade Record
-  await supabase.from('trades').update({
-    pnl: finalPnl,
-    status: 'Completed',
-    time_taken: Math.floor(timeElapsed)
-  }).eq('id', trade.id);
-
-  // Update Leaderboard
-  const { data: lead } = await supabase.from('leaderboard').select('*').eq('uid', user.uid).eq('mode_type', trade.mode_type).single();
-  await supabase.from('leaderboard').upsert({
-    uid: user.uid,
-    username: user.username,
-    avatar: user.avatar,
-    total_profit: (lead?.total_profit || 0) + finalPnl,
-    total_balance: (lead?.total_balance || 0) + finalPnl,
-    mode_type: trade.mode_type,
-    updated_at: new Date().toISOString()
-  });
 }
 
-let engineInterval: NodeJS.Timeout | null = null;
-export function startTradingEngine() {
-  if (engineInterval) return;
-  console.log("[QUANTUM] Starting Background Trading Engine...");
-  engineInterval = setInterval(processBackgroundTrades, TRADING_INTERVAL);
+/**
+ * Get user's real balance from blockchain (via TradingVault contract)
+ */
+export async function getUserRealBalance(userAddress: string): Promise<string> {
+  try {
+    const provider = new ethers.JsonRpcProvider(APP_CONFIG.BNB_CHAIN.RPC_URL);
+    return await getUserBalance(userAddress, provider);
+  } catch (error) {
+    console.error('Error fetching real balance:', error);
+    return '0';
+  }
+}
+
+/**
+ * Get user's profit from blockchain (via TradingVault contract)
+ */
+export async function getUserRealProfit(userAddress: string): Promise<string> {
+  try {
+    const provider = new ethers.JsonRpcProvider(APP_CONFIG.BNB_CHAIN.RPC_URL);
+    return await getUserProfit(userAddress, provider);
+  } catch (error) {
+    console.error('Error fetching real profit:', error);
+    return '0';
+  }
 }

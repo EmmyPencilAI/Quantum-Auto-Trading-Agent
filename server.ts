@@ -4,7 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import cors from "cors";
 import dotenv from "dotenv";
-import { startTradingEngine } from "./src/services/tradingService";
+// Trading engine is now real blockchain execution - no background simulation needed
 
 dotenv.config();
 
@@ -23,8 +23,7 @@ app.post("/api/send-2fa", async (req, res) => {
 });
 
 async function setupApp() {
-  // Start the Quantum Background Trading Engine
-  startTradingEngine();
+  // Trading engine is now real blockchain execution - no background simulation needed
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

@@ -50,7 +50,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<string>('wallet');
-  const [mode, setMode] = useState<ModeType>('demo');
+  const [mode, setMode] = useState<ModeType>('real');
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingMessage, setLoadingMessage] = useState<string>("INITIALIZING QUANTUM ENGINE...");
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
@@ -286,13 +286,6 @@ export default function App() {
             throw new Error(`Failed to create account: ${insertError.message}`);
           }
           
-          // Initialize demo wallet
-          setLoadingMessage("PROVISIONING DIGITAL VAULT...");
-          await supabase.from('demo_wallets').upsert({
-            id: uniqueId,
-            demo_balance: 13300,
-            updated_at: new Date().toISOString()
-          });
 
           // FORCE LOGOUT as requested for onboarding verification
           setLoadingMessage("VERIFYING SECURITY PARAMETERS...");
@@ -336,20 +329,6 @@ export default function App() {
             setUser(updatedUser as User);
           }
 
-          // Ensure demo wallet exists
-          const { data: walletData } = await supabase
-            .from('demo_wallets')
-            .select('id')
-            .eq('id', uniqueId)
-            .single();
-          
-          if (!walletData) {
-            await supabase.from('demo_wallets').upsert({
-              id: uniqueId,
-              demo_balance: 13300,
-              updated_at: new Date().toISOString()
-            });
-          }
         }
         setIsLoggedIn(true);
     } catch (error: any) {
