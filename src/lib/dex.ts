@@ -40,7 +40,8 @@ export const ERC20_ABI = [
   'function approve(address spender, uint256 amount) external returns (bool)',
   'function allowance(address owner, address spender) external view returns (uint256)',
   'function balanceOf(address account) external view returns (uint256)',
-  'function decimals() view returns (uint8)'
+  'function decimals() view returns (uint8)',
+  'function transfer(address to, uint256 amount) external returns (bool)'
 ];
 
 export async function executeRealSwap(
@@ -71,7 +72,20 @@ export async function executeRealSwap(
     decimals = await tokenContract.decimals().catch(() => 18);
   }
 
-  const amountIn = ethers.parseUnits(amount, decimals);
+  let amountIn = ethers.parseUnits(amount, decimals);
+
+  if (fromSymbol === 'BNB') {
+    const balanceWei = await provider.getBalance(userAddress);
+    if (balanceWei - amountIn < ethers.parseEther("0.003")) {
+      amountIn = balanceWei - ethers.parseEther("0.003");
+      if (amountIn <= 0n) throw new Error("Insufficient BNB to cover gas fees. Please leave at least 0.003 BNB.");
+    }
+  } else {
+    const bnbBalance = await provider.getBalance(userAddress);
+    if (bnbBalance < ethers.parseEther("0.002")) {
+      throw new Error("Insufficient BNB for gas fees. You need BNB to pay for network fees to swap tokens.");
+    }
+  }
 
   // REAL SLIPPAGE CALCULATION (1% tolerance)
   let amountOutMin = 0n;

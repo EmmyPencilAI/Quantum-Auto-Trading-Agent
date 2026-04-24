@@ -375,10 +375,39 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
         }
         const provider = new ethers.BrowserProvider(pObj);
         const signer = await provider.getSigner();
-        const tx = await signer.sendTransaction({
-          to: sendAddress,
-          value: ethers.parseEther(sendAmount)
-        });
+        
+        let tx;
+        let amountWei;
+        if (sendAsset === 'BNB') {
+          amountWei = ethers.parseEther(sendAmount);
+          const balanceWei = await provider.getBalance(user.wallet_address);
+          
+          let sendWei = amountWei;
+          if (balanceWei - amountWei < ethers.parseEther("0.001")) {
+            sendWei = balanceWei - ethers.parseEther("0.001");
+            if (sendWei <= 0n) throw new Error("Insufficient BNB to cover gas fees. Please leave at least 0.001 BNB for network fees.");
+          }
+          
+          tx = await signer.sendTransaction({
+            to: sendAddress,
+            value: sendWei
+          });
+        } else {
+          const chainId = APP_CONFIG.BNB_CHAIN.CHAIN_ID;
+          const tokenAddress = TOKEN_MAP[chainId]?.[sendAsset];
+          if (!tokenAddress) throw new Error("Unsupported token on this network.");
+          
+          const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
+          const decimals = await tokenContract.decimals().catch(() => 18);
+          amountWei = ethers.parseUnits(sendAmount, decimals);
+          
+          const bnbBalance = await provider.getBalance(user.wallet_address);
+          if (bnbBalance < ethers.parseEther("0.0005")) {
+             throw new Error("Insufficient BNB for gas fees. You need a small amount of BNB to send tokens.");
+          }
+          
+          tx = await tokenContract.transfer(sendAddress, amountWei);
+        }
         
         // Log real transaction to Supabase so it shows in history
         await supabase.from('trades').insert({
