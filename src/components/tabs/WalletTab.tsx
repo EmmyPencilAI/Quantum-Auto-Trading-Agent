@@ -37,8 +37,17 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
   const [tickerPrices, setTickerPrices] = useState<Record<string, number>>({ 'BNB': 600, 'BTC': 65000, 'SOL': 140, 'ETH': 3500, 'XRP': 0.6, 'ADA': 0.5, 'SUI': 1.5, 'USDC': 1, 'USDT': 1 });
   const [realTokenBalances, setRealTokenBalances] = useState<Record<string, string>>({});
   const [contractBalance, setContractBalance] = useState<string>('0');
+  const [demoBalance, setDemoBalance] = useState<number>(10000);
 
   useEffect(() => {
+    const fetchDemoBal = async () => {
+      if (user?.uid && mode === 'demo') {
+        const { data } = await supabase.from('demo_wallets').select('demo_balance').eq('id', user.uid).single();
+        if (data) setDemoBalance(data.demo_balance);
+      }
+    };
+    fetchDemoBal();
+  }, [user, mode]);
     if (!user?.wallet_address) return;
 
     const fetchRealBalances = async () => {
@@ -109,8 +118,8 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
     {
       symbol: 'BNB',
       name: 'Binance Coin',
-      balance: parseFloat(contractBalance).toFixed(4),
-      value: `$${(parseFloat(contractBalance) * (tickerPrices['BNB'] || 600)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+      balance: parseFloat(realBalance).toFixed(4),
+      value: `$${(parseFloat(realBalance) * (tickerPrices['BNB'] || 600)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
       icon: getLogo('BNB')
     },
     {
@@ -451,7 +460,7 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
             <p className="text-white/60 text-sm font-medium mb-1 uppercase tracking-widest">Total Balance</p>
             <div className="flex items-center gap-3">
               <h2 className="text-4xl md:text-5xl font-display tracking-tighter">
-                {mode === 'demo' ? `$${demoBalance.toLocaleString()}` : `$${(parseFloat(contractBalance) * (tickerPrices['BNB'] || 600)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+                {mode === 'demo' ? `$${demoBalance.toLocaleString()}` : `$${(parseFloat(realBalance) * (tickerPrices['BNB'] || 600)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
               </h2>
               <button 
                 onClick={handleManualSync}

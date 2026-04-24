@@ -273,8 +273,7 @@ export default function App() {
             trade_volume: 0,
             followers: [],
             following: [],
-            location: location,
-            is_verified: true // Mark as verified since Web3Auth handled MFA
+            location: location
           } as any;
 
           const { error: insertError } = await supabase
