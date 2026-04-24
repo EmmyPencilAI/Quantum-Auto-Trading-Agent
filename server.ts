@@ -47,8 +47,8 @@ export default app;
 // Only start the server if we're not running as a Vercel function (or if explicitly told to)
 if (process.env.AIS_SERVER === 'true' || !process.env.VERCEL) {
   setupApp().then(() => {
-    const PORT = 3000;
-    app.listen(PORT, "0.0.0.0", () => {
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT as number, "0.0.0.0", () => {
       console.log(`Quantum Server running on http://0.0.0.0:${PORT}`);
     });
   });
