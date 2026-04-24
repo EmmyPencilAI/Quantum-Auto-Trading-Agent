@@ -133,8 +133,8 @@ export default function QuantumAgentOverlay({ user, mode }: QuantumAgentOverlayP
               className="bg-black/90 border border-orange-500/30 backdrop-blur-xl p-4 rounded-2xl shadow-2xl max-w-xs pointer-events-auto"
             >
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center shrink-0">
-                  <Zap className="w-4 h-4 text-white fill-white" />
+                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shrink-0 border border-orange-500/50 p-1">
+                  <img src="/logo.png" className="w-full h-full object-contain rounded-full" />
                 </div>
                 <div className="text-[10px] font-mono whitespace-pre-wrap leading-relaxed text-white/90">
                   {alert}

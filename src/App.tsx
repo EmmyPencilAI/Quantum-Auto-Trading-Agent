@@ -356,8 +356,8 @@ export default function App() {
     return (
       <div className="fixed inset-0 bg-[#0a0a0a] flex flex-col items-center justify-center z-50">
         <div className="relative w-24 h-24 mb-8">
-          <div className="relative w-full h-full bg-orange-600 rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(249,115,22,0.5)]">
-            <Zap className="w-12 h-12 text-white fill-white" />
+          <div className="relative w-24 h-24 bg-white/5 border border-white/10 rounded-full flex items-center justify-center shadow-2xl overflow-hidden p-2">
+            <img src="/logo.png" alt="Quantum Logo" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(249,115,22,0.5)]" />
           </div>
         </div>
         <div className="text-orange-500 font-mono text-xs tracking-[0.3em] uppercase space-y-2 text-center">
@@ -451,8 +451,8 @@ export default function App() {
         theme === 'dark' ? "bg-black/80 border-white/5" : "bg-white/80 border-black/5"
       )}>
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(249,115,22,0.5)]">
-            <Zap className="w-5 h-5 text-white fill-white" />
+          <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden p-1">
+            <img src="/logo.png" alt="Quantum" className="w-full h-full object-contain" />
           </div>
           <span className="font-bold text-xl tracking-tight hidden sm:block uppercase">QUANTUM <span className="text-orange-500">FINANCE</span></span>
         </div>

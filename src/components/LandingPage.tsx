@@ -38,7 +38,9 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 h-20 backdrop-blur-md border-b border-white/5 z-50 flex items-center justify-between px-4 md:px-8">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Quantum" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
+          <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center p-1">
+            <img src="/logo.png" alt="Quantum" className="w-full h-full object-contain rounded-full" referrerPolicy="no-referrer" />
+          </div>
           <span className="font-display text-2xl tracking-tighter uppercase">QUANTUM <span className="text-orange-500">FINANCE</span></span>
         </div>
         <div className="flex items-center gap-4">
@@ -63,9 +65,9 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="mb-12 inline-block"
+            className="mb-12 inline-block relative w-32 h-32 rounded-full bg-white/5 border border-white/10 flex items-center justify-center p-2 shadow-[0_0_30px_rgba(249,115,22,0.3)]"
           >
-            <img src="/logo.png" alt="Quantum Logo" className="w-32 h-32 mx-auto object-contain drop-shadow-[0_0_30px_rgba(249,115,22,0.3)]" referrerPolicy="no-referrer" />
+            <img src="/logo.png" alt="Quantum Logo" className="w-full h-full object-contain rounded-full" referrerPolicy="no-referrer" />
           </motion.div>
 
           <motion.h1
@@ -267,7 +269,9 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
       {/* Footer */}
       <footer className="py-16 px-4 md:px-8 border-t border-white/5 text-center">
         <div className="flex items-center justify-center gap-3 mb-8">
-          <img src="/logo.png" alt="Quantum" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
+          <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center p-1">
+            <img src="/logo.png" alt="Quantum" className="w-full h-full object-contain rounded-full" referrerPolicy="no-referrer" />
+          </div>
           <span className="font-display text-3xl tracking-tighter uppercase">QUANTUM FINANCE</span>
         </div>
         <div className="flex justify-center gap-8 mb-8 text-white/40 text-sm font-bold uppercase tracking-widest">
