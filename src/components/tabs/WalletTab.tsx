@@ -167,7 +167,7 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
     },
   ];
 
-  const providerObj = (window as any).ethereum || web3auth.provider;
+  const providerObj = web3auth.provider || (window as any).ethereum;
   const hasWallet = !!providerObj;
 
   const handleManualSync = async () => {
@@ -305,7 +305,7 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
         alert(`CONVERSION SUCCESS: ${amount} ${convertFrom} swapped for ${((amount * fromPrice) / toPrice).toFixed(4)} ${convertTo}`);
       } else {
         setIsConverting(true);
-        let pObj = (window as any).ethereum || web3auth.provider;
+        let pObj = web3auth.provider || (window as any).ethereum;
         if (!pObj && web3auth.status === 'ready') {
           try { pObj = await web3auth.connect(); } catch (e) { console.warn("Auto-connect failed", e); }
         }
