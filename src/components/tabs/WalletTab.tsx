@@ -48,6 +48,7 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
     };
     fetchDemoBal();
   }, [user, mode]);
+  useEffect(() => {
     if (!user?.wallet_address) return;
 
     const fetchRealBalances = async () => {
