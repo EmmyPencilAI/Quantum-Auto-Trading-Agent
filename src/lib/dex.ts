@@ -94,8 +94,8 @@ export async function executeRealSwap(
     const amountsOut = await router.getAmountsOut(amountIn, path);
     amountOutMin = (amountsOut[1] * 99n) / 100n; 
   } catch (e) {
-    console.warn("Pricing oracle failed, applying strict 5% slippage");
-    amountOutMin = (amountIn * 95n) / 100n;
+    console.error("Pricing oracle failed: No liquidity for pair", e);
+    throw new Error(`Liquidity Error: PancakeSwap Testnet currently has zero liquidity for the ${fromSymbol}/${toSymbol} trading pair. Real on-chain swaps cannot be executed without a liquidity pool. Please switch to DEMO MODE to test trading logic!`);
   }
   
   try {
