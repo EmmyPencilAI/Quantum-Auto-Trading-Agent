@@ -73,15 +73,16 @@ export async function executeRealSwap(
   }
 
   let amountIn = ethers.parseUnits(amount, decimals);
+  const rpcProvider = new ethers.JsonRpcProvider(APP_CONFIG.BNB_CHAIN.RPC_URL);
 
   if (fromSymbol === 'BNB') {
-    const balanceWei = await provider.getBalance(userAddress);
+    const balanceWei = await rpcProvider.getBalance(userAddress);
     if (balanceWei - amountIn < ethers.parseEther("0.003")) {
       amountIn = balanceWei - ethers.parseEther("0.003");
       if (amountIn <= 0n) throw new Error("Insufficient BNB to cover gas fees. Please leave at least 0.003 BNB.");
     }
   } else {
-    const bnbBalance = await provider.getBalance(userAddress);
+    const bnbBalance = await rpcProvider.getBalance(userAddress);
     if (bnbBalance < ethers.parseEther("0.002")) {
       throw new Error("Insufficient BNB for gas fees. You need BNB to pay for network fees to swap tokens.");
     }

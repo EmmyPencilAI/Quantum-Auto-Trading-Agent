@@ -378,9 +378,11 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
         
         let tx;
         let amountWei;
+        const rpcProvider = new ethers.JsonRpcProvider(APP_CONFIG.BNB_CHAIN.RPC_URL);
+        
         if (sendAsset === 'BNB') {
           amountWei = ethers.parseEther(sendAmount);
-          const balanceWei = await provider.getBalance(user.wallet_address);
+          const balanceWei = await rpcProvider.getBalance(user.wallet_address);
           
           let sendWei = amountWei;
           if (balanceWei - amountWei < ethers.parseEther("0.001")) {
@@ -401,7 +403,7 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
           const decimals = await tokenContract.decimals().catch(() => 18);
           amountWei = ethers.parseUnits(sendAmount, decimals);
           
-          const bnbBalance = await provider.getBalance(user.wallet_address);
+          const bnbBalance = await rpcProvider.getBalance(user.wallet_address);
           if (bnbBalance < ethers.parseEther("0.0005")) {
              throw new Error("Insufficient BNB for gas fees. You need a small amount of BNB to send tokens.");
           }
