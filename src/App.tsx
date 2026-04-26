@@ -321,9 +321,9 @@ export default function App() {
             .select()
             .single();
 
-          if (updateError) {
-            console.warn("Update error (non-fatal):", updateError);
-            setUser(userDoc as User);
+          if (updateError || !updatedUser) {
+            console.warn("Update error (non-fatal) or no user returned:", updateError);
+            setUser({ ...userDoc, ...updatePayload } as User);
           } else {
             setUser(updatedUser as User);
           }
@@ -582,33 +582,35 @@ export default function App() {
       {/* Main Content */}
       <main className="pt-16 md:pl-64 min-h-screen">
         <div className="p-4 md:p-8 max-w-7xl mx-auto">
-          {activeTab === 'wallet' && (
-            <WalletTab 
-              user={user} 
-              mode={mode} 
-              realBalance={realBalance} 
-            />
-          )}
-          {activeTab === 'markets' && <MarketsTab />}
-          {activeTab === 'trading' && (
-            <TradingTab 
-              user={user} 
-              mode={mode} 
-              setMode={setMode} 
-              realBalance={realBalance}
-              isTradingGlobal={isTradingGlobal}
-              setIsTradingGlobal={setIsTradingGlobal}
-              selectedPairGlobal={selectedPairGlobal}
-              setSelectedPairGlobal={setSelectedPairGlobal}
-              selectedStrategyGlobal={selectedStrategyGlobal}
-              setSelectedStrategyGlobal={setSelectedStrategyGlobal}
-              tradeAmountGlobal={tradeAmountGlobal}
-              setTradeAmountGlobal={setTradeAmountGlobal}
-            />
-          )}
-          {activeTab === 'leaderboard' && <LeaderboardTab />}
-          {activeTab === 'community' && <CommunityTab user={user} />}
-          {activeTab === 'settings' && <SettingsTab user={user} setUser={setUser} mode={mode} onLogout={handleLogout} />}
+          <Suspense fallback={<LoadingFallback />}>
+            {activeTab === 'wallet' && (
+              <WalletTab 
+                user={user} 
+                mode={mode} 
+                realBalance={realBalance} 
+              />
+            )}
+            {activeTab === 'markets' && <MarketsTab />}
+            {activeTab === 'trading' && (
+              <TradingTab 
+                user={user} 
+                mode={mode} 
+                setMode={setMode} 
+                realBalance={realBalance}
+                isTradingGlobal={isTradingGlobal}
+                setIsTradingGlobal={setIsTradingGlobal}
+                selectedPairGlobal={selectedPairGlobal}
+                setSelectedPairGlobal={setSelectedPairGlobal}
+                selectedStrategyGlobal={selectedStrategyGlobal}
+                setSelectedStrategyGlobal={setSelectedStrategyGlobal}
+                tradeAmountGlobal={tradeAmountGlobal}
+                setTradeAmountGlobal={setTradeAmountGlobal}
+              />
+            )}
+            {activeTab === 'leaderboard' && <LeaderboardTab />}
+            {activeTab === 'community' && <CommunityTab user={user} />}
+            {activeTab === 'settings' && <SettingsTab user={user} setUser={setUser} mode={mode} onLogout={handleLogout} />}
+          </Suspense>
         </div>
       </main>
 
