@@ -9,7 +9,9 @@ import { ethers } from 'ethers';
 import HFTTradingView from '../HFTTradingView';
 import { useTradingEngine } from '../../hooks/useTradingEngine';
 import { useNetworkQuality } from '../../hooks/useNetworkQuality';
-import { getUserRealBalance } from '../../services/tradingService';
+import { getUserRealBalance, getVaultBalance } from '../../services/tradingService';
+import { web3auth } from '../../lib/web3auth';
+import { depositFunds, withdrawFunds } from '../../lib/contract';
 
 // Mock ABI for the trading contract
 const TRADING_ABI = [
@@ -45,6 +47,12 @@ export default function TradingTab({
 }: TradingTabProps) {
   const network = useNetworkQuality();
   const [balance, setBalance] = useState<string>('0');
+  const [vaultBalance, setVaultBalance] = useState<string>('0');
+  const [isDepositing, setIsDepositing] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [depositAmount, setDepositAmount] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  
   const [floatingPnl, setFloatingPnl] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -111,22 +119,61 @@ export default function TradingTab({
     }
   }, [user]);
 
-  // Fetch real contract balance
+  // Fetch real contract balance and vault balance
   useEffect(() => {
     if (!user?.wallet_address) return;
-    const fetchBalance = async () => {
+    const fetchBalances = async () => {
       try {
         const bal = await getUserRealBalance(user.wallet_address);
         setBalance(bal);
+        const vaultBal = await getVaultBalance(user.wallet_address);
+        setVaultBalance(vaultBal);
       } catch (error) {
-        console.error('Failed to fetch contract balance:', error);
-        setBalance('0');
+        console.error('Failed to fetch balances:', error);
       }
     };
-    fetchBalance();
-    const interval = setInterval(fetchBalance, 15000); // 15s
+    fetchBalances();
+    const interval = setInterval(fetchBalances, 15000); // 15s
     return () => clearInterval(interval);
   }, [user]);
+
+  const handleDeposit = async () => {
+    if (!depositAmount || isNaN(Number(depositAmount))) return;
+    try {
+      setIsDepositing(true);
+      const provider = new ethers.BrowserProvider(web3auth.provider!);
+      const signer = await provider.getSigner();
+      await depositFunds(signer, depositAmount);
+      alert(`Successfully deposited ${depositAmount} BNB to Vault!`);
+      setDepositAmount('');
+      const vaultBal = await getVaultBalance(user!.wallet_address);
+      setVaultBalance(vaultBal);
+    } catch (e: any) {
+      console.error(e);
+      alert(e.message || "Deposit failed");
+    } finally {
+      setIsDepositing(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    if (!withdrawAmount || isNaN(Number(withdrawAmount))) return;
+    try {
+      setIsWithdrawing(true);
+      const provider = new ethers.BrowserProvider(web3auth.provider!);
+      const signer = await provider.getSigner();
+      await withdrawFunds(signer, withdrawAmount);
+      alert(`Successfully withdrew ${withdrawAmount} BNB from Vault!`);
+      setWithdrawAmount('');
+      const vaultBal = await getVaultBalance(user!.wallet_address);
+      setVaultBalance(vaultBal);
+    } catch (e: any) {
+      console.error(e);
+      alert(e.message || "Withdraw failed");
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
 
   const { 
     marketData, 
@@ -207,10 +254,10 @@ export default function TradingTab({
       return;
     }
 
-    // Use contract balance
-    const bal = parseFloat(balance);
-    if (bal <= 0) {
-      alert("INSUFFICIENT FUNDS: Please deposit BNB or USDT to activate Quantum Hand.");
+    // Use Vault balance for execution
+    const vBal = parseFloat(vaultBalance);
+    if (vBal <= 0) {
+      alert("INSUFFICIENT VAULT FUNDS: Please deposit BNB into the Smart Contract Vault to activate Quantum HFT.");
       return;
     }
 
@@ -280,11 +327,59 @@ export default function TradingTab({
             )}
           </div>
 
-          <div className="text-right">
-            <p className="text-xs font-display text-white/40 uppercase tracking-widest mb-1">Available Balance</p>
-            <h3 className="text-3xl font-display tracking-tight">
-              ${(parseFloat(balance) * 600).toLocaleString()}
-            </h3>
+          <div className="flex flex-col gap-2 w-full max-w-sm">
+            <div className="flex justify-between items-end">
+              <div className="text-left">
+                <p className="text-[10px] font-display text-white/40 uppercase tracking-widest mb-1">Wallet (Native)</p>
+                <h3 className="text-xl font-mono text-white/60 tracking-tight">
+                  {parseFloat(balance).toFixed(4)} BNB
+                </h3>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-display text-orange-500/70 uppercase tracking-widest mb-1">Vault Liquidity</p>
+                <h3 className="text-2xl font-mono text-white tracking-tight">
+                  {parseFloat(vaultBalance).toFixed(4)} BNB
+                </h3>
+              </div>
+            </div>
+            
+            <div className="flex gap-2 mt-2">
+              <div className="flex-1 flex bg-black/40 border border-white/10 rounded-xl overflow-hidden">
+                <input 
+                  type="number" 
+                  value={depositAmount} 
+                  onChange={(e) => setDepositAmount(e.target.value)} 
+                  placeholder="0.00" 
+                  className="w-full bg-transparent p-2 text-xs font-mono outline-none text-right"
+                  disabled={isTrading || isDepositing}
+                />
+                <button 
+                  onClick={handleDeposit} 
+                  disabled={isTrading || isDepositing || !depositAmount}
+                  className="px-3 bg-white/5 hover:bg-white/10 text-[10px] font-bold uppercase transition-colors text-green-400"
+                >
+                  {isDepositing ? '...' : 'Deposit'}
+                </button>
+              </div>
+              
+              <div className="flex-1 flex bg-black/40 border border-white/10 rounded-xl overflow-hidden">
+                <input 
+                  type="number" 
+                  value={withdrawAmount} 
+                  onChange={(e) => setWithdrawAmount(e.target.value)} 
+                  placeholder="0.00" 
+                  className="w-full bg-transparent p-2 text-xs font-mono outline-none text-right"
+                  disabled={isTrading || isWithdrawing}
+                />
+                <button 
+                  onClick={handleWithdraw} 
+                  disabled={isTrading || isWithdrawing || !withdrawAmount}
+                  className="px-3 bg-white/5 hover:bg-white/10 text-[10px] font-bold uppercase transition-colors text-red-400"
+                >
+                  {isWithdrawing ? '...' : 'Withdraw'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

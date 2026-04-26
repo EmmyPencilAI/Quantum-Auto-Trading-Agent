@@ -1,6 +1,6 @@
-import React from 'react';
-import { motion } from 'motion/react';
-import { Zap, ChevronRight, Shield, TrendingUp, Globe, Clock, ArrowRight, AlertTriangle, BarChart3, Users, Trophy, MessageSquare } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { motion, useScroll, useTransform } from 'motion/react';
+import { Zap, Shield, TrendingUp, Cpu, Activity, ArrowRight, BrainCircuit, Globe, Layers } from 'lucide-react';
 import { APP_CONFIG } from '../config';
 import { cn } from '../lib/utils';
 
@@ -8,275 +8,195 @@ interface LandingPageProps {
   onLogin: () => void;
 }
 
+// Background Grid Component (Aceternity Style)
+const BackgroundGrid = () => (
+  <div className="absolute inset-0 z-0 h-full w-full bg-[#030303] bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:4rem_4rem]">
+    <div className="absolute inset-0 bg-[#030303] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
+  </div>
+);
+
+// Glowing Orb
+const GlowingOrb = ({ className }: { className?: string }) => (
+  <div className={cn("absolute rounded-full blur-[100px] pointer-events-none opacity-50", className)} />
+);
+
 export default function LandingPage({ onLogin }: LandingPageProps) {
+  const { scrollYProgress } = useScroll();
+  const y = useTransform(scrollYProgress, [0, 1], [0, 200]);
+
   const features = [
-    { icon: Zap, title: "Automated Trading Engine", desc: "High-frequency execution engine built for speed and precision." },
-    { icon: TrendingUp, title: "Real-time Market Monitoring", desc: "Live market monitoring and performance tracking across major assets." },
-    { icon: BarChart3, title: "Multiple Trading Strategies", desc: "Choose from Aggressive, Momentum, Scalping, or Conservative." },
-    { icon: Shield, title: "Web3 Wallet Integration", desc: "Web3Auth integration for seamless social login and wallet creation." },
-    { icon: Clock, title: "Instant Settlement System", desc: "Automatic profit sharing and principal return upon trade completion." },
-    { icon: Users, title: "Leaderboard & Community", desc: "Connect with top traders and share insights in the Quantum community." },
+    { icon: BrainCircuit, title: "Neural HFT Core", desc: "Our AI processes 1s K-lines across 10+ pairs simultaneously, identifying micro-momentum shifts invisible to human eyes." },
+    { icon: Zap, title: "Sub-Second Execution", desc: "Bypassing standard RPC nodes for direct smart-contract execution. Enter and exit trades before the market reacts." },
+    { icon: Shield, title: "Non-Custodial Vault", desc: "Your keys, your funds. Quantum executes trades on your behalf using Web3Auth without ever holding your assets." },
+    { icon: Activity, title: "Dynamic Lot Scaling", desc: "The engine mathematically compounds your wins and instantly restricts size during drawdowns to protect capital." },
   ];
-
-  const steps = [
-    { number: "01", title: "Connect Wallet", desc: "Sign in with your favorite social account to Quantum Autobot." },
-    { number: "02", title: "Fund Account", desc: "Deposit BNB or USDT. Real mode requires living funds to operate." },
-    { number: "03", title: "Start Trading", desc: "Watch high-frequency trades (up to 1600/day) in real-time with AI scaling." },
-  ];
-
-  const tradingModes = [
-    { name: "Aggressive", desc: "High frequency trading with rapid execution." },
-    { name: "Momentum", desc: "Trend following strategy for sustained moves." },
-    { name: "Scalping", desc: "Quick entries and exits for small price changes." },
-    { name: "Conservative", desc: "Lower risk approach focusing on steady growth." },
-  ];
-
-  const assets = ["BTC/USDT", "ETH/USDT", "BNB/USDT", "SOL/USDT", "SUI/USDT", "XRP/USDT", "ADA/USDT", "DOGE/USDT", "AVAX/USDT", "MATIC/USDT"];
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden selection:bg-orange-500/30 font-sans">
+    <div className="min-h-screen bg-[#030303] text-white selection:bg-orange-500/30 font-sans relative overflow-x-hidden">
+      <BackgroundGrid />
+      
+      {/* Orbs */}
+      <GlowingOrb className="top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orange-600/30" />
+      <GlowingOrb className="top-[40%] right-[-10%] w-[600px] h-[600px] bg-red-900/20" />
+      <GlowingOrb className="bottom-[-10%] left-[20%] w-[800px] h-[800px] bg-orange-700/20" />
+
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 h-20 backdrop-blur-md border-b border-white/5 z-50 flex items-center justify-between px-4 md:px-8">
+      <header className="fixed top-0 left-0 right-0 h-20 border-b border-white/5 bg-black/50 backdrop-blur-xl z-50 flex items-center justify-between px-6 md:px-12">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Quantum" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
-          <span className="font-display text-2xl tracking-tighter uppercase">QUANTUM <span className="text-orange-500">FINANCE</span></span>
+          <img src="/logo.png" alt="Quantum" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
+          <span className="font-display text-xl tracking-tighter uppercase text-white/90">QUANTUM <span className="text-orange-500 font-bold">FINANCE</span></span>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex flex-col items-end">
-            <span className="text-[10px] font-mono text-orange-500 font-bold tracking-widest uppercase italic">Quantum Secure v1.0.8</span>
-            <span className="text-[8px] font-mono text-white/20 uppercase">MFA Protocol Active</span>
-          </div>
-          <button 
-            onClick={onLogin}
-            className="px-6 py-2 bg-orange-600 rounded-full font-bold text-sm uppercase tracking-widest hover:bg-orange-500 transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(249,115,22,0.3)]"
-          >
+        <button 
+          onClick={onLogin}
+          className="relative inline-flex h-10 overflow-hidden rounded-full p-[1px] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-50"
+        >
+          <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#f97316_50%,#E2CBFF_100%)]" />
+          <span className="inline-flex h-full w-full cursor-pointer items-center justify-center rounded-full bg-black px-6 py-1 text-xs font-bold uppercase tracking-widest text-white backdrop-blur-3xl transition-all hover:bg-black/80">
             Launch Terminal
-          </button>
-        </div>
+          </span>
+        </button>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative pt-40 pb-20 px-4 md:px-8 overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-orange-600/10 blur-[120px] rounded-full -z-10" />
+      <main className="relative z-10 pt-32 pb-20 px-6 md:px-12 max-w-7xl mx-auto">
         
-        <div className="max-w-7xl mx-auto text-center">
+        {/* HERO SECTION */}
+        <section className="flex flex-col items-center justify-center text-center min-h-[70vh] py-20 relative">
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="mb-12 inline-block"
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="mb-8"
           >
-            <img src="/logo.png" alt="Quantum Logo" className="w-48 h-48 mx-auto object-contain" referrerPolicy="no-referrer" />
+            <img src="/logo.png" alt="Quantum Logo" className="w-40 h-40 md:w-56 md:h-56 object-contain drop-shadow-[0_0_30px_rgba(249,115,22,0.4)]" />
           </motion.div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-6xl md:text-9xl font-display tracking-tighter mb-8 leading-[0.8] uppercase"
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="relative"
           >
-            QUANTUM <span className="text-orange-600">FINANCE</span>
-          </motion.h1>
+            <div className="absolute -inset-1 bg-gradient-to-r from-orange-600 to-red-600 blur-2xl opacity-20"></div>
+            <h1 className="relative text-6xl md:text-[8rem] font-display font-black tracking-tighter leading-[0.85] uppercase bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-white/40">
+              ALGORITHMIC <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600">DOMINANCE</span>
+            </h1>
+          </motion.div>
+
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="mt-8 max-w-2xl text-lg md:text-xl font-mono text-white/50 uppercase tracking-wide leading-relaxed"
+          >
+            A high-frequency AI momentum engine. We don't predict the market. <br/>
+            <span className="text-orange-500 font-bold">We react faster than it.</span>
+          </motion.p>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="max-w-3xl mx-auto mb-12"
-          >
-            <p className="text-xl md:text-2xl font-display text-white/90 leading-tight uppercase tracking-tight">
-              Traditional finance was built for control.<br/>
-              Quantum is built for speed, intelligence, and autonomy.<br/>
-              <span className="text-orange-500">The future of money isn’t managed. It’s engineered.</span>
-            </p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="mt-12 flex flex-col sm:flex-row gap-6"
           >
             <button
               onClick={onLogin}
-              className="group relative px-10 py-5 bg-orange-600 rounded-xl font-bold text-xl overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(249,115,22,0.4)]"
+              className="group relative px-8 py-4 bg-orange-600/10 border border-orange-500/50 hover:bg-orange-600 hover:border-orange-600 rounded-2xl font-bold uppercase tracking-widest overflow-hidden transition-all duration-300"
             >
-              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-              <span className="relative flex items-center gap-2 uppercase tracking-tighter">
-                Get Started <ChevronRight className="w-5 h-5" />
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-400/0 via-orange-400/30 to-orange-400/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+              <span className="relative flex items-center gap-2">
+                Connect Web3 Wallet <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </span>
             </button>
-            <button 
-              onClick={onLogin}
-              className="px-10 py-5 bg-white/5 hover:bg-white/10 rounded-xl font-bold text-xl transition-all border border-white/10 uppercase tracking-tighter"
-            >
-              Launch App
+            <button className="px-8 py-4 bg-white/5 border border-white/10 hover:bg-white/10 rounded-2xl font-bold uppercase tracking-widest transition-all backdrop-blur-sm">
+              Read The Docs
             </button>
           </motion.div>
-        </div>
-      </section>
+        </section>
 
-      {/* How It Works */}
-      <section className="py-24 px-4 md:px-8 bg-white/[0.02] border-y border-white/5">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-6xl font-display tracking-tighter mb-4 uppercase">HOW IT WORKS</h2>
-            <p className="text-white/50 text-lg font-sans">Four simple steps to start your automated trading journey.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 relative">
-            <div className="absolute top-1/2 left-0 right-0 h-px bg-white/5 hidden lg:block -z-10" />
-            {steps.map((step, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="relative text-center"
-              >
-                <div className="w-16 h-16 bg-black border-2 border-orange-600 rounded-full flex items-center justify-center mx-auto mb-6 text-xl font-black text-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.3)]">
-                  {step.number}
-                </div>
-                <h3 className="text-xl font-bold mb-3 uppercase tracking-tight">{step.title}</h3>
-                <p className="text-white/50 leading-relaxed">{step.desc}</p>
-              </motion.div>
+        {/* MARKET TICKER */}
+        <section className="py-10 border-y border-white/5 bg-black/20 backdrop-blur-sm my-20 -mx-6 md:-mx-12 px-6 md:px-12 overflow-hidden flex relative">
+          <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#030303] to-transparent z-10" />
+          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#030303] to-transparent z-10" />
+          <motion.div 
+            animate={{ x: [0, -1000] }} 
+            transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
+            className="flex gap-12 whitespace-nowrap"
+          >
+            {[...APP_CONFIG.SUPPORTED_PAIRS, ...APP_CONFIG.SUPPORTED_PAIRS].map((pair, i) => (
+              <div key={i} className="flex items-center gap-3 opacity-50 hover:opacity-100 transition-opacity cursor-default">
+                <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                <span className="font-mono font-bold text-lg">{pair}</span>
+                <span className="font-mono text-orange-500 tracking-tighter">HFT ACTIVE</span>
+              </div>
             ))}
-          </div>
-        </div>
-      </section>
+          </motion.div>
+        </section>
 
-      {/* Features Grid */}
-      <section className="py-24 px-4 md:px-8">
-        <div className="max-w-7xl mx-auto">
+        {/* BENTO GRID FEATURES */}
+        <section className="py-24 relative">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-7xl font-display tracking-tighter mb-4 uppercase">CORE FEATURES</h2>
-            <p className="text-white/50 text-lg font-sans">Everything you need to trade with confidence and scale.</p>
+            <h2 className="text-4xl md:text-5xl font-display uppercase tracking-tighter font-black">
+              The Engine <span className="text-orange-500">Architecture</span>
+            </h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, i) => (
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {features.map((feat, idx) => (
               <motion.div
-                key={i}
+                key={idx}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 hover:border-orange-500/30 transition-all group"
+                transition={{ delay: idx * 0.1 }}
+                className={cn(
+                  "relative group rounded-3xl p-8 bg-black/40 border border-white/10 overflow-hidden",
+                  idx === 0 || idx === 3 ? "md:col-span-2" : "md:col-span-1"
+                )}
               >
-                <div className="w-14 h-14 bg-orange-600/10 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-orange-600 transition-colors">
-                  <feature.icon className="w-7 h-7 text-orange-500 group-hover:text-white transition-colors" />
+                <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="relative z-10">
+                  <div className="w-12 h-12 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mb-6">
+                    <feat.icon className="w-6 h-6 text-orange-500" />
+                  </div>
+                  <h3 className="text-xl font-display uppercase font-bold mb-3 tracking-wide">{feat.title}</h3>
+                  <p className="text-sm font-mono text-white/50 leading-relaxed">{feat.desc}</p>
                 </div>
-                <h3 className="text-xl font-bold mb-3 uppercase tracking-tight">{feature.title}</h3>
-                <p className="text-white/50 leading-relaxed">{feature.desc}</p>
               </motion.div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Trading Modes */}
-      <section className="py-24 px-4 md:px-8 bg-white/[0.02] border-y border-white/5">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-7xl font-display tracking-tighter mb-4 uppercase">TRADING STRATEGIES</h2>
-            <p className="text-white/50 text-lg font-sans">Select the mode that fits your risk profile and goals.</p>
+        {/* CALL TO ACTION */}
+        <section className="py-32 relative">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-orange-900/10 to-transparent blur-3xl pointer-events-none" />
+          <div className="max-w-4xl mx-auto text-center relative z-10 border border-white/10 bg-black/40 backdrop-blur-2xl p-12 md:p-20 rounded-[3rem]">
+            <h2 className="text-5xl md:text-7xl font-display font-black tracking-tighter uppercase mb-6">
+              Stop <span className="text-white/30 text-stroke">Guessing.</span> <br/>
+              Start <span className="text-orange-500">Executing.</span>
+            </h2>
+            <p className="text-lg font-mono text-white/40 mb-10 max-w-xl mx-auto">
+              Join the terminal. Deposit native liquidity. Let the algorithm harvest momentum.
+            </p>
+            <button 
+              onClick={onLogin}
+              className="px-10 py-5 bg-white text-black font-black uppercase tracking-widest rounded-full hover:scale-105 transition-transform shadow-[0_0_40px_rgba(255,255,255,0.3)]"
+            >
+              Initialize Quantum
+            </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {tradingModes.map((mode, i) => (
-              <div key={i} className="p-8 rounded-3xl bg-black border border-white/5 text-center">
-                <h3 className="text-2xl font-black text-orange-500 mb-2 uppercase tracking-tighter">{mode.name}</h3>
-                <p className="text-white/50 text-sm">{mode.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Demo vs Real */}
-      <section className="py-24 px-4 md:px-8">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="p-10 rounded-[3rem] bg-blue-500/5 border border-blue-500/20">
-            <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-6">
-              <Shield className="w-6 h-6 text-blue-500" />
-            </div>
-            <h3 className="text-3xl font-black mb-4 uppercase tracking-tighter">DEMO MODE</h3>
-            <ul className="space-y-4 text-white/60">
-              <li className="flex items-center gap-3"><ChevronRight className="w-4 h-4 text-blue-500" /> Practice with simulated funds</li>
-              <li className="flex items-center gap-3"><ChevronRight className="w-4 h-4 text-blue-500" /> No real risk involved</li>
-              <li className="flex items-center gap-3"><ChevronRight className="w-4 h-4 text-blue-500" /> Full testing environment</li>
-              <li className="flex items-center gap-3"><ChevronRight className="w-4 h-4 text-blue-500" /> Reset balances anytime</li>
-            </ul>
-          </div>
-          <div className="p-10 rounded-[3rem] bg-orange-500/5 border border-orange-500/20">
-            <div className="w-12 h-12 bg-orange-500/10 rounded-2xl flex items-center justify-center mb-6">
-              <Zap className="w-6 h-6 text-orange-500" />
-            </div>
-            <h3 className="text-3xl font-black mb-4 uppercase tracking-tighter text-orange-500">REAL MODE</h3>
-            <ul className="space-y-4 text-white/60">
-              <li className="flex items-center gap-3"><ChevronRight className="w-4 h-4 text-orange-500" /> Uses real BNB/USDT funds</li>
-              <li className="flex items-center gap-3"><ChevronRight className="w-4 h-4 text-orange-500" /> Executes real trades on-chain</li>
-              <li className="flex items-center gap-3"><ChevronRight className="w-4 h-4 text-orange-500" /> Real profit/loss outcomes</li>
-              <li className="flex items-center gap-3"><ChevronRight className="w-4 h-4 text-orange-500" /> Instant 50/50 profit sharing</li>
-            </ul>
-          </div>
-        </div>
-      </section>
+      </main>
 
-      {/* Supported Assets */}
-      <section className="py-24 px-4 md:px-8 bg-white/[0.02] border-y border-white/5">
-        <div className="max-w-7xl mx-auto text-center">
-          <h2 className="text-2xl font-black tracking-widest mb-12 uppercase text-white/30">SUPPORTED ASSETS</h2>
-          <div className="flex flex-wrap justify-center gap-4 md:gap-8">
-            {assets.map((asset, i) => (
-              <div key={i} className="px-6 py-3 rounded-full bg-white/5 border border-white/10 font-mono text-sm font-bold">
-                {asset}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Risk Warning */}
-      <section className="py-24 px-4 md:px-8">
-        <div className="max-w-4xl mx-auto p-10 rounded-[3rem] bg-red-500/5 border border-red-500/20 text-center relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-red-500/50" />
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-500/10 rounded-full mb-8">
-            <AlertTriangle className="w-8 h-8 text-red-500" />
-          </div>
-          <h3 className="text-2xl md:text-3xl font-black text-red-500 mb-6 uppercase tracking-widest">MANDATORY RISK WARNING</h3>
-          <p className="text-white/70 text-lg md:text-xl leading-relaxed mb-8">
-            Trading involves risk. Profit is not guaranteed. Market conditions can change rapidly.
-            Quantum Finance provides tools and automation, but users are responsible for their decisions.
-            Proceed with full understanding of the risks involved.
+      {/* FOOTER */}
+      <footer className="py-8 border-t border-white/5 bg-black/50 text-center backdrop-blur-xl relative z-10">
+        <div className="flex flex-col items-center justify-center gap-4">
+          <img src="/logo.png" alt="Quantum" className="w-8 h-8 object-contain opacity-50 grayscale hover:grayscale-0 transition-all" />
+          <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-white/30">
+            © {new Date().getFullYear()} QUANTUM AI TRADING SYSTEMS. DECENTRALIZED INFRASTRUCTURE.
           </p>
-          <p className="text-white/40 text-lg italic font-serif">Venture into the unknown. Trade with awareness.</p>
         </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="py-32 px-4 md:px-8 text-center relative">
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-orange-600/10 blur-[100px] rounded-full -z-10" />
-        <h2 className="text-4xl md:text-7xl font-black tracking-tighter mb-10 uppercase">READY TO LAUNCH?</h2>
-        <button
-          onClick={onLogin}
-          className="px-12 py-6 bg-orange-600 rounded-2xl font-black text-2xl uppercase tracking-tighter hover:scale-105 active:scale-95 transition-all shadow-[0_0_50px_rgba(249,115,22,0.5)]"
-        >
-          Launch Quantum App
-        </button>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-16 px-4 md:px-8 border-t border-white/5 text-center">
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <img src="/logo.png" alt="Quantum" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
-          <span className="font-display text-3xl tracking-tighter uppercase">QUANTUM FINANCE</span>
-        </div>
-        <div className="flex justify-center gap-8 mb-8 text-white/40 text-sm font-bold uppercase tracking-widest">
-          <a href="https://guguroboticsreporter.medium.com/quantum-finance-55ce34afd39c" target="_blank" rel="noopener noreferrer" className="hover:text-orange-500 transition-colors">Terms</a>
-          <a href="#" className="hover:text-orange-500 transition-colors">Privacy</a>
-          <a href="#" className="hover:text-orange-500 transition-colors">Docs</a>
-          <a href="#" className="hover:text-orange-500 transition-colors">Support</a>
-        </div>
-        <p className="text-white/20 text-xs font-mono uppercase tracking-widest">© 2026 Quantum Finance Engine. Built on BNB Chain.</p>
       </footer>
     </div>
   );

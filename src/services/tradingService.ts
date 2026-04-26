@@ -175,6 +175,19 @@ export async function getUserRealBalance(userAddress: string): Promise<string> {
 }
 
 /**
+ * Get user's Vault balance from the smart contract
+ */
+export async function getVaultBalance(userAddress: string): Promise<string> {
+  try {
+    const provider = new ethers.JsonRpcProvider(APP_CONFIG.BNB_CHAIN.RPC_URL);
+    return await getUserBalance(userAddress, provider);
+  } catch (error) {
+    console.error('Error fetching vault balance:', error);
+    return '0';
+  }
+}
+
+/**
  * Get user's profit from blockchain (via TradingVault contract)
  */
 export async function getUserRealProfit(userAddress: string): Promise<string> {
