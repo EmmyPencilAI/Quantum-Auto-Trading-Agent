@@ -163,13 +163,11 @@ export async function settleTrade(
   }
 }
 
-/**
- * Get user's real balance from blockchain (via TradingVault contract)
- */
 export async function getUserRealBalance(userAddress: string): Promise<string> {
   try {
     const provider = new ethers.JsonRpcProvider(APP_CONFIG.BNB_CHAIN.RPC_URL);
-    return await getUserBalance(userAddress, provider);
+    const bal = await provider.getBalance(userAddress);
+    return ethers.formatEther(bal);
   } catch (error) {
     console.error('Error fetching real balance:', error);
     return '0';
