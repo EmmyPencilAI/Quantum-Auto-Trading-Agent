@@ -1,7 +1,11 @@
+import { useState, useEffect, useRef } from 'react';
+import { supabase } from '../lib/supabase';
+import { APP_CONFIG } from '../config';
+import { Position, MarketData, ModeType, Trade, Candle } from '../engine/types';
+import { TradingMode } from '../types';
 import { evaluateMarket } from '../engine/signalGenerator';
 import { executeTrade } from '../engine/executor';
 import { settleTrade } from '../services/tradingService';
-import { useRef } from 'react';
 
 export function useTradingEngine(
   user: any, 
