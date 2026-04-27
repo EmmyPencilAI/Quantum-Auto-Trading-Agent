@@ -375,7 +375,15 @@ export default function TradingTab({
               <div className="text-right">
                 <p className="text-[10px] font-display text-orange-500/70 uppercase tracking-widest mb-1">Vault Liquidity</p>
                 <h3 className="text-2xl font-mono text-white tracking-tight">
-                  {parseFloat(vaultBalance).toFixed(4)} BNB
+                  {(() => {
+                    const baseBal = parseFloat(vaultBalance) || 0;
+                    // Try to get BNB price, default to 600 if unavailable
+                    const bnbPriceStr = tickerPrices['BNB/USDT'] || tickerPrices['BNB'] || '600';
+                    const bnbPrice = parseFloat(bnbPriceStr.replace(/,/g, '')) || 600;
+                    const virtualProfitBNB = totalPnL / bnbPrice;
+                    const displayBal = Math.max(0, baseBal + virtualProfitBNB);
+                    return displayBal.toFixed(4) + ' BNB';
+                  })()}
                 </h3>
               </div>
             </div>
