@@ -76,10 +76,22 @@ export class QuantumAgentService {
 
   async generateMarketUpdate() {
     try {
-      const res = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
-      const data = await res.json();
-      const price = parseFloat(data.price);
-      return `📊 Market Update: BTC/USDT is currently trading at $${price.toLocaleString()}.\nStatus: ${price > 65000 ? 'Bullish Expansion' : 'Consolidation Zone'}`;
+      // Try CryptoCompare first
+      let price = 0;
+      try {
+        const res = await fetch('https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USDT');
+        const data = await res.json();
+        price = data.USDT || 0;
+      } catch (e) {
+        // Fallback to Binance
+        const res = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
+        const data = await res.json();
+        price = parseFloat(data.price);
+      }
+      if (price) {
+        return `📊 Market Update: BTC/USDT is currently trading at $${price.toLocaleString()}.\nStatus: ${price > 65000 ? 'Bullish Expansion' : 'Consolidation Zone'}`;
+      }
+      throw new Error("No price data");
     } catch (e) {
       return `📊 Market Update: BTC/USDT shows high volatility. Technical indicators suggesting a major breakout soon.`;
     }

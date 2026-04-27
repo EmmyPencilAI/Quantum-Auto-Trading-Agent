@@ -187,20 +187,41 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
   useEffect(() => {
     const fetchPrices = async () => {
       try {
+        // Try CryptoCompare first
+        const res = await fetch('https://min-api.cryptocompare.com/data/pricemulti?fsyms=BNB,BTC,ETH,SOL,XRP,ADA,SUI,USDC&tsyms=USDT,USD');
+        if (res.ok) {
+          const data = await res.json();
+          const prices: Record<string, number> = {};
+          Object.entries(data).forEach(([sym, vals]: [string, any]) => {
+            prices[sym] = vals.USDT || vals.USD || 0;
+          });
+          if (Object.keys(prices).length > 0) {
+            setTickerPrices(prev => ({ ...prev, ...prices }));
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("[QUANTUM] CryptoCompare wallet price fetch failed", e);
+      }
+      
+      // Fallback to Binance
+      try {
         const symbols = ['BNBUSDT', 'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'ADAUSDT', 'SUIUSDT', 'USDCUSDT'];
         const res = await fetch('https://api.binance.com/api/v3/ticker/price');
-        const data = await res.json();
-        const prices: Record<string, number> = {};
-        symbols.forEach(s => {
-          const match = data.find((t: any) => t.symbol === s);
-          if (match) {
-            const sym = s.replace('USDT', '');
-            prices[sym] = parseFloat(match.price);
-          }
-        });
-        setTickerPrices(prev => ({ ...prev, ...prices }));
+        if (res.ok) {
+          const data = await res.json();
+          const prices: Record<string, number> = {};
+          symbols.forEach(s => {
+            const match = data.find((t: any) => t.symbol === s);
+            if (match) {
+              const sym = s.replace('USDT', '');
+              prices[sym] = parseFloat(match.price);
+            }
+          });
+          setTickerPrices(prev => ({ ...prev, ...prices }));
+        }
       } catch (e) {
-        console.warn("Wallet price fetch failed", e);
+        // Binance blocked - use defaults
       }
     };
     fetchPrices();

@@ -43,88 +43,153 @@ export function useTradingEngine(
   }, [isTrading, user?.uid, baseTradeAmount, strategy, mode, selectedPairGlobal]);
 
   // 2. ALWAYS fetch market data so the chart renders even when not trading
+  // Uses CryptoCompare (primary) + CoinGecko (fallback) since Binance may be blocked
   useEffect(() => {
-    const symbol = selectedPairGlobal.replace('/', '');
+    // Map pair names to CryptoCompare/CoinGecko format
+    const [base] = selectedPairGlobal.split('/');
+    const ccSymbol = base; // CryptoCompare uses just the base symbol like "BTC"
+    const cgIdMap: Record<string, string> = {
+      'BTC': 'bitcoin', 'ETH': 'ethereum', 'BNB': 'binancecoin', 'SOL': 'solana',
+      'SUI': 'sui', 'XRP': 'ripple', 'ADA': 'cardano', 'DOGE': 'dogecoin',
+      'AVAX': 'avalanche-2', 'MATIC': 'matic-network'
+    };
     
     const fetchMarketData = async () => {
-      try {
-        // Fetch current price
-        const priceRes = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
-        const priceData = await priceRes.json();
-        const price = parseFloat(priceData.price);
-        
-        if (!price || isNaN(price)) {
-          console.warn("Invalid price returned from Binance");
-          return;
-        }
+      let price = 0;
+      let candles: Candle[] = [];
 
-        // Fetch candles - try 1m (most reliable), fallback to synthetic
-        let candles: Candle[] = [];
+      // === PROVIDER 1: CryptoCompare (has both price and minute candles) ===
+      try {
+        const candleRes = await fetch(`https://min-api.cryptocompare.com/data/v2/histominute?fsym=${ccSymbol}&tsym=USDT&limit=80`);
+        if (candleRes.ok) {
+          const candleJson = await candleRes.json();
+          if (candleJson.Data?.Data && Array.isArray(candleJson.Data.Data)) {
+            candles = candleJson.Data.Data.map((c: any) => ({
+              time: c.time * 1000,
+              open: c.open,
+              high: c.high,
+              low: c.low,
+              close: c.close,
+              volume: c.volumefrom || c.volumeto || 1
+            }));
+            // Use last candle close as price
+            if (candles.length > 0) {
+              price = candles[candles.length - 1].close;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[QUANTUM] CryptoCompare fetch failed, trying fallbacks...", e);
+      }
+
+      // === PROVIDER 2: CoinGecko (fallback for price + OHLC) ===
+      if (!price || candles.length === 0) {
         try {
-          const candleRes = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m&limit=80`);
-          if (candleRes.ok) {
-            const candleData = await candleRes.json();
-            if (Array.isArray(candleData) && candleData.length > 0) {
-              candles = candleData.map((c: any) => ({
-                time: c[0], open: parseFloat(c[1]), high: parseFloat(c[2]), low: parseFloat(c[3]), close: parseFloat(c[4]), volume: parseFloat(c[5])
-              }));
+          const cgId = cgIdMap[ccSymbol] || ccSymbol.toLowerCase();
+          // Fetch price
+          if (!price) {
+            const priceRes = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${cgId}&vs_currencies=usd`);
+            if (priceRes.ok) {
+              const priceJson = await priceRes.json();
+              price = priceJson[cgId]?.usd || 0;
+            }
+          }
+          // Fetch OHLC candles if we don't have them
+          if (candles.length === 0 && price) {
+            const ohlcRes = await fetch(`https://api.coingecko.com/api/v3/coins/${cgIdMap[ccSymbol] || ccSymbol.toLowerCase()}/ohlc?vs_currency=usd&days=1`);
+            if (ohlcRes.ok) {
+              const ohlcData = await ohlcRes.json();
+              if (Array.isArray(ohlcData) && ohlcData.length > 0) {
+                candles = ohlcData.map((c: any) => ({
+                  time: c[0], open: c[1], high: c[2], low: c[3], close: c[4], volume: 50 + Math.random() * 100
+                }));
+              }
             }
           }
         } catch (e) {
-          console.warn("1m klines fetch failed");
+          console.warn("[QUANTUM] CoinGecko fetch failed", e);
         }
-
-        // Fallback: generate synthetic candles with realistic volume patterns
-        if (candles.length === 0) {
-          const spread = price * 0.002; // 0.2% spread for more variance
-          let lastClose = price;
-          candles = Array.from({ length: 60 }, (_, i) => {
-            const drift = (Math.random() - 0.48) * spread; // slight upward bias
-            const open = lastClose;
-            const close = open + drift;
-            const high = Math.max(open, close) + Math.random() * spread * 0.5;
-            const low = Math.min(open, close) - Math.random() * spread * 0.5;
-            // Create volume spikes on some candles (every ~8th candle)
-            const baseVolume = 50 + Math.random() * 50;
-            const volume = i % 8 === 0 ? baseVolume * 2.5 : baseVolume;
-            lastClose = close;
-            return { time: Date.now() - (60 - i) * 60000, open, high, low, close, volume };
-          });
-        }
-
-        // Calculate proper RSI and order flow from candle data
-        const closes = candles.map(c => c.close);
-        const recentCloses = closes.slice(-14);
-        let gains = 0, losses = 0;
-        for (let i = 1; i < recentCloses.length; i++) {
-          const diff = recentCloses[i] - recentCloses[i-1];
-          if (diff > 0) gains += diff; else losses -= diff;
-        }
-        const avgGain = gains / 14;
-        const avgLoss = losses / 14;
-        const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-        const rsi = 100 - (100 / (1 + rs));
-
-        const priceChange = closes.length >= 2 ? closes[closes.length - 1] - closes[closes.length - 2] : 0;
-        const orderFlow = priceChange > 0 ? 'BUY_PRESSURE' : priceChange < 0 ? 'SELL_PRESSURE' : 'NEUTRAL';
-
-        const newData: MarketData = {
-          price,
-          rsi,
-          momentum: Math.abs(priceChange / price),
-          liquidityZone: rsi > 65 ? "HIGH" : rsi < 35 ? "LOW" : "NEUTRAL",
-          orderFlow: orderFlow as any,
-          timestamp: Date.now(),
-          candles
-        };
-        setMarketData(newData);
-      } catch (e) {
-        console.warn("Market fetch failed", e);
       }
+
+      // === PROVIDER 3: Binance (try as last resort) ===
+      if (!price || candles.length === 0) {
+        try {
+          const binSymbol = selectedPairGlobal.replace('/', '');
+          if (!price) {
+            const priceRes = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${binSymbol}`);
+            if (priceRes.ok) {
+              const priceData = await priceRes.json();
+              price = parseFloat(priceData.price) || 0;
+            }
+          }
+          if (candles.length === 0) {
+            const candleRes = await fetch(`https://api.binance.com/api/v3/klines?symbol=${binSymbol}&interval=1m&limit=80`);
+            if (candleRes.ok) {
+              const candleData = await candleRes.json();
+              if (Array.isArray(candleData) && candleData.length > 0) {
+                candles = candleData.map((c: any) => ({
+                  time: c[0], open: parseFloat(c[1]), high: parseFloat(c[2]), low: parseFloat(c[3]), close: parseFloat(c[4]), volume: parseFloat(c[5])
+                }));
+              }
+            }
+          }
+        } catch (e) {
+          // Binance blocked - silently continue
+        }
+      }
+
+      // === FINAL FALLBACK: Synthetic candles from price ===
+      if (price && candles.length === 0) {
+        const spread = price * 0.002;
+        let lastClose = price;
+        candles = Array.from({ length: 60 }, (_, i) => {
+          const drift = (Math.random() - 0.48) * spread;
+          const open = lastClose;
+          const close = open + drift;
+          const high = Math.max(open, close) + Math.random() * spread * 0.5;
+          const low = Math.min(open, close) - Math.random() * spread * 0.5;
+          const baseVolume = 50 + Math.random() * 50;
+          const volume = i % 8 === 0 ? baseVolume * 2.5 : baseVolume;
+          lastClose = close;
+          return { time: Date.now() - (60 - i) * 60000, open, high, low, close, volume };
+        });
+      }
+
+      if (!price || isNaN(price)) {
+        console.warn("[QUANTUM] All price providers failed");
+        return;
+      }
+
+      // Calculate RSI and order flow from candle data
+      const closes = candles.map(c => c.close);
+      const recentCloses = closes.slice(-14);
+      let gains = 0, losses = 0;
+      for (let i = 1; i < recentCloses.length; i++) {
+        const diff = recentCloses[i] - recentCloses[i-1];
+        if (diff > 0) gains += diff; else losses -= diff;
+      }
+      const avgGain = gains / 14;
+      const avgLoss = losses / 14;
+      const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+      const rsi = 100 - (100 / (1 + rs));
+
+      const priceChange = closes.length >= 2 ? closes[closes.length - 1] - closes[closes.length - 2] : 0;
+      const orderFlow = priceChange > 0 ? 'BUY_PRESSURE' : priceChange < 0 ? 'SELL_PRESSURE' : 'NEUTRAL';
+
+      const newData: MarketData = {
+        price,
+        rsi,
+        momentum: Math.abs(priceChange / price),
+        liquidityZone: rsi > 65 ? "HIGH" : rsi < 35 ? "LOW" : "NEUTRAL",
+        orderFlow: orderFlow as any,
+        timestamp: Date.now(),
+        candles
+      };
+      setMarketData(newData);
     };
 
     fetchMarketData();
-    const interval = setInterval(fetchMarketData, 2000); // Poll every 2 seconds
+    const interval = setInterval(fetchMarketData, 3000); // Poll every 3 seconds
     return () => clearInterval(interval);
   }, [selectedPairGlobal]);
 

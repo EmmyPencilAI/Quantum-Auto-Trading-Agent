@@ -64,23 +64,61 @@ export default function TradingTab({
   ]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch all ticker prices
+  // Fetch all ticker prices (CryptoCompare primary, Binance fallback)
   useEffect(() => {
+    const ccSymbolMap: Record<string, string> = {
+      'BTC': 'BTC', 'ETH': 'ETH', 'BNB': 'BNB', 'SOL': 'SOL', 'SUI': 'SUI',
+      'XRP': 'XRP', 'ADA': 'ADA', 'DOGE': 'DOGE', 'AVAX': 'AVAX', 'MATIC': 'MATIC'
+    };
+    
     const fetchTickers = async () => {
+      const prices: Record<string, string> = {};
+      
+      // Try CryptoCompare first (works when Binance is blocked)
       try {
-        const res = await fetch('https://api.binance.com/api/v3/ticker/price');
-        const data = await res.json();
-        const prices: Record<string, string> = {};
-        APP_CONFIG.SUPPORTED_PAIRS.forEach(pair => {
-          const symbol = pair.replace('/', '');
-          const match = data.find((t: any) => t.symbol === symbol);
-          if (match) {
-            prices[pair] = parseFloat(match.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-          }
-        });
-        setTickerPrices(prices);
+        const bases = [...new Set(APP_CONFIG.SUPPORTED_PAIRS.map(p => p.split('/')[0]))];
+        const fsyms = bases.join(',');
+        const res = await fetch(`https://min-api.cryptocompare.com/data/pricemulti?fsyms=${fsyms}&tsyms=USDT,USDC,USD`);
+        if (res.ok) {
+          const data = await res.json();
+          APP_CONFIG.SUPPORTED_PAIRS.forEach(pair => {
+            const [base, quote] = pair.split('/');
+            const priceData = data[base];
+            if (priceData) {
+              const p = priceData[quote] || priceData['USD'] || priceData['USDT'];
+              if (p) {
+                prices[pair] = parseFloat(p).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              }
+            }
+          });
+        }
       } catch (e) {
-        console.warn("Ticker fetch failed", e);
+        console.warn("[QUANTUM] CryptoCompare ticker fetch failed", e);
+      }
+
+      // Fallback to Binance if CryptoCompare didn't return enough
+      if (Object.keys(prices).length < 3) {
+        try {
+          const res = await fetch('https://api.binance.com/api/v3/ticker/price');
+          if (res.ok) {
+            const data = await res.json();
+            APP_CONFIG.SUPPORTED_PAIRS.forEach(pair => {
+              if (!prices[pair]) {
+                const symbol = pair.replace('/', '');
+                const match = data.find((t: any) => t.symbol === symbol);
+                if (match) {
+                  prices[pair] = parseFloat(match.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+              }
+            });
+          }
+        } catch (e) {
+          // Binance blocked - continue with what we have
+        }
+      }
+      
+      if (Object.keys(prices).length > 0) {
+        setTickerPrices(prices);
       }
     };
     fetchTickers();

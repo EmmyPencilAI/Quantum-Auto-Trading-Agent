@@ -19,26 +19,63 @@ export default function MarketsTab() {
 
   useEffect(() => {
     const fetchMarketData = async () => {
+      let mapped: MarketStat[] = [];
+      
+      // Try CryptoCompare first (works when Binance is blocked)
       try {
-        const res = await fetch('https://api.binance.com/api/v3/ticker/24hr');
-        const data = await res.json();
+        const bases = APP_CONFIG.SUPPORTED_PAIRS.map(p => p.split('/')[0]);
+        const uniqueBases = [...new Set(bases)];
+        const fsyms = uniqueBases.join(',');
         
-        const symbols = APP_CONFIG.SUPPORTED_PAIRS.map(p => p.replace('/', ''));
-        const filtered = data.filter((t: any) => symbols.includes(t.symbol));
+        // Get current prices
+        const priceRes = await fetch(`https://min-api.cryptocompare.com/data/pricemulti?fsyms=${fsyms}&tsyms=USDT`);
+        // Get 24h change data
+        const changeRes = await fetch(`https://min-api.cryptocompare.com/data/pricemultifull?fsyms=${fsyms}&tsyms=USDT`);
         
-        const mapped = filtered.map((t: any) => ({
-          symbol: t.symbol.replace('USDT', ''),
-          name: t.symbol.replace('USDT', ''),
-          price: parseFloat(t.lastPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-          change: parseFloat(t.priceChangePercent) >= 0 ? `+${parseFloat(t.priceChangePercent).toFixed(2)}%` : `${parseFloat(t.priceChangePercent).toFixed(2)}%`,
-          rawPrice: parseFloat(t.lastPrice)
-        }));
-
-        setMarketData(mapped);
-        setLoading(false);
+        if (priceRes.ok && changeRes.ok) {
+          const changeData = await changeRes.json();
+          
+          mapped = uniqueBases.map(base => {
+            const raw = changeData.RAW?.[base]?.USDT;
+            const display = changeData.DISPLAY?.[base]?.USDT;
+            return {
+              symbol: base,
+              name: base,
+              price: raw ? parseFloat(raw.PRICE).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00',
+              change: raw ? (raw.CHANGEPCT24HOUR >= 0 ? `+${parseFloat(raw.CHANGEPCT24HOUR).toFixed(2)}%` : `${parseFloat(raw.CHANGEPCT24HOUR).toFixed(2)}%`) : '0.00%',
+              rawPrice: raw ? parseFloat(raw.PRICE) : 0
+            };
+          }).filter(m => m.rawPrice > 0);
+        }
       } catch (e) {
-        console.warn("Market data fetch failed", e);
+        console.warn("[QUANTUM] CryptoCompare market data failed", e);
       }
+
+      // Fallback to Binance
+      if (mapped.length === 0) {
+        try {
+          const res = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+          if (res.ok) {
+            const data = await res.json();
+            const symbols = APP_CONFIG.SUPPORTED_PAIRS.map(p => p.replace('/', ''));
+            const filtered = data.filter((t: any) => symbols.includes(t.symbol));
+            mapped = filtered.map((t: any) => ({
+              symbol: t.symbol.replace('USDT', '').replace('USDC', ''),
+              name: t.symbol.replace('USDT', '').replace('USDC', ''),
+              price: parseFloat(t.lastPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+              change: parseFloat(t.priceChangePercent) >= 0 ? `+${parseFloat(t.priceChangePercent).toFixed(2)}%` : `${parseFloat(t.priceChangePercent).toFixed(2)}%`,
+              rawPrice: parseFloat(t.lastPrice)
+            }));
+          }
+        } catch (e) {
+          // Binance blocked
+        }
+      }
+
+      if (mapped.length > 0) {
+        setMarketData(mapped);
+      }
+      setLoading(false);
     };
 
     fetchMarketData();
