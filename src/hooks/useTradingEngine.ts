@@ -240,7 +240,11 @@ export function useTradingEngine(
             onClose: async (txHash) => {
               if (currentPositionRef.current) {
                 const pos = currentPositionRef.current;
-                const pnl = pos.type === 'LONG' ? (marketData.price - pos.entryPrice) * pos.size * 10 : (pos.entryPrice - marketData.price) * pos.size * 10;
+                const priceDiff = pos.type === 'LONG' ? (marketData.price - pos.entryPrice) : (pos.entryPrice - marketData.price);
+                const pnlPercent = priceDiff / pos.entryPrice;
+                const leverage = 100; // 100x leverage
+                const pnl = baseTradeAmount * leverage * pnlPercent;
+                
                 try {
                   await settleTrade(pos.id, pnl, (Date.now() - pos.startTime)/1000, txHash);
                 } catch (dbErr) {

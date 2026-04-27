@@ -259,9 +259,12 @@ export default function TradingTab({
     if (isTrading && currentPosition) {
        // Real mode logic: floating pnl is derived from market price vs entry
        if (marketData) {
-         const pnl = currentPosition.type === 'LONG' 
-           ? (marketData.price - currentPosition.entryPrice) * currentPosition.size * 10
-           : (currentPosition.entryPrice - marketData.price) * currentPosition.size * 10;
+         const priceDiff = currentPosition.type === 'LONG' 
+           ? (marketData.price - currentPosition.entryPrice)
+           : (currentPosition.entryPrice - marketData.price);
+         const pnlPercent = priceDiff / currentPosition.entryPrice;
+         const leverage = 100; // Standardize to 100x leverage
+         const pnl = tradeAmount * leverage * pnlPercent;
          setFloatingPnl(pnl);
        }
     }
