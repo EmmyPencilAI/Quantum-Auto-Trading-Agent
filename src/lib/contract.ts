@@ -22,8 +22,8 @@ export const TRADING_VAULT_ABI = [
   'event EmergencyWithdraw(address indexed user, uint256 amount)'
 ] as const;
 
-// Contract address - should be set in environment variables
-const CONTRACT_ADDRESS = process.env.VAULT_CONTRACT_ADDRESS || APP_CONFIG.CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000';
+// Contract address - should be set in environment variables via config
+const CONTRACT_ADDRESS = APP_CONFIG.CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000';
 
 // PancakeSwap Router addresses
 const ROUTERS: Record<string, string> = {

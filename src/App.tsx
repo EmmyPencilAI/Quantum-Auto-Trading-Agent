@@ -254,6 +254,19 @@ export default function App() {
 
         console.log("Login user info:", userInfo);
 
+        // Create a default user object based purely on Web3Auth
+        const fallbackUser: User = {
+          uid: uniqueId,
+          wallet_address: safeAddress,
+          username: userInfo.name || `Quantum_${safeAddress.slice(2, 8)}`,
+          avatar: userInfo.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${safeAddress}`,
+          created_at: new Date().toISOString(),
+          trade_volume: 0,
+          followers: [],
+          following: [],
+          location: location
+        } as any;
+
         const { data: userDoc, error: fetchError } = await supabase
           .from('users')
           .select('*')
@@ -262,42 +275,30 @@ export default function App() {
 
         if (fetchError && fetchError.code === 'PGRST116') {
           setLoadingMessage("CREATING QUANTUM IDENTITY...");
-          // User doesn't exist, create new
-          const newUser: User = {
-            uid: uniqueId,
-            wallet_address: safeAddress,
-            // PRIORITIZE GMAIL NAME AND PHOTO
-            username: userInfo.name || `Quantum_${safeAddress.slice(2, 8)}`,
-            avatar: userInfo.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${safeAddress}`,
-            created_at: new Date().toISOString(),
-            trade_volume: 0,
-            followers: [],
-            following: [],
-            location: location
-          } as any;
-
+          
           const { error: insertError } = await supabase
             .from('users')
-            .upsert(newUser);
+            .upsert(fallbackUser);
 
           if (insertError) {
-            console.error("Insert error:", insertError);
-            throw new Error(`Failed to create account: ${insertError.message}`);
+            console.warn("Insert error (Supabase might be broken):", insertError);
+            // Ignore DB error, proceed with local fallback
+          } else {
+            // FORCE LOGOUT as requested for onboarding verification (only on true new user creation)
+            setLoadingMessage("VERIFYING SECURITY PARAMETERS...");
+            setIsOnboarding(true);
+            setTimeout(async () => {
+               await web3auth.logout();
+               setIsLoggedIn(false);
+               setUser(null);
+               setIsOnboarding(false);
+               setLoginError("Quantum Security Active. Identity verified via Web3Auth MFA. Account secured. Please login again.");
+            }, 4000);
+            return; // Stop execution here for onboarding
           }
-          
 
-          // FORCE LOGOUT as requested for onboarding verification
-          setLoadingMessage("VERIFYING SECURITY PARAMETERS...");
-          setIsOnboarding(true);
-          setTimeout(async () => {
-             await web3auth.logout();
-             setIsLoggedIn(false);
-             setUser(null);
-             setIsOnboarding(false);
-             setLoginError("Quantum Security Active. Identity verified via Web3Auth MFA. Account secured. Please login again.");
-          }, 4000);
+          setUser(fallbackUser);
 
-          setUser(newUser);
         } else if (userDoc) {
           setLoadingMessage("SYNCING QUANTUM DATA...");
           const updatePayload: any = { 
@@ -306,7 +307,6 @@ export default function App() {
           };
           if (location) updatePayload.location = location;
           
-          // SYNC GMAIL INFO IF CURRENT VALUES ARE EMPTY OR DUMMY
           if (!userDoc.username || userDoc.username.startsWith('Quantum_')) {
             if (userInfo.name) updatePayload.username = userInfo.name;
           }
@@ -328,6 +328,10 @@ export default function App() {
             setUser(updatedUser as User);
           }
 
+        } else {
+          // fetchError occurred and it WAS NOT PGRST116 (e.g. table deleted, RLS blocked)
+          console.warn("Supabase Critical Failure. Running in Decentralized Fallback Mode.", fetchError);
+          setUser(fallbackUser);
         }
         setIsLoggedIn(true);
     } catch (error: any) {
