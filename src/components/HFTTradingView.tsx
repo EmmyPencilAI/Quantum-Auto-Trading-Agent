@@ -1,15 +1,16 @@
 import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
 import { ArrowUp, ArrowDown, Zap } from 'lucide-react';
-import { MarketData, Candle, Position, TradeSignal } from '../engine/types';
+import { MarketData, Candle, Position, TradeSignal, Trade } from '../engine/types';
 import { cn } from '../lib/utils';
 
 interface HFTTradingViewProps {
   marketData: MarketData | null;
   currentPosition: Position | null;
+  tradeHistory?: Trade[];
 }
 
-export default function HFTTradingView({ marketData, currentPosition }: HFTTradingViewProps) {
+export default function HFTTradingView({ marketData, currentPosition, tradeHistory }: HFTTradingViewProps) {
   const candles = useMemo(() => marketData?.candles || [], [marketData]);
 
   if (!marketData) {
@@ -91,21 +92,34 @@ export default function HFTTradingView({ marketData, currentPosition }: HFTTradi
                 )}
               />
 
-              {/* Execution Marker (BUY/SELL) */}
-              {(i === 10 || i === 25 || i === 40) && (
-                <div className="absolute inset-0 z-20 flex flex-col items-center">
-                  <div className={cn(
-                    "w-px h-full border-l border-dashed opacity-40",
-                    i % 2 === 0 ? "border-green-500" : "border-red-500"
-                  )} />
-                  <div className={cn(
-                    "absolute top-1/2 -translate-y-1/2 px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest shadow-lg",
-                    i % 2 === 0 ? "bg-green-500 text-black" : "bg-red-500 text-white"
-                  )}>
-                    {i % 2 === 0 ? 'BUY' : 'SELL'}
+              {/* Dynamic Execution Marker (BUY/SELL) */}
+              {(() => {
+                const matchingTrade = tradeHistory?.find(t => {
+                  const tradeTime = new Date(t.created_at).getTime();
+                  return tradeTime >= candle.time && tradeTime < candle.time + 60000;
+                });
+
+                if (!matchingTrade) return null;
+
+                const isBuy = matchingTrade.type === 'LONG';
+                
+                return (
+                  <div className="absolute inset-0 z-20 flex flex-col items-center">
+                    <div className={cn(
+                      "w-px h-full border-l border-dashed opacity-40",
+                      isBuy ? "border-[#00ff9d]" : "border-[#ff3b3b]"
+                    )} />
+                    <div className={cn(
+                      "absolute -translate-y-1/2 px-3 py-1 rounded text-[9px] font-black uppercase tracking-widest shadow-xl",
+                      isBuy ? "bg-[#00ff9d] text-black" : "bg-[#ff3b3b] text-white"
+                    )}
+                    style={{ top: isBuy ? '85%' : '15%' }}
+                    >
+                      {isBuy ? 'BUY' : 'SELL'}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
               
               {/* Active Trade Marker */}
               {i === candles.length - 1 && currentPosition && (

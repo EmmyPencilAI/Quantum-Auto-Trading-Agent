@@ -20,8 +20,15 @@ export function useTradingEngine(
   const [marketData, setMarketData] = useState<MarketData | null>(null);
   const [tradesCount, setTradesCount] = useState(0);
   const [totalPnL, setTotalPnL] = useState(0);
+  const [dailyPnL, setDailyPnL] = useState(0);
   const [tradeHistory, setTradeHistory] = useState<Trade[]>([]);
   const [liveTrades, setLiveTrades] = useState<Trade[]>([]);
+  const [dynamicTradeAmount, setDynamicTradeAmount] = useState(baseTradeAmount);
+  
+  // Reset dynamic scaling if user manually changes base input
+  useEffect(() => {
+    setDynamicTradeAmount(baseTradeAmount);
+  }, [baseTradeAmount]);
   
   const isExecutingRef = useRef(false);
   const currentPositionRef = useRef<Position | null>(null);
@@ -202,8 +209,67 @@ export function useTradingEngine(
     const evaluateAndExecute = async () => {
       if (isExecutingRef.current) return;
       
+      // RISK MANAGEMENT: Daily Loss Limit Circuit Breaker (30% of active trade amount)
+      if (dailyPnL <= -(baseTradeAmount * 0.30)) {
+        if (Math.random() > 0.95) console.warn("[QUANTUM CIRCUIT BREAKER] Daily Loss Limit Reached. Trading Halted.");
+        return; 
+      }
+      
       const signal = evaluateMarket(marketData, currentPositionRef.current, 1000);
       
+      const handleVirtualFallback = async () => {
+        if (signal.action === 'BUY' || signal.action === 'SELL') {
+          if (!currentPositionRef.current) {
+            console.warn(`[QUANTUM] Opening virtual position for PNL tracking.`);
+            const tradeId = `virtual_${Date.now()}_${user.uid}`;
+            const tradeType = signal.action === 'BUY' ? 'LONG' : 'SHORT';
+            
+            try {
+              await supabase?.from('trades').insert({
+                id: tradeId, uid: user.uid, type: tradeType, pair: selectedPairGlobal,
+                trade_mode: strategy, entry_price: marketData.price, size: signal.lotSize, pnl: 0,
+                mode_type: mode, status: "Running", transaction_hash: 'virtual',
+                created_at: new Date().toISOString()
+              });
+            } catch (dbErr) {
+              console.warn("DB insert failed:", dbErr);
+            }
+            
+            setCurrentPosition({
+              id: tradeId, type: tradeType, entryPrice: marketData.price,
+              size: signal.lotSize, startTime: Date.now(), mode: strategy as any, modeType: mode as any
+            });
+            setCurrentLotSize(signal.lotSize);
+          }
+        } else if (signal.action === 'CLOSE') {
+          if (currentPositionRef.current) {
+            console.warn(`[QUANTUM] Closing virtual position for PNL tracking.`);
+            const pos = currentPositionRef.current;
+            const priceDiff = pos.type === 'LONG' ? (marketData.price - pos.entryPrice) : (pos.entryPrice - marketData.price);
+            const pnlPercent = priceDiff / pos.entryPrice;
+            const leverage = 100;
+            const pnl = dynamicTradeAmount * leverage * pnlPercent;
+            
+            try {
+              await settleTrade(pos.id, pnl, (Date.now() - pos.startTime)/1000, 'virtual');
+            } catch (dbErr) {
+              console.warn("DB settle failed:", dbErr);
+            }
+            setTotalPnL(prev => prev + pnl);
+            setDailyPnL(prev => prev + pnl);
+            setTradesCount(prev => prev + 1);
+            setCurrentPosition(null);
+            
+            // RISK MANAGEMENT: Lot Scaling (Anti-Martingale)
+            if (pnl > 0) {
+              setDynamicTradeAmount(prev => prev * 1.1);
+            } else if (pnl < 0) {
+              setDynamicTradeAmount(prev => Math.max(prev * 0.9, baseTradeAmount * 0.1));
+            }
+          }
+        }
+      };
+
       if (signal) {
         isExecutingRef.current = true;
         console.log(`[QUANTUM SIGNAL] Firing: ${signal.action} Lot: ${signal.lotSize} Reason: ${signal.reason}`);
@@ -227,13 +293,7 @@ export function useTradingEngine(
               }
               
               setCurrentPosition({
-                id: tradeId,
-                type,
-                entryPrice: marketData.price,
-                size,
-                startTime: Date.now(),
-                mode: strategy as any,
-                modeType: mode as any
+                id: tradeId, type, entryPrice: marketData.price, size, startTime: Date.now(), mode: strategy as any, modeType: mode as any
               });
               setCurrentLotSize(size);
             },
@@ -243,7 +303,7 @@ export function useTradingEngine(
                 const priceDiff = pos.type === 'LONG' ? (marketData.price - pos.entryPrice) : (pos.entryPrice - marketData.price);
                 const pnlPercent = priceDiff / pos.entryPrice;
                 const leverage = 100; // 100x leverage
-                const pnl = baseTradeAmount * leverage * pnlPercent;
+                const pnl = dynamicTradeAmount * leverage * pnlPercent;
                 
                 try {
                   await settleTrade(pos.id, pnl, (Date.now() - pos.startTime)/1000, txHash);
@@ -251,59 +311,26 @@ export function useTradingEngine(
                   console.warn("DB settle failed (non-fatal):", dbErr);
                 }
                 setTotalPnL(prev => prev + pnl);
+                setDailyPnL(prev => prev + pnl);
                 setTradesCount(prev => prev + 1);
                 setCurrentPosition(null);
+                
+                // RISK MANAGEMENT: Lot Scaling (Anti-Martingale)
+                if (pnl > 0) {
+                  setDynamicTradeAmount(prev => prev * 1.1);
+                } else if (pnl < 0) {
+                  setDynamicTradeAmount(prev => Math.max(prev * 0.9, baseTradeAmount * 0.1));
+                }
               }
             }
           });
 
-          // If on-chain execution failed, fall back to virtual position tracking
-          if (!result.success && !currentPositionRef.current) {
-            console.warn(`[QUANTUM] On-chain execution failed: ${result.error}. Opening virtual position for PNL tracking.`);
-            
-            const tradeId = `virtual_${Date.now()}_${user.uid}`;
-            const tradeType = signal.action === 'BUY' ? 'LONG' : 'SHORT';
-            
-            try {
-              await supabase?.from('trades').insert({
-                id: tradeId, uid: user.uid, type: tradeType, pair: selectedPairGlobal,
-                trade_mode: strategy, entry_price: marketData.price, size: signal.lotSize, pnl: 0,
-                mode_type: mode, status: "Running", transaction_hash: 'virtual',
-                created_at: new Date().toISOString()
-              });
-            } catch (dbErr) {
-              console.warn("DB insert failed (non-fatal):", dbErr);
-            }
-            
-            setCurrentPosition({
-              id: tradeId,
-              type: tradeType,
-              entryPrice: marketData.price,
-              size: signal.lotSize,
-              startTime: Date.now(),
-              mode: strategy as any,
-              modeType: mode as any
-            });
-            setCurrentLotSize(signal.lotSize);
+          if (!result.success) {
+            await handleVirtualFallback();
           }
         } catch (err) {
           console.error("[QUANTUM EXECUTION ERROR]", err);
-          
-          // Even on exception, open virtual position so PNL tracks
-          if (!currentPositionRef.current && (signal.action === 'BUY' || signal.action === 'SELL')) {
-            const tradeId = `virtual_${Date.now()}_${user.uid}`;
-            const tradeType = signal.action === 'BUY' ? 'LONG' : 'SHORT';
-            setCurrentPosition({
-              id: tradeId,
-              type: tradeType,
-              entryPrice: marketData.price,
-              size: signal.lotSize,
-              startTime: Date.now(),
-              mode: strategy as any,
-              modeType: mode as any
-            });
-            setCurrentLotSize(signal.lotSize);
-          }
+          await handleVirtualFallback();
         } finally {
           setTimeout(() => { isExecutingRef.current = false; }, 3000); // Cool-down
         }
@@ -326,10 +353,14 @@ export function useTradingEngine(
          const completed = allTrades.filter(t => t.status === 'Completed').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
          const running = allTrades.filter(t => t.status === 'Running');
          
+         const today = new Date().toDateString();
+         const todayTrades = completed.filter(t => new Date(t.created_at).toDateString() === today);
+         
          setTradeHistory(completed.slice(0, 300));
          setLiveTrades(running);
          setTradesCount(completed.length);
          setTotalPnL(completed.reduce((acc, t) => acc + (t.pnl || 0), 0));
+         setDailyPnL(todayTrades.reduce((acc, t) => acc + (t.pnl || 0), 0));
 
          if (running.length > 0) {
            const first = running[0];

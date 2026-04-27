@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { APP_CONFIG } from '../config';
+import { TOKEN_MAP } from './dex';
 
 // TradingVault ABI
 export const TRADING_VAULT_ABI = [
@@ -116,7 +117,8 @@ export async function executeBuyTrade(
   minAmountOut: string
 ): Promise<ethers.TransactionReceipt> {
   const contract = getTradingVaultContract(signer);
-  const tokenAddress = TOKEN_ADDRESSES[tokenOut];
+  const chainId = APP_CONFIG.BNB_CHAIN.CHAIN_ID;
+  const tokenAddress = TOKEN_MAP[chainId]?.[tokenOut] || TOKEN_ADDRESSES[tokenOut];
   const amountInWei = ethers.parseEther(amountIn);
   const minAmountOutWei = ethers.parseEther(minAmountOut);
 
@@ -135,7 +137,8 @@ export async function executeSellTrade(
   minAmountOut: string
 ): Promise<ethers.TransactionReceipt> {
   const contract = getTradingVaultContract(signer);
-  const tokenAddress = TOKEN_ADDRESSES[tokenIn];
+  const chainId = APP_CONFIG.BNB_CHAIN.CHAIN_ID;
+  const tokenAddress = TOKEN_MAP[chainId]?.[tokenIn] || TOKEN_ADDRESSES[tokenIn];
   const amountInWei = ethers.parseEther(amountIn);
   const minAmountOutWei = ethers.parseEther(minAmountOut);
 

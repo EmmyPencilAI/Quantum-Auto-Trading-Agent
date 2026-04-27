@@ -559,7 +559,7 @@ export default function TradingTab({
         {/* Live Status & Feed */}
         <div className="lg:col-span-2 space-y-6">
           {/* HFT Chart View */}
-          <HFTTradingView marketData={marketData} currentPosition={currentPosition} />
+          <HFTTradingView marketData={marketData} currentPosition={currentPosition} tradeHistory={tradeHistory} />
 
           {/* Active Trade Panel */}
           <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 relative overflow-hidden">
