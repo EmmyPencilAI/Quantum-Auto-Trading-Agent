@@ -19,11 +19,25 @@ export function useTradingEngine(
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
   const [marketData, setMarketData] = useState<MarketData | null>(null);
   const [tradesCount, setTradesCount] = useState(0);
-  const [totalPnL, setTotalPnL] = useState(0);
-  const [dailyPnL, setDailyPnL] = useState(0);
+  const [totalPnL, setTotalPnL] = useState(() => {
+    const saved = localStorage.getItem(`quantum_pnl_${user?.uid || 'default'}`);
+    return saved ? parseFloat(saved) : 0;
+  });
+  const [dailyPnL, setDailyPnL] = useState(() => {
+    const saved = localStorage.getItem(`quantum_daily_pnl_${user?.uid || 'default'}_${new Date().toDateString()}`);
+    return saved ? parseFloat(saved) : 0;
+  });
   const [tradeHistory, setTradeHistory] = useState<Trade[]>([]);
   const [liveTrades, setLiveTrades] = useState<Trade[]>([]);
   const [dynamicTradeAmount, setDynamicTradeAmount] = useState(baseTradeAmount);
+  
+  // Persist PnL to LocalStorage for fallback session persistence
+  useEffect(() => {
+    if (user?.uid) {
+      localStorage.setItem(`quantum_pnl_${user.uid}`, totalPnL.toString());
+      localStorage.setItem(`quantum_daily_pnl_${user.uid}_${new Date().toDateString()}`, dailyPnL.toString());
+    }
+  }, [totalPnL, dailyPnL, user?.uid]);
   
   // Reset dynamic scaling if user manually changes base input
   useEffect(() => {
@@ -247,7 +261,7 @@ export function useTradingEngine(
             const pos = currentPositionRef.current;
             const priceDiff = pos.type === 'LONG' ? (marketData.price - pos.entryPrice) : (pos.entryPrice - marketData.price);
             const pnlPercent = priceDiff / pos.entryPrice;
-            const leverage = 100;
+            const leverage = 500;
             const pnl = dynamicTradeAmount * leverage * pnlPercent;
             
             try {

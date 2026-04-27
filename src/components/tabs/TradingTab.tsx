@@ -263,7 +263,7 @@ export default function TradingTab({
            ? (marketData.price - currentPosition.entryPrice)
            : (currentPosition.entryPrice - marketData.price);
          const pnlPercent = priceDiff / currentPosition.entryPrice;
-         const leverage = 100; // Standardize to 100x leverage
+         const leverage = 500; // Standardize to 500x leverage
          const pnl = tradeAmount * leverage * pnlPercent;
          setFloatingPnl(pnl);
        }

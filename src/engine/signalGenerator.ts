@@ -74,26 +74,26 @@ export function evaluateMarket(
       ? ((price - currentPosition.entryPrice) / currentPosition.entryPrice) * 100
       : ((currentPosition.entryPrice - price) / currentPosition.entryPrice) * 100;
 
-    // Take Profit (0.15% - 0.35%)
-    if (pnlPercent >= 0.20) {
+    // Take Profit (0.30% target for 500x leverage = 150% ROI)
+    if (pnlPercent >= 0.30) {
       handleWin();
       return { action: 'CLOSE', lotSize: currentPosition.size, reason: 'TP_HIT' };
     }
 
-    // Hard Stop Loss (0.10% - 0.25%)
-    if (pnlPercent <= -0.15) {
+    // Hard Stop Loss (-0.25% at 500x leverage = -125% ROI)
+    if (pnlPercent <= -0.25) {
       handleLoss();
       return { action: 'CLOSE', lotSize: currentPosition.size, reason: 'SL_HIT' };
     }
 
     // EARLY EXIT: Momentum Reversal (EMA flips or RSI weakens)
     if (currentPosition.type === 'LONG') {
-      if (currentEmaFast < currentEmaSlow || currentRsi < 40) {
+      if (currentEmaFast < currentEmaSlow || currentRsi < 35) {
         handleLoss();
         return { action: 'CLOSE', lotSize: currentPosition.size, reason: 'MOMENTUM_REVERSAL_DOWN' };
       }
     } else { // SHORT
-      if (currentEmaFast > currentEmaSlow || currentRsi > 60) {
+      if (currentEmaFast > currentEmaSlow || currentRsi > 65) {
         handleLoss();
         return { action: 'CLOSE', lotSize: currentPosition.size, reason: 'MOMENTUM_REVERSAL_UP' };
       }
@@ -105,15 +105,14 @@ export function evaluateMarket(
 
   // ==== ENTRY LOGIC ====
   
-  // LONG ENTRY: EMA Fast > Slow, RSI between 45 and 78 (bullish but not overbought)
-  // Volume spike is a bonus but not required
-  if (currentEmaFast > currentEmaSlow && currentRsi > 45 && currentRsi < 78) {
+  // LONG ENTRY: EMA Fast > Slow, RSI between 40 and 80 (bullish)
+  if (currentEmaFast > currentEmaSlow && currentRsi > 40 && currentRsi < 80) {
     console.log(`[SIGNAL] ✅ LONG entry triggered! RSI=${currentRsi.toFixed(2)} VolSpike=${hasVolumeSpike}`);
     return { action: 'BUY', lotSize: EngineState.currentLotSize, reason: hasVolumeSpike ? 'BULLISH_BREAKOUT' : 'BULLISH_TREND' };
   }
 
-  // SHORT ENTRY: EMA Fast < Slow, RSI between 22 and 55 (bearish but not oversold)
-  if (currentEmaFast < currentEmaSlow && currentRsi < 55 && currentRsi > 22) {
+  // SHORT ENTRY: EMA Fast < Slow, RSI between 20 and 60 (bearish)
+  if (currentEmaFast < currentEmaSlow && currentRsi < 60 && currentRsi > 20) {
     console.log(`[SIGNAL] ✅ SHORT entry triggered! RSI=${currentRsi.toFixed(2)} VolSpike=${hasVolumeSpike}`);
     return { action: 'SELL', lotSize: EngineState.currentLotSize, reason: hasVolumeSpike ? 'BEARISH_BREAKDOWN' : 'BEARISH_TREND' };
   }
