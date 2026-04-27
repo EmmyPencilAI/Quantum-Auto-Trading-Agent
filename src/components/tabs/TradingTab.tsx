@@ -12,6 +12,7 @@ import { useNetworkQuality } from '../../hooks/useNetworkQuality';
 import { getUserRealBalance, getVaultBalance } from '../../services/tradingService';
 import { web3auth } from '../../lib/web3auth';
 import { depositFunds, withdrawFunds } from '../../lib/contract';
+import { getDirectSigner } from '../../lib/blockchain';
 
 // Mock ABI for the trading contract
 const TRADING_ABI = [
@@ -141,8 +142,7 @@ export default function TradingTab({
     if (!depositAmount || isNaN(Number(depositAmount))) return;
     try {
       setIsDepositing(true);
-      const provider = new ethers.BrowserProvider(web3auth.provider!);
-      const signer = await provider.getSigner();
+      const signer = await getDirectSigner();
       await depositFunds(signer, depositAmount);
       alert(`Successfully deposited ${depositAmount} BNB to Vault!`);
       setDepositAmount('');
@@ -160,8 +160,7 @@ export default function TradingTab({
     if (!withdrawAmount || isNaN(Number(withdrawAmount))) return;
     try {
       setIsWithdrawing(true);
-      const provider = new ethers.BrowserProvider(web3auth.provider!);
-      const signer = await provider.getSigner();
+      const signer = await getDirectSigner();
       await withdrawFunds(signer, withdrawAmount);
       alert(`Successfully withdrew ${withdrawAmount} BNB from Vault!`);
       setWithdrawAmount('');
