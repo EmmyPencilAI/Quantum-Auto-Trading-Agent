@@ -23,7 +23,10 @@ export function evaluateMarket(
   }
 
   const { candles, price } = marketData;
-  if (!candles || candles.length < 26) return null; // EMA-21 needs 21 + a few buffer
+  if (!candles || candles.length < 26) {
+    console.log(`[SIGNAL] Not enough candles: ${candles?.length || 0}/26`);
+    return null;
+  }
 
   // Extract closing prices and volumes
   const closes = candles.map(c => c.close);
@@ -37,26 +40,31 @@ export function evaluateMarket(
   
   const currentEmaFast = emaFast[emaFast.length - 1];
   const currentEmaSlow = emaSlow[emaSlow.length - 1];
+  const emaTrend = currentEmaFast > currentEmaSlow ? 'BULLISH' : 'BEARISH';
 
   // 2. Calculate RSI (14 periods)
   const rsiValues = RSI.calculate({ period: 14, values: closes });
   if (rsiValues.length === 0) return null;
   const currentRsi = rsiValues[rsiValues.length - 1];
 
-  // 3. Volume Spike Detection
+  // 3. Volume Spike Detection (optional bonus, not required)
   const recentVolume = volumes.slice(-10);
   const avgVolume = recentVolume.reduce((a,b)=>a+b, 0) / recentVolume.length;
   const currentVolume = volumes[volumes.length - 1];
-  const hasVolumeSpike = avgVolume === 0 || currentVolume > (avgVolume * 1.2); // 20% above average
+  const hasVolumeSpike = avgVolume === 0 || currentVolume > (avgVolume * 1.15); // 15% above average
 
-  // 4. Spread / Sideways Check (Simplified: if price barely moved over last 5 candles)
+  // 4. Spread / Sideways Check
   const recentCloses = closes.slice(-5);
   const maxPrice = Math.max(...recentCloses);
   const minPrice = Math.min(...recentCloses);
   const priceRangePercent = ((maxPrice - minPrice) / minPrice) * 100;
   
-  if (priceRangePercent < 0.005) {
-    // Market is dead sideways. Do not enter.
+  // Log signal evaluation for debugging
+  console.log(`[SIGNAL] EMA: ${emaTrend} (fast=${currentEmaFast.toFixed(2)}, slow=${currentEmaSlow.toFixed(2)}) | RSI: ${currentRsi.toFixed(2)} | VolSpike: ${hasVolumeSpike} | Range: ${priceRangePercent.toFixed(4)}%`);
+
+  if (priceRangePercent < 0.001) {
+    // Market is completely dead. Do not enter.
+    console.log(`[SIGNAL] Market sideways (${priceRangePercent.toFixed(4)}%), skipping`);
     return null;
   }
 
@@ -97,16 +105,20 @@ export function evaluateMarket(
 
   // ==== ENTRY LOGIC ====
   
-  // LONG ENTRY: EMA Fast > Slow, RSI between 50 and 78 (bullish but not overbought), Volume Spike
-  if (currentEmaFast > currentEmaSlow && currentRsi > 50 && currentRsi < 78 && hasVolumeSpike) {
-    return { action: 'BUY', lotSize: EngineState.currentLotSize, reason: 'BULLISH_BREAKOUT' };
+  // LONG ENTRY: EMA Fast > Slow, RSI between 45 and 78 (bullish but not overbought)
+  // Volume spike is a bonus but not required
+  if (currentEmaFast > currentEmaSlow && currentRsi > 45 && currentRsi < 78) {
+    console.log(`[SIGNAL] ✅ LONG entry triggered! RSI=${currentRsi.toFixed(2)} VolSpike=${hasVolumeSpike}`);
+    return { action: 'BUY', lotSize: EngineState.currentLotSize, reason: hasVolumeSpike ? 'BULLISH_BREAKOUT' : 'BULLISH_TREND' };
   }
 
-  // SHORT ENTRY: EMA Fast < Slow, RSI between 22 and 50 (bearish but not oversold), Volume Spike
-  if (currentEmaFast < currentEmaSlow && currentRsi < 50 && currentRsi > 22 && hasVolumeSpike) {
-    return { action: 'SELL', lotSize: EngineState.currentLotSize, reason: 'BEARISH_BREAKDOWN' };
+  // SHORT ENTRY: EMA Fast < Slow, RSI between 22 and 55 (bearish but not oversold)
+  if (currentEmaFast < currentEmaSlow && currentRsi < 55 && currentRsi > 22) {
+    console.log(`[SIGNAL] ✅ SHORT entry triggered! RSI=${currentRsi.toFixed(2)} VolSpike=${hasVolumeSpike}`);
+    return { action: 'SELL', lotSize: EngineState.currentLotSize, reason: hasVolumeSpike ? 'BEARISH_BREAKDOWN' : 'BEARISH_TREND' };
   }
 
+  console.log(`[SIGNAL] No entry conditions met. EMA trend=${emaTrend}, RSI=${currentRsi.toFixed(2)}`);
   return null;
 }
 

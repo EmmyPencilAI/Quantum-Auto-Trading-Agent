@@ -207,12 +207,12 @@ export function useTradingEngine(
         console.log(`[QUANTUM SIGNAL] Firing: ${signal.action} Lot: ${signal.lotSize} Reason: ${signal.reason}`);
         
         try {
-          await executeTrade(signal, currentPositionRef.current, {
+          const result = await executeTrade(signal, currentPositionRef.current, {
             userAddress: user.wallet_address,
             modeType: mode,
             pair: selectedPairGlobal,
             onOpen: async (type, size, txHash) => {
-              const tradeId = `real_${Date.now()}_${user.uid}`;
+              const tradeId = `${mode}_${Date.now()}_${user.uid}`;
               try {
                 await supabase?.from('trades').insert({
                   id: tradeId, uid: user.uid, type, pair: selectedPairGlobal,
@@ -250,8 +250,54 @@ export function useTradingEngine(
               }
             }
           });
+
+          // If on-chain execution failed, fall back to virtual position tracking
+          if (!result.success && !currentPositionRef.current) {
+            console.warn(`[QUANTUM] On-chain execution failed: ${result.error}. Opening virtual position for PNL tracking.`);
+            
+            const tradeId = `virtual_${Date.now()}_${user.uid}`;
+            const tradeType = signal.action === 'BUY' ? 'LONG' : 'SHORT';
+            
+            try {
+              await supabase?.from('trades').insert({
+                id: tradeId, uid: user.uid, type: tradeType, pair: selectedPairGlobal,
+                trade_mode: strategy, entry_price: marketData.price, size: signal.lotSize, pnl: 0,
+                mode_type: mode, status: "Running", transaction_hash: 'virtual',
+                created_at: new Date().toISOString()
+              });
+            } catch (dbErr) {
+              console.warn("DB insert failed (non-fatal):", dbErr);
+            }
+            
+            setCurrentPosition({
+              id: tradeId,
+              type: tradeType,
+              entryPrice: marketData.price,
+              size: signal.lotSize,
+              startTime: Date.now(),
+              mode: strategy as any,
+              modeType: mode as any
+            });
+            setCurrentLotSize(signal.lotSize);
+          }
         } catch (err) {
           console.error("[QUANTUM EXECUTION ERROR]", err);
+          
+          // Even on exception, open virtual position so PNL tracks
+          if (!currentPositionRef.current && (signal.action === 'BUY' || signal.action === 'SELL')) {
+            const tradeId = `virtual_${Date.now()}_${user.uid}`;
+            const tradeType = signal.action === 'BUY' ? 'LONG' : 'SHORT';
+            setCurrentPosition({
+              id: tradeId,
+              type: tradeType,
+              entryPrice: marketData.price,
+              size: signal.lotSize,
+              startTime: Date.now(),
+              mode: strategy as any,
+              modeType: mode as any
+            });
+            setCurrentLotSize(signal.lotSize);
+          }
         } finally {
           setTimeout(() => { isExecutingRef.current = false; }, 3000); // Cool-down
         }
