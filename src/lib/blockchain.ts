@@ -1,5 +1,31 @@
 import { ethers } from 'ethers';
 import { APP_CONFIG } from '../config';
+import { web3auth } from './web3auth';
+
+/**
+ * Extract the private key from Web3Auth and create a direct ethers.Wallet
+ * connected to the RPC node. This BYPASSES Web3Auth's bundler/paymaster
+ * infrastructure, which causes "can not found a matching policy" errors.
+ */
+export async function getDirectSigner(): Promise<ethers.Wallet> {
+  const provider = web3auth.provider;
+  if (!provider) {
+    throw new Error("Web3Auth provider not available. Please log in first.");
+  }
+
+  // Extract raw private key from Web3Auth's provider
+  const privateKey = await provider.request({ method: "eth_private_key" }) as string;
+  if (!privateKey) {
+    throw new Error("Could not extract private key from Web3Auth.");
+  }
+
+  // Create a direct JSON-RPC provider (no Web3Auth interception)
+  const rpcProvider = new ethers.JsonRpcProvider(APP_CONFIG.BNB_CHAIN.RPC_URL);
+
+  // Create a standard ethers Wallet with the raw key
+  const wallet = new ethers.Wallet(privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`, rpcProvider);
+  return wallet;
+}
 
 export interface GasStrategy {
   maxFeePerGas: bigint;

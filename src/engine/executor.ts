@@ -4,6 +4,7 @@ import { executeBuyTrade, executeSellTrade, validateTradeAmount, isValidAddress 
 import { APP_CONFIG } from '../config';
 import { web3auth } from '../lib/web3auth';
 import { ROUTER_ABI, TOKEN_MAP } from '../lib/dex';
+import { getDirectSigner } from '../lib/blockchain';
 
 export async function executeTrade(
   signal: TradeSignal,
@@ -34,22 +35,19 @@ export async function executeTrade(
     return { success: false, error: 'Invalid trade action' };
   }
 
-  // REAL MODE: Execute on blockchain
+  // REAL MODE: Execute on blockchain using direct signer (bypasses Web3Auth bundler)
   try {
-    let provider;
-    if ((window as any).ethereum) {
-      provider = new ethers.BrowserProvider((window as any).ethereum);
-    } else if (web3auth.provider) {
-      provider = new ethers.BrowserProvider(web3auth.provider);
-    } else {
-      return { success: false, error: 'No wallet provider available' };
+    if (web3auth.status !== 'connected') {
+      return { success: false, error: 'Wallet not connected. Please log in first.' };
     }
-    const signer = await provider.getSigner();
+    
+    // Use direct signer to bypass Web3Auth's paymaster/bundler
+    const signer = await getDirectSigner();
     const token = callbacks.pair.includes('/USDT') ? 'USDT' : 'USDC';
     const amountIn = lotSize.toString(); 
 
     // Fetch dynamic slippage from chain
-    const slippageData = await getSlippageEstimate(callbacks.pair, amountIn, action === "BUY", provider);
+    const slippageData = await getSlippageEstimate(callbacks.pair, amountIn, action === "BUY", signer.provider!);
     const minAmountOut = slippageData.minOutWithSlippage;
 
     if (action === "BUY" && !currentPosition) {

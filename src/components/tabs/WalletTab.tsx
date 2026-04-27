@@ -6,7 +6,7 @@ import { cn, getLogo } from '../../lib/utils';
 import { User, ModeType } from '../../types';
 import { APP_CONFIG } from '../../config';
 import { supabase } from '../../lib/supabase';
-import { getSmartGasPrice } from '../../lib/blockchain';
+import { getSmartGasPrice, getDirectSigner } from '../../lib/blockchain';
 import { web3auth } from '../../lib/web3auth';
 import { executeRealSwap, TOKEN_MAP, ERC20_ABI } from '../../lib/dex';
 import { ethers } from 'ethers';
@@ -305,19 +305,17 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
         alert(`CONVERSION SUCCESS: ${amount} ${convertFrom} swapped for ${((amount * fromPrice) / toPrice).toFixed(4)} ${convertTo}`);
       } else {
         setIsConverting(true);
-        let pObj = web3auth.provider || (window as any).ethereum;
-        if (!pObj && web3auth.status === 'ready') {
-          try { pObj = await web3auth.connect(); } catch (e) { console.warn("Auto-connect failed", e); }
-        }
         
-        if (!pObj) {
-           alert("No crypto wallet detected. Please log in via Google to use your Quantum Wallet.");
+        if (web3auth.status !== 'connected') {
+           alert("Wallet not connected. Please log in first.");
            setIsConverting(false);
            return;
         }
 
         try {
-          const provider = new ethers.BrowserProvider(pObj);
+          // Use direct signer to bypass Web3Auth bundler/paymaster
+          const directSigner = await getDirectSigner();
+          const provider = directSigner.provider as ethers.JsonRpcProvider;
           const tx = await executeRealSwap(
              provider,
              convertFrom,
@@ -364,21 +362,17 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
       const amount = parseFloat(sendAmount);
       
       if (mode === 'real') {
-        let pObj = providerObj;
-        if (!pObj && web3auth.status === 'ready') {
-          pObj = await web3auth.connect();
-        }
-        
-        if (!pObj) {
-           alert("No crypto wallet detected. Please ensure you are logged in via Google.");
+        if (web3auth.status !== 'connected') {
+           alert("Wallet not connected. Please log in first.");
            return;
         }
-        const provider = new ethers.BrowserProvider(pObj);
-        const signer = await provider.getSigner();
+        
+        // Use direct signer to bypass Web3Auth bundler/paymaster
+        const signer = await getDirectSigner();
+        const rpcProvider = signer.provider as ethers.JsonRpcProvider;
         
         let tx;
         let amountWei;
-        const rpcProvider = new ethers.JsonRpcProvider(APP_CONFIG.BNB_CHAIN.RPC_URL);
         
         if (sendAsset === 'BNB') {
           amountWei = ethers.parseEther(sendAmount);
