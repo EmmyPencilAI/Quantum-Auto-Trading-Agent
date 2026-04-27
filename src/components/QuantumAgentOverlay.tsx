@@ -28,16 +28,21 @@ export default function QuantumAgentOverlay({ user, mode }: QuantumAgentOverlayP
     if (!user) return;
     
     const checkMilestone = async () => {
-      const { data: lead } = await supabase.from('leaderboard').select('total_profit').eq('uid', user.uid).eq('mode_type', mode).single();
-      const profit = lead?.total_profit || 0;
-      
-      if (profit > 1000 && profit > lastMilestoneRef.current + 500) {
-        const milestone = quantumAgent.generateUserMilestone(user.username, profit, mode);
-        if (milestone) {
-          setAlerts(prev => [milestone, ...prev].slice(0, 3));
-          lastMilestoneRef.current = profit;
-          setTimeout(() => setAlerts(prev => prev.filter(a => a !== milestone)), 15000);
+      try {
+        const { data: lead, error } = await supabase.from('leaderboard').select('total_profit').eq('uid', user.uid).eq('mode_type', mode).single();
+        if (error) return; // Silently skip if table/column doesn't exist
+        const profit = lead?.total_profit || 0;
+        
+        if (profit > 1000 && profit > lastMilestoneRef.current + 500) {
+          const milestone = quantumAgent.generateUserMilestone(user.username, profit, mode);
+          if (milestone) {
+            setAlerts(prev => [milestone, ...prev].slice(0, 3));
+            lastMilestoneRef.current = profit;
+            setTimeout(() => setAlerts(prev => prev.filter(a => a !== milestone)), 15000);
+          }
         }
+      } catch (e) {
+        // Leaderboard not available - skip silently
       }
     };
 

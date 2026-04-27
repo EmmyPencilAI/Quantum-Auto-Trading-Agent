@@ -29,7 +29,7 @@ export function useTradingEngine(
   // Keep ref in sync for the interval closure
   useEffect(() => { currentPositionRef.current = currentPosition; }, [currentPosition]);
 
-  // 1. Sync local trading status to DB so server can pick it up
+  // 1. Sync local trading status to DB (non-fatal if columns don't exist)
   useEffect(() => {
     if (user?.uid) {
       supabase.from('users').update({
@@ -38,7 +38,9 @@ export function useTradingEngine(
         active_strategy: strategy,
         active_mode: mode,
         trade_start_time: isTrading ? new Date().toISOString() : null
-      }).eq('uid', user.uid).then();
+      }).eq('uid', user.uid).then(({ error }) => {
+        if (error) console.warn('[QUANTUM] User status sync failed (non-fatal):', error.message);
+      });
     }
   }, [isTrading, user?.uid, baseTradeAmount, strategy, mode, selectedPairGlobal]);
 
