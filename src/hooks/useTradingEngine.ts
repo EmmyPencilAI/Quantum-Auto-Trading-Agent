@@ -13,7 +13,7 @@ export function useTradingEngine(
   strategy: TradingMode, 
   isTrading: boolean, 
   baseTradeAmount: number = 100,
-  selectedPairGlobal: string = 'BTC/USDT'
+  selectedPairGlobal: string = 'BNB/USDT'
 ) {
   const [currentLotSize, setCurrentLotSize] = useState(0.05);
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
@@ -21,7 +21,9 @@ export function useTradingEngine(
   const [tradesCount, setTradesCount] = useState(0);
   const [totalPnL, setTotalPnL] = useState(() => {
     const saved = localStorage.getItem(`quantum_pnl_${user?.uid || 'default'}`);
-    return saved ? parseFloat(saved) : 0;
+    // Reset any unrealistically high default values
+    const parsed = saved ? parseFloat(saved) : 0;
+    return parsed > 1000 ? 0 : parsed; // Reset if over $1000
   });
   const [dailyPnL, setDailyPnL] = useState(() => {
     const saved = localStorage.getItem(`quantum_daily_pnl_${user?.uid || 'default'}_${new Date().toDateString()}`);

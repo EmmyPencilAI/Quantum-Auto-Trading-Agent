@@ -41,7 +41,7 @@ export const APP_CONFIG = {
   },
 
   // DEPLOYED CONTRACT: Add your smart contract address here
-  CONTRACT_ADDRESS: import.meta.env.VITE_TRADING_VAULT_ADDRESS || import.meta.env.VITE_CONTRACT_ADDRESS || "0x18d46Cbf75660eF04c7Aa22E8cEe4FC3313FAd52", 
+  CONTRACT_ADDRESS: import.meta.env.VITE_TRADING_VAULT_ADDRESS || import.meta.env.VITE_CONTRACT_ADDRESS || "0x491FdeD31E6F55d61EBD891257143D378ce777dE", 
   
   // TREASURY: Add your treasury wallet address here
   TREASURY_ADDRESS: import.meta.env.VITE_TREASURY_ADDRESS || "0xBebdB8db1DDc42ED3270dB48c757447e6E4Aa8a2", 
