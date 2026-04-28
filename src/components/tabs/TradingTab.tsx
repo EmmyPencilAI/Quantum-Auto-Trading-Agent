@@ -602,20 +602,26 @@ export default function TradingTab({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="p-6 rounded-3xl bg-black/40 border border-white/5 flex items-center gap-4">
                 <img 
-                  src={getLogo(isTrading ? selectedPair : 'BTC')} 
+                  src={getLogo(isTrading ? selectedPair : (tradeHistory[0]?.pair || 'BTC'))} 
                   alt="" 
-                  className={cn("w-10 h-10 rounded-full", !isTrading && "grayscale")}
+                  className={cn("w-10 h-10 rounded-full", !isTrading && "grayscale opacity-60")}
                   onError={(e) => (e.currentTarget.src = 'https://api.dicebear.com/7.x/shapes/svg?seed=crypto')}
                   referrerPolicy="no-referrer"
                 />
                 <div>
-                  <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Current Pair</p>
-                  <p className="text-xl font-black">{isTrading ? selectedPair : '---'}</p>
+                  <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">
+                    {isTrading ? 'Current Pair' : 'Last Traded'}
+                  </p>
+                  <p className="text-xl font-black">{isTrading ? selectedPair : (tradeHistory[0]?.pair || '---')}</p>
                 </div>
               </div>
               <div className="p-6 rounded-3xl bg-black/40 border border-white/5">
-                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">Active Amount</p>
-                <p className="text-2xl font-black">{isTrading ? `$${tradeAmount}` : '---'}</p>
+                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">
+                  {isTrading ? 'Active Amount' : 'Last Amount'}
+                </p>
+                <p className="text-2xl font-black">
+                  {isTrading ? `$${tradeAmount}` : (tradeHistory[0]?.size ? `$${(tradeHistory[0]?.size * 1000).toFixed(0)}` : '---')}
+                </p>
               </div>
               <div className="p-6 rounded-3xl bg-black/40 border border-white/5 relative group">
                 <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">

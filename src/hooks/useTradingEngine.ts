@@ -440,11 +440,20 @@ export function useTradingEngine(
 
     const fetchAllTradingData = async () => {
       // Get all-time counts and PnL
-      const { data: allTrades } = await supabase.from('trades').select('*').eq('uid', user.uid).eq('mode_type', mode);
+      const { data: allTrades, error: queryError } = await supabase.from('trades').select('*').eq('uid', user.uid).eq('mode_type', mode);
+      
+      if (queryError) {
+        console.error('Supabase query error:', queryError);
+        return;
+      }
       
       if (allTrades) {
+         console.log(`Fetched ${allTrades.length} trades for user ${user.uid} in ${mode} mode`);
+         
          const completed = allTrades.filter(t => t.status === 'Completed').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
          const running = allTrades.filter(t => t.status === 'Running');
+         
+         console.log(`Completed trades: ${completed.length}, Running trades: ${running.length}`);
          
          const today = new Date().toDateString();
          const todayTrades = completed.filter(t => new Date(t.created_at).toDateString() === today);
