@@ -29,8 +29,19 @@ contract TradingVault is Ownable, ReentrancyGuard {
     address public treasuryWallet;
     address public weth;
 
-    address public constant USDT = 0x55d398326f99059fF775485246999027B3197955; 
-    address public constant USDC = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d; 
+    address public constant USDT = 0x55d398326f99059fF775485246999027B3197955; // Mainnet
+    address public constant USDC = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d; // Mainnet
+    
+    // Testnet addresses for development
+    address public constant USDT_TESTNET = 0x337610d27c682E347C9cD60BD4b3b107C9d34dDd;
+    address public constant USDC_TESTNET = 0x64544969ed7EB0Cc09976691157399e1adC1a3cC;
+
+    function getTokenAddress(address token) internal view returns (address) {
+        // Allow both mainnet and testnet tokens
+        if (token == USDT || token == USDT_TESTNET) return USDT;
+        if (token == USDC || token == USDC_TESTNET) return USDC;
+        revert("Unsupported token");
+    }
 
     mapping(address => uint256) public userBalances;
     mapping(address => uint256) public userProfits;
@@ -109,16 +120,18 @@ contract TradingVault is Ownable, ReentrancyGuard {
     function executeBuyTrade(string memory pair, address tokenOut, uint256 amountIn, uint256 minAmountOut) external nonReentrant cooldownProtected(msg.sender) onlyValidAmount(amountIn) {
         require(userBalances[msg.sender] >= amountIn, "Insufficient balance");
         require(amountIn <= MAX_TRADE_SIZE, "Exceeds limit");
-        require(tokenOut == USDT || tokenOut == USDC, "Unsupported token");
+        
+        address resolvedToken = getTokenAddress(tokenOut);
+        require(resolvedToken == USDT || resolvedToken == USDC, "Unsupported token");
 
-        uint256 calculatedMinOut = _calculateMinAmountOut(amountIn, weth, tokenOut);
+        uint256 calculatedMinOut = _calculateMinAmountOut(amountIn, weth, resolvedToken);
         require(minAmountOut >= calculatedMinOut, "Slippage too high");
 
         userBalances[msg.sender] = userBalances[msg.sender].sub(amountIn);
 
         address[] memory path = new address[](2);
         path[0] = weth;
-        path[1] = tokenOut;
+        path[1] = resolvedToken;
 
         uint256[] memory amounts = pancakeRouter.swapExactETHForTokens{value: amountIn}(
             minAmountOut, path, address(this), block.timestamp + 20 minutes
@@ -129,24 +142,25 @@ contract TradingVault is Ownable, ReentrancyGuard {
         uint256 userShare = amountOut.sub(fee);
 
         userProfits[msg.sender] = userProfits[msg.sender].add(userShare);
-        IERC20(tokenOut).safeTransfer(treasuryWallet, fee);
+        IERC20(resolvedToken).safeTransfer(treasuryWallet, fee);
 
         _recordTrade(msg.sender, pair, amountIn, amountOut, true, fee);
     }
 
     function executeSellTrade(string memory pair, address tokenIn, uint256 amountIn, uint256 minAmountOut) external nonReentrant cooldownProtected(msg.sender) onlyValidAmount(amountIn) {
-        require(tokenIn == USDT || tokenIn == USDC, "Unsupported token");
+        address resolvedToken = getTokenAddress(tokenIn);
+        require(resolvedToken == USDT || resolvedToken == USDC, "Unsupported token");
         require(userProfits[msg.sender] >= amountIn, "Insufficient profit balance");
         require(amountIn <= MAX_TRADE_SIZE_TOKENS, "Exceeds limit");
-        require(IERC20(tokenIn).balanceOf(address(this)) >= amountIn, "Vault empty");
+        require(IERC20(resolvedToken).balanceOf(address(this)) >= amountIn, "Vault empty");
 
-        uint256 calculatedMinOut = _calculateMinAmountOut(amountIn, tokenIn, weth);
+        uint256 calculatedMinOut = _calculateMinAmountOut(amountIn, resolvedToken, weth);
         require(minAmountOut >= calculatedMinOut, "Slippage too high");
 
         userProfits[msg.sender] = userProfits[msg.sender].sub(amountIn);
 
         address[] memory path = new address[](2);
-        path[0] = tokenIn;
+        path[0] = resolvedToken;
         path[1] = weth;
 
         uint256[] memory amounts = pancakeRouter.swapExactTokensForETH(
