@@ -257,18 +257,16 @@ export default function TradingTab({
 
   // Sync floating PnL and trade logs from engine
   useEffect(() => {
-    if (isTrading && currentPosition) {
+    if (isTrading && currentPosition && marketData) {
        // Real mode logic: floating pnl is derived from market price vs entry
-       if (marketData) {
-         const priceDiff = currentPosition.type === 'LONG' 
-           ? (marketData.price - currentPosition.entryPrice)
-           : (currentPosition.entryPrice - marketData.price);
-         const pnlPercent = priceDiff / currentPosition.entryPrice;
-         const leverage = 500; // Standardize to 500x leverage
-         const pnl = tradeAmount * leverage * pnlPercent;
-         setFloatingPnl(pnl);
-       }
-    } else if (!isTrading) {
+       const priceDiff = currentPosition.type === 'LONG' 
+         ? (marketData.price - currentPosition.entryPrice)
+         : (currentPosition.entryPrice - marketData.price);
+       const pnlPercent = priceDiff / currentPosition.entryPrice;
+       const leverage = 500; // Standardize to 500x leverage
+       const pnl = tradeAmount * leverage * pnlPercent;
+       setFloatingPnl(pnl);
+    } else {
       setFloatingPnl(0);
     }
   }, [currentPosition, marketData, isTrading, tradeAmount]);
@@ -620,17 +618,22 @@ export default function TradingTab({
                 <p className="text-2xl font-black">{isTrading ? `$${tradeAmount}` : '---'}</p>
               </div>
               <div className="p-6 rounded-3xl bg-black/40 border border-white/5 relative group">
-                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">Floating PnL</p>
+                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">
+                  {isTrading ? 'Floating PnL' : 'Realized Profit'}
+                </p>
                 <p className={cn(
                   "text-2xl font-black",
                   isTrading ? 
-                    ((floatingPnl + totalPnL) > 0 ? "text-green-500" : (floatingPnl + totalPnL) < 0 ? "text-red-500" : "text-white") :
-                    (totalPnL > 0 ? "text-green-500" : totalPnL < 0 ? "text-red-500" : "text-white")
+                    (floatingPnl > 0 ? "text-green-500" : floatingPnl < 0 ? "text-red-500" : "text-white") :
+                    (totalPnL > 0 ? "text-green-500" : totalPnL < 0 ? "text-red-500" : "text-white/40")
                 )}>
-                  {isTrading ? `${(floatingPnl + totalPnL) > 0 ? '+' : ''}${(floatingPnl + totalPnL).toFixed(2)} USDT` : `${totalPnL > 0 ? '+' : ''}${totalPnL.toFixed(2)} USDT`}
+                  {isTrading ? 
+                    `${floatingPnl > 0 ? '+' : ''}${floatingPnl.toFixed(2)} USDT` : 
+                    `${totalPnL > 0 ? '+' : ''}${totalPnL.toFixed(2)} USDT`
+                  }
                 </p>
                 {!isTrading && (
-                  <p className="absolute -bottom-1 left-6 text-[8px] text-white/20 uppercase font-bold tracking-widest">Realized Profit</p>
+                  <p className="absolute -bottom-1 left-6 text-[8px] text-white/20 uppercase font-bold tracking-widest italic">Engine Standby</p>
                 )}
               </div>
             </div>

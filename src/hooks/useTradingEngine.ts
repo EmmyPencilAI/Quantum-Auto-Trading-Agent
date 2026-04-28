@@ -20,13 +20,13 @@ export function useTradingEngine(
   const [marketData, setMarketData] = useState<MarketData | null>(null);
   const [tradesCount, setTradesCount] = useState(0);
   const [totalPnL, setTotalPnL] = useState(() => {
-    const saved = localStorage.getItem(`quantum_pnl_${user?.uid || 'default'}`);
+    const saved = localStorage.getItem(`quantum_pnl_${mode}_${user?.uid || 'default'}`);
     // Reset any unrealistically high default values
     const parsed = saved ? parseFloat(saved) : 0;
     return parsed > 1000 ? 0 : parsed; // Reset if over $1000
   });
   const [dailyPnL, setDailyPnL] = useState(() => {
-    const saved = localStorage.getItem(`quantum_daily_pnl_${user?.uid || 'default'}_${new Date().toDateString()}`);
+    const saved = localStorage.getItem(`quantum_daily_pnl_${mode}_${user?.uid || 'default'}_${new Date().toDateString()}`);
     return saved ? parseFloat(saved) : 0;
   });
   const [tradeHistory, setTradeHistory] = useState<Trade[]>([]);
@@ -54,10 +54,10 @@ export function useTradingEngine(
   // Persist PnL to LocalStorage for fallback session persistence
   useEffect(() => {
     if (user?.uid) {
-      localStorage.setItem(`quantum_pnl_${user.uid}`, totalPnL.toString());
-      localStorage.setItem(`quantum_daily_pnl_${user.uid}_${new Date().toDateString()}`, dailyPnL.toString());
+      localStorage.setItem(`quantum_pnl_${mode}_${user.uid}`, totalPnL.toString());
+      localStorage.setItem(`quantum_daily_pnl_${mode}_${user.uid}_${new Date().toDateString()}`, dailyPnL.toString());
     }
-  }, [totalPnL, dailyPnL, user?.uid]);
+  }, [totalPnL, dailyPnL, user?.uid, mode]);
   
   // Reset dynamic scaling if user manually changes base input
   useEffect(() => {
