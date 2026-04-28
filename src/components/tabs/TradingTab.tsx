@@ -623,9 +623,11 @@ export default function TradingTab({
                 <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">Floating PnL</p>
                 <p className={cn(
                   "text-2xl font-black",
-                  (floatingPnl + totalPnL) > 0 ? "text-green-500" : (floatingPnl + totalPnL) < 0 ? "text-red-500" : "text-white"
+                  isTrading ? 
+                    ((floatingPnl + totalPnL) > 0 ? "text-green-500" : (floatingPnl + totalPnL) < 0 ? "text-red-500" : "text-white") :
+                    (totalPnL > 0 ? "text-green-500" : totalPnL < 0 ? "text-red-500" : "text-white")
                 )}>
-                  {isTrading ? `${(floatingPnl + totalPnL) > 0 ? '+' : ''}${(floatingPnl + totalPnL).toFixed(2)} USDT` : `${totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)} USDT`}
+                  {isTrading ? `${(floatingPnl + totalPnL) > 0 ? '+' : ''}${(floatingPnl + totalPnL).toFixed(2)} USDT` : `${totalPnL > 0 ? '+' : ''}${totalPnL.toFixed(2)} USDT`}
                 </p>
                 {!isTrading && (
                   <p className="absolute -bottom-1 left-6 text-[8px] text-white/20 uppercase font-bold tracking-widest">Realized Profit</p>
