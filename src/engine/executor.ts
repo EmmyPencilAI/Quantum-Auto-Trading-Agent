@@ -15,6 +15,8 @@ export async function executeTrade(
     userAddress: string;
     modeType: 'demo' | 'real';
     pair: string;
+    tradeAmountUsdt?: number;
+    bnbPrice?: number;
   }
 ): Promise<{ success: boolean; transactionHash?: string; error?: string; fallbackToVirtual?: boolean }> {
   const { action, lotSize } = signal;
@@ -44,11 +46,14 @@ export async function executeTrade(
     // Use direct signer to bypass Web3Auth's paymaster/bundler
     const signer = await getDirectSigner();
     const token = callbacks.pair.includes('/USDT') ? 'USDT' : 'USDC';
-    let amountIn = lotSize.toString(); 
 
-    // REAL MODE: Check balances before execution to prevent contract reverts
     const isBuyAction = action === "BUY" || (action === "CLOSE" && currentPosition?.type === "SHORT") || (action === "REVERSE" && currentPosition?.type === "SHORT");
     const isSellAction = action === "SELL" || (action === "CLOSE" && currentPosition?.type === "LONG") || (action === "REVERSE" && currentPosition?.type === "LONG");
+
+    const tradeAmountUsdt = callbacks.tradeAmountUsdt || (lotSize * (callbacks.bnbPrice || 600));
+    const bnbPrice = callbacks.bnbPrice || 600;
+
+    let amountIn = isBuyAction ? (tradeAmountUsdt / bnbPrice).toFixed(6) : tradeAmountUsdt.toString();
 
     if (isBuyAction) {
       // These actions use BNB balance from the vault

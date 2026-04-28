@@ -13,7 +13,8 @@ export function useTradingEngine(
   strategy: TradingMode, 
   isTrading: boolean, 
   baseTradeAmount: number = 100,
-  selectedPairGlobal: string = 'BNB/USDT'
+  selectedPairGlobal: string = 'BNB/USDT',
+  bnbPrice: number = 600
 ) {
   const [currentLotSize, setCurrentLotSize] = useState(0.05);
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
@@ -349,6 +350,8 @@ export function useTradingEngine(
             userAddress: user.wallet_address,
             modeType: mode,
             pair: selectedPairGlobal,
+            tradeAmountUsdt: dynamicTradeAmount,
+            bnbPrice: bnbPrice,
             onOpen: async (type, size, txHash) => {
               const tradeId = `${mode}_${Date.now()}_${user.uid}`;
               try {

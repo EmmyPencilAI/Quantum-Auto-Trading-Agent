@@ -221,7 +221,15 @@ export default function TradingTab({
     tradeHistory,
     liveTrades,
     onChainProfit
-  } = useTradingEngine(user, mode, selectedStrategy, isTrading, tradeAmount, selectedPair);
+  } = useTradingEngine(
+    user, 
+    mode, 
+    selectedStrategy, 
+    isTrading, 
+    tradeAmount, 
+    selectedPair,
+    parseFloat(tickerPrices['BNB/USDT']?.replace(/,/g, '') || '600')
+  );
 
   const isSettling = !isTrading && liveTrades.length > 0;
 
@@ -295,11 +303,13 @@ export default function TradingTab({
       return;
     }
 
-    // Use Vault balance for execution
-    const vBal = parseFloat(vaultBalance);
-    if (vBal <= 0) {
-      alert("INSUFFICIENT VAULT FUNDS: Please deposit BNB into the Smart Contract Vault to activate Quantum HFT.");
-      return;
+    // Use Vault balance for execution in REAL mode
+    if (mode === 'real') {
+      const vBal = parseFloat(vaultBalance);
+      if (vBal <= 0) {
+        alert("INSUFFICIENT VAULT FUNDS: Please deposit BNB into the Smart Contract Vault to activate Quantum HFT.");
+        return;
+      }
     }
 
     try {

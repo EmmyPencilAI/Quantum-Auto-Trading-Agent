@@ -6,6 +6,7 @@ import { TOKEN_MAP } from './dex';
 export const TRADING_VAULT_ABI = [
   'function deposit() external payable',
   'function withdraw(uint256 amount) external',
+  'function withdrawProfits(address token, uint256 amount) external',
   'function executeBuyTrade(string memory pair, address tokenOut, uint256 amountIn, uint256 minAmountOut) external',
   'function executeSellTrade(string memory pair, address tokenIn, uint256 amountIn, uint256 minAmountOut) external',
   'function getUserInfo(address user) external view returns (uint256 balance, uint256 profit, uint256 lastTradeTime, uint256 tradeCount)',
