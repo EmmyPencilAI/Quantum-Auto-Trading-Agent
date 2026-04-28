@@ -34,7 +34,7 @@ contract TradingVault is Ownable, ReentrancyGuard {
     
     // Testnet addresses for development
     address public constant USDT_TESTNET = 0x337610d27c682E347C9cD60BD4b3b107C9d34dDd;
-    address public constant USDC_TESTNET = 0x64544969ed7EB0Cc09976691157399e1adC1a3cC;
+    address public constant USDC_TESTNET = 0x64544969ED7eB0cC09976691157399E1aDC1a3CC;
 
     function getTokenAddress(address token) internal view returns (address) {
         // Allow both mainnet and testnet tokens

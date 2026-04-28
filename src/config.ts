@@ -40,11 +40,11 @@ export const APP_CONFIG = {
     TICKER_NAME: "Binance Coin",
   },
 
-  // DEPLOYED CONTRACT: Add your smart contract address here
-  CONTRACT_ADDRESS: import.meta.env.VITE_TRADING_VAULT_ADDRESS || import.meta.env.VITE_CONTRACT_ADDRESS || "0x491FdeD31E6F55d61EBD891257143D378ce777dE", 
-  
-  // TREASURY: Add your treasury wallet address here
-  TREASURY_ADDRESS: import.meta.env.VITE_TREASURY_ADDRESS || "0xBebdB8db1DDc42ED3270dB48c757447e6E4Aa8a2", 
+  // DEPLOYED CONTRACT: Load from environment variables
+   CONTRACT_ADDRESS: import.meta.env.VITE_TRADING_VAULT_ADDRESS || import.meta.env.VITE_CONTRACT_ADDRESS,
+   
+   // TREASURY: Load from environment variables
+   TREASURY_ADDRESS: import.meta.env.VITE_TREASURY_ADDRESS, 
   
   SUPPORTED_ASSETS: ["BNB", "USDT", "USDC"],
   SUPPORTED_PAIRS: [
