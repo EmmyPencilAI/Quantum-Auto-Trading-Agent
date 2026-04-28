@@ -104,6 +104,9 @@ export async function settleTrade(
 
     if (tradeError) throw tradeError;
     if (!trade) throw new Error('Trade not found');
+    
+    // If trade already completed, just return success
+    if (trade.status === 'Completed') return { success: true };
 
     // Update trade record
     const { error: updateError } = await supabase

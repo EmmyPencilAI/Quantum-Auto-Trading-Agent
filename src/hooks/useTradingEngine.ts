@@ -5,7 +5,7 @@ import { Position, MarketData, ModeType, Trade, Candle } from '../engine/types';
 import { TradingMode } from '../types';
 import { evaluateMarket } from '../engine/signalGenerator';
 import { executeTrade } from '../engine/executor';
-import { settleTrade } from '../services/tradingService';
+import { settleTrade, getUserRealProfit } from '../services/tradingService';
 
 export function useTradingEngine(
   user: any, 
@@ -30,6 +30,24 @@ export function useTradingEngine(
   const [tradeHistory, setTradeHistory] = useState<Trade[]>([]);
   const [liveTrades, setLiveTrades] = useState<Trade[]>([]);
   const [dynamicTradeAmount, setDynamicTradeAmount] = useState(baseTradeAmount);
+  const [onChainProfit, setOnChainProfit] = useState<string>('0');
+
+  // Sync On-Chain Profit Data
+  useEffect(() => {
+    if (mode === 'real' && user?.wallet_address) {
+      const fetchProfit = async () => {
+        try {
+          const profit = await getUserRealProfit(user.wallet_address);
+          setOnChainProfit(profit);
+        } catch (e) {
+          console.warn("[QUANTUM] Failed to sync on-chain profit:", e);
+        }
+      };
+      fetchProfit();
+      const interval = setInterval(fetchProfit, 10000); // Sync every 10s
+      return () => clearInterval(interval);
+    }
+  }, [user?.wallet_address, mode]);
   
   // Persist PnL to LocalStorage for fallback session persistence
   useEffect(() => {
@@ -316,7 +334,7 @@ export function useTradingEngine(
                 const pos = currentPositionRef.current;
                 const priceDiff = pos.type === 'LONG' ? (marketData.price - pos.entryPrice) : (pos.entryPrice - marketData.price);
                 const pnlPercent = priceDiff / pos.entryPrice;
-                const leverage = 100; // 100x leverage
+                const leverage = 500; // Standardize to 500x leverage
                 const pnl = dynamicTradeAmount * leverage * pnlPercent;
                 
                 try {
@@ -407,5 +425,5 @@ export function useTradingEngine(
     };
   }, [user?.uid, mode]);
 
-  return { marketData, currentPosition, tradesCount, totalPnL, currentLotSize, tradeHistory, liveTrades };
+  return { marketData, currentPosition, tradesCount, totalPnL, currentLotSize, tradeHistory, liveTrades, onChainProfit };
 }

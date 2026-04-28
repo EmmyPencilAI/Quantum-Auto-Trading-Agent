@@ -219,7 +219,8 @@ export default function TradingTab({
     totalPnL, 
     currentLotSize,
     tradeHistory,
-    liveTrades 
+    liveTrades,
+    onChainProfit
   } = useTradingEngine(user, mode, selectedStrategy, isTrading, tradeAmount, selectedPair);
 
   const isSettling = !isTrading && liveTrades.length > 0;
@@ -267,8 +268,10 @@ export default function TradingTab({
          const pnl = tradeAmount * leverage * pnlPercent;
          setFloatingPnl(pnl);
        }
+    } else if (!isTrading) {
+      setFloatingPnl(0);
     }
-  }, [currentPosition, marketData, isTrading]);
+  }, [currentPosition, marketData, isTrading, tradeAmount]);
 
   useEffect(() => {
     if (currentPosition) {
@@ -375,18 +378,16 @@ export default function TradingTab({
                   {parseFloat(balance).toFixed(4)} BNB
                 </h3>
               </div>
+              <div className="text-center px-4">
+                <p className="text-[10px] font-display text-green-500/70 uppercase tracking-widest mb-1">On-Chain Profit</p>
+                <h3 className="text-xl font-mono text-white tracking-tight">
+                  ${parseFloat(onChainProfit).toFixed(2)}
+                </h3>
+              </div>
               <div className="text-right">
                 <p className="text-[10px] font-display text-orange-500/70 uppercase tracking-widest mb-1">Vault Liquidity</p>
                 <h3 className="text-2xl font-mono text-white tracking-tight">
-                  {(() => {
-                    const baseBal = parseFloat(vaultBalance) || 0;
-                    // Try to get BNB price, default to 600 if unavailable
-                    const bnbPriceStr = tickerPrices['BNB/USDT'] || tickerPrices['BNB'] || '600';
-                    const bnbPrice = parseFloat(bnbPriceStr.replace(/,/g, '')) || 600;
-                    const virtualProfitBNB = totalPnL / bnbPrice;
-                    const displayBal = Math.max(0, baseBal + virtualProfitBNB);
-                    return displayBal.toFixed(4) + ' BNB';
-                  })()}
+                  {parseFloat(vaultBalance).toFixed(4)} BNB
                 </h3>
               </div>
             </div>

@@ -1,6 +1,6 @@
 import { TradeSignal, Position } from './types';
 import { ethers } from 'ethers';
-import { executeBuyTrade, executeSellTrade, validateTradeAmount, isValidAddress } from '../lib/contract';
+import { executeBuyTrade, executeSellTrade, validateTradeAmount, isValidAddress, getUserProfit } from '../lib/contract';
 import { APP_CONFIG } from '../config';
 import { web3auth } from '../lib/web3auth';
 import { ROUTER_ABI, TOKEN_MAP } from '../lib/dex';
@@ -44,10 +44,29 @@ export async function executeTrade(
     // Use direct signer to bypass Web3Auth's paymaster/bundler
     const signer = await getDirectSigner();
     const token = callbacks.pair.includes('/USDT') ? 'USDT' : 'USDC';
-    const amountIn = lotSize.toString(); 
+    let amountIn = lotSize.toString(); 
+
+    // For CLOSE actions in real mode, we need to determine the actual amount to sell/buy back
+    if (action === "CLOSE" && currentPosition) {
+      if (currentPosition.type === 'LONG') {
+        // Fetch current token profit (USDT/USDC) from contract to sell
+        const profitAmount = await getUserProfit(callbacks.userAddress, signer.provider!);
+        amountIn = profitAmount;
+        if (parseFloat(amountIn) <= 0) {
+          console.warn("[EXECUTOR] No profit balance found to close LONG position on-chain.");
+          // Fallback to initial amount if profit check fails or is 0
+          amountIn = lotSize.toString(); 
+        }
+      } else {
+        // For SHORT, we are buying back tokens with BNB.
+        // We'll use the initial BNB amount (lotSize) to buy back.
+        amountIn = lotSize.toString();
+      }
+    }
 
     // Fetch dynamic slippage from chain
-    const slippageData = await getSlippageEstimate(callbacks.pair, amountIn, action === "BUY", signer.provider!);
+    const isBuySwap = action === "BUY" || (action === "CLOSE" && currentPosition?.type === "SHORT");
+    const slippageData = await getSlippageEstimate(callbacks.pair, amountIn, isBuySwap, signer.provider!);
     const minAmountOut = slippageData.minOutWithSlippage;
 
     if (action === "BUY" && !currentPosition) {

@@ -19,10 +19,11 @@ contract TradingVault is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    uint256 public constant TREASURY_FEE_PERCENT = 50; 
+    uint256 public constant TREASURY_FEE_PERCENT = 50; // 50%
     uint256 public constant MAX_SLIPPAGE_PERCENT = 5; 
     uint256 public constant MIN_DEPOSIT = 0.01 ether; 
     uint256 public constant MAX_TRADE_SIZE = 10 ether; 
+    uint256 public constant MAX_TRADE_SIZE_TOKENS = 5000 * 10**18; 
 
     IPancakeRouter public pancakeRouter;
     address public treasuryWallet;
@@ -91,15 +92,18 @@ contract TradingVault is Ownable, ReentrancyGuard {
 
         userBalances[msg.sender] = userBalances[msg.sender].sub(amount);
 
-        uint256 profit = userProfits[msg.sender];
-        if (profit > 0) {
-            userProfits[msg.sender] = 0;
-            amount = amount.add(profit);
-        }
-
         (bool success, ) = payable(msg.sender).call{value: amount}("");
         require(success, "Withdrawal failed");
         emit Withdrawn(msg.sender, amount);
+    }
+
+    function withdrawProfits(address token, uint256 amount) external nonReentrant onlyValidAmount(amount) {
+        require(token == USDT || token == USDC, "Unsupported token");
+        require(userProfits[msg.sender] >= amount, "Insufficient profit");
+        require(IERC20(token).balanceOf(address(this)) >= amount, "Vault insufficient tokens");
+
+        userProfits[msg.sender] = userProfits[msg.sender].sub(amount);
+        IERC20(token).safeTransfer(msg.sender, amount);
     }
 
     function executeBuyTrade(string memory pair, address tokenOut, uint256 amountIn, uint256 minAmountOut) external nonReentrant cooldownProtected(msg.sender) onlyValidAmount(amountIn) {
@@ -132,11 +136,14 @@ contract TradingVault is Ownable, ReentrancyGuard {
 
     function executeSellTrade(string memory pair, address tokenIn, uint256 amountIn, uint256 minAmountOut) external nonReentrant cooldownProtected(msg.sender) onlyValidAmount(amountIn) {
         require(tokenIn == USDT || tokenIn == USDC, "Unsupported token");
-        require(amountIn <= MAX_TRADE_SIZE, "Exceeds limit");
+        require(userProfits[msg.sender] >= amountIn, "Insufficient profit balance");
+        require(amountIn <= MAX_TRADE_SIZE_TOKENS, "Exceeds limit");
         require(IERC20(tokenIn).balanceOf(address(this)) >= amountIn, "Vault empty");
 
         uint256 calculatedMinOut = _calculateMinAmountOut(amountIn, tokenIn, weth);
         require(minAmountOut >= calculatedMinOut, "Slippage too high");
+
+        userProfits[msg.sender] = userProfits[msg.sender].sub(amountIn);
 
         address[] memory path = new address[](2);
         path[0] = tokenIn;
