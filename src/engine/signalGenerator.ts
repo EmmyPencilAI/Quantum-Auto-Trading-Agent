@@ -80,8 +80,8 @@ export function evaluateMarket(
       return { action: 'CLOSE', lotSize: currentPosition.size, reason: 'TP_HIT' };
     }
 
-    // Hard Stop Loss (-0.25% at 500x leverage = -125% ROI)
-    if (pnlPercent <= -0.25) {
+    // Hard Stop Loss (-0.2% at 500x leverage = -100% ROI - PROTECTS INVESTMENT)
+    if (pnlPercent <= -0.2) {
       handleLoss();
       return { action: 'CLOSE', lotSize: currentPosition.size, reason: 'SL_HIT' };
     }
