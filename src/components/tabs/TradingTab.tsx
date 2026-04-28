@@ -334,7 +334,7 @@ export default function TradingTab({
 
   return (
     <div className="space-y-8">
-      {/* Mode Switcher & Balance */}
+      {/* Mode Switcher & Network Status */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-[2.5rem] bg-white/[0.02] border border-white/5">
         <div className="flex items-center gap-2 p-1 bg-black rounded-2xl border border-white/5">
           <div className="px-6 py-3 rounded-xl font-bold text-sm uppercase tracking-widest bg-orange-600 text-white shadow-[0_0_20px_rgba(249,115,22,0.3)]">
@@ -367,67 +367,6 @@ export default function TradingTab({
               <p className="text-[8px] font-mono text-white/30 truncate mt-1">Current Lot: {currentLotSize.toFixed(3)}</p>
             )}
           </div>
-
-          <div className="flex flex-col gap-2 w-full max-w-sm">
-            <div className="flex justify-between items-end">
-              <div className="text-left">
-                <p className="text-[10px] font-display text-white/40 uppercase tracking-widest mb-1">Wallet (Native)</p>
-                <h3 className="text-xl font-mono text-white/60 tracking-tight">
-                  {parseFloat(balance).toFixed(4)} BNB
-                </h3>
-              </div>
-              <div className="text-center px-4">
-                <p className="text-[10px] font-display text-green-500/70 uppercase tracking-widest mb-1">On-Chain Profit</p>
-                <h3 className="text-xl font-mono text-white tracking-tight">
-                  ${parseFloat(onChainProfit).toFixed(2)}
-                </h3>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-display text-orange-500/70 uppercase tracking-widest mb-1">Vault Liquidity</p>
-                <h3 className="text-2xl font-mono text-white tracking-tight">
-                  {parseFloat(vaultBalance).toFixed(4)} BNB
-                </h3>
-              </div>
-            </div>
-            
-            <div className="flex gap-2 mt-2">
-              <div className="flex-1 flex bg-black/40 border border-white/10 rounded-xl overflow-hidden">
-                <input 
-                  type="number" 
-                  value={depositAmount} 
-                  onChange={(e) => setDepositAmount(e.target.value)} 
-                  placeholder="0.00" 
-                  className="w-full bg-transparent p-2 text-xs font-mono outline-none text-right"
-                  disabled={isTrading || isDepositing}
-                />
-                <button 
-                  onClick={handleDeposit} 
-                  disabled={isTrading || isDepositing || !depositAmount}
-                  className="px-3 bg-white/5 hover:bg-white/10 text-[10px] font-bold uppercase transition-colors text-green-400"
-                >
-                  {isDepositing ? '...' : 'Deposit'}
-                </button>
-              </div>
-              
-              <div className="flex-1 flex bg-black/40 border border-white/10 rounded-xl overflow-hidden">
-                <input 
-                  type="number" 
-                  value={withdrawAmount} 
-                  onChange={(e) => setWithdrawAmount(e.target.value)} 
-                  placeholder="0.00" 
-                  className="w-full bg-transparent p-2 text-xs font-mono outline-none text-right"
-                  disabled={isTrading || isWithdrawing}
-                />
-                <button 
-                  onClick={handleWithdraw} 
-                  disabled={isTrading || isWithdrawing || !withdrawAmount}
-                  className="px-3 bg-white/5 hover:bg-white/10 text-[10px] font-bold uppercase transition-colors text-red-400"
-                >
-                  {isWithdrawing ? '...' : 'Withdraw'}
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -451,6 +390,67 @@ export default function TradingTab({
             <h3 className="font-display text-xl uppercase tracking-tighter flex items-center gap-2">
               <Zap className="w-5 h-5 text-orange-500" /> Trading Setup
             </h3>
+
+            {/* Wallet & Vault Information - Responsive */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-black/20 border border-white/10 rounded-2xl">
+              <div className="text-center">
+                <p className="text-[10px] font-display text-white/40 uppercase tracking-widest mb-1">Wallet (Native)</p>
+                <h3 className="text-lg font-mono text-white/60 tracking-tight">
+                  {parseFloat(balance).toFixed(4)} BNB
+                </h3>
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] font-display text-green-500/70 uppercase tracking-widest mb-1">On-Chain Profit</p>
+                <h3 className="text-lg font-mono text-white tracking-tight">
+                  ${parseFloat(onChainProfit).toFixed(2)}
+                </h3>
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] font-display text-orange-500/70 uppercase tracking-widest mb-1">Vault Liquidity</p>
+                <h3 className="text-lg font-mono text-white tracking-tight">
+                  {parseFloat(vaultBalance).toFixed(4)} BNB
+                </h3>
+              </div>
+            </div>
+
+            {/* Deposit/Withdraw Controls */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex bg-black/40 border border-white/10 rounded-xl overflow-hidden">
+                <input 
+                  type="number" 
+                  value={depositAmount} 
+                  onChange={(e) => setDepositAmount(e.target.value)} 
+                  placeholder="0.00" 
+                  className="w-full bg-transparent p-2 text-xs font-mono outline-none text-right"
+                  disabled={isTrading || isDepositing}
+                />
+                <button 
+                  onClick={handleDeposit} 
+                  disabled={isTrading || isDepositing || !depositAmount}
+                  className="px-3 bg-white/5 hover:bg-white/10 text-[10px] font-bold uppercase transition-colors text-green-400"
+                >
+                  {isDepositing ? '...' : 'Deposit'}
+                </button>
+              </div>
+              
+              <div className="flex bg-black/40 border border-white/10 rounded-xl overflow-hidden">
+                <input 
+                  type="number" 
+                  value={withdrawAmount} 
+                  onChange={(e) => setWithdrawAmount(e.target.value)} 
+                  placeholder="0.00" 
+                  className="w-full bg-transparent p-2 text-xs font-mono outline-none text-right"
+                  disabled={isTrading || isWithdrawing}
+                />
+                <button 
+                  onClick={handleWithdraw} 
+                  disabled={isTrading || isWithdrawing || !withdrawAmount}
+                  className="px-3 bg-white/5 hover:bg-white/10 text-[10px] font-bold uppercase transition-colors text-red-400"
+                >
+                  {isWithdrawing ? '...' : 'Withdraw'}
+                </button>
+              </div>
+            </div>
 
             <div className="space-y-4">
               <div>

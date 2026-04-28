@@ -1,6 +1,6 @@
 import { TradeSignal, Position } from './types';
 import { ethers } from 'ethers';
-import { executeBuyTrade, executeSellTrade, validateTradeAmount, isValidAddress, getUserProfit } from '../lib/contract';
+import { executeBuyTrade, executeSellTrade, validateTradeAmount, isValidAddress, getUserProfit, getUserBalance } from '../lib/contract';
 import { APP_CONFIG } from '../config';
 import { web3auth } from '../lib/web3auth';
 import { ROUTER_ABI, TOKEN_MAP } from '../lib/dex';
@@ -16,7 +16,7 @@ export async function executeTrade(
     modeType: 'demo' | 'real';
     pair: string;
   }
-): Promise<{ success: boolean; transactionHash?: string; error?: string }> {
+): Promise<{ success: boolean; transactionHash?: string; error?: string; fallbackToVirtual?: boolean }> {
   const { action, lotSize } = signal;
 
   if (!isValidAddress(callbacks.userAddress)) return { success: false, error: 'Invalid user address' };
@@ -46,21 +46,40 @@ export async function executeTrade(
     const token = callbacks.pair.includes('/USDT') ? 'USDT' : 'USDC';
     let amountIn = lotSize.toString(); 
 
-    // For CLOSE actions in real mode, we need to determine the actual amount to sell/buy back
-    if (action === "CLOSE" && currentPosition) {
-      if (currentPosition.type === 'LONG') {
-        // Fetch current token profit (USDT/USDC) from contract to sell
-        const profitAmount = await getUserProfit(callbacks.userAddress, signer.provider!);
+    // REAL MODE: Check balances before execution to prevent contract reverts
+    const isBuyAction = action === "BUY" || (action === "CLOSE" && currentPosition?.type === "SHORT") || (action === "REVERSE" && currentPosition?.type === "SHORT");
+    const isSellAction = action === "SELL" || (action === "CLOSE" && currentPosition?.type === "LONG") || (action === "REVERSE" && currentPosition?.type === "LONG");
+
+    if (isBuyAction) {
+      // These actions use BNB balance from the vault
+      const userBalance = await getUserBalance(callbacks.userAddress, signer.provider!);
+      if (parseFloat(userBalance) < parseFloat(amountIn)) {
+        console.error(`[EXECUTOR] Insufficient BNB balance: ${userBalance} < ${amountIn}`);
+        return { success: false, error: `Insufficient BNB balance in vault (${userBalance} BNB)` };
+      }
+    }
+
+    if (isSellAction) {
+      // These actions use Token profit balance (USDT/USDC) from the vault
+      const profitAmount = await getUserProfit(callbacks.userAddress, signer.provider!);
+      
+      // For CLOSE or REVERSE (LONG->SHORT), we use the entire profit balance
+      if (action === "CLOSE" || action === "REVERSE") {
         amountIn = profitAmount;
-        if (parseFloat(amountIn) <= 0) {
-          console.warn("[EXECUTOR] No profit balance found to close LONG position on-chain.");
-          // Fallback to initial amount if profit check fails or is 0
-          amountIn = lotSize.toString(); 
-        }
-      } else {
-        // For SHORT, we are buying back tokens with BNB.
-        // We'll use the initial BNB amount (lotSize) to buy back.
-        amountIn = lotSize.toString();
+      }
+
+      // Check if we have sufficient profit balance for the trade
+      const requiredAmount = action === "CLOSE" ? 0.000001 : parseFloat(amountIn);
+      if (parseFloat(profitAmount) < requiredAmount) {
+        console.warn(`[EXECUTOR] Insufficient profit balance: ${profitAmount} < ${requiredAmount} - Falling back to virtual execution`);
+        
+        // For ultra-fast compounding, we need to handle this gracefully
+        // Return a special flag to indicate virtual fallback should be used
+        return { 
+          success: false, 
+          error: `Insufficient profit balance on-chain (${profitAmount} ${token})`,
+          fallbackToVirtual: true
+        };
       }
     }
 
@@ -90,17 +109,18 @@ export async function executeTrade(
     }
 
     if (action === "REVERSE" && currentPosition) {
-      const closeReceipt = currentPosition.type === 'LONG'
+      // In this vault model, REVERSE is a single swap that flips the state.
+      // LONG -> SHORT: executeSellTrade (Swaps all tokens to BNB)
+      // SHORT -> LONG: executeBuyTrade (Swaps BNB to tokens)
+      const receipt = currentPosition.type === 'LONG'
         ? await executeSellTrade(signer, callbacks.pair, token, amountIn, minAmountOut)
         : await executeBuyTrade(signer, callbacks.pair, token, amountIn, minAmountOut);
-      await callbacks.onClose(closeReceipt.hash);
-
+      
+      await callbacks.onClose(receipt.hash);
       const oppositeType = currentPosition.type === "LONG" ? "SHORT" : "LONG";
-      const openReceipt = oppositeType === 'SHORT'
-        ? await executeSellTrade(signer, callbacks.pair, token, amountIn, minAmountOut)
-        : await executeBuyTrade(signer, callbacks.pair, token, amountIn, minAmountOut);
-      await callbacks.onOpen(oppositeType, lotSize, openReceipt.hash);
-      return { success: true, transactionHash: openReceipt.hash };
+      await callbacks.onOpen(oppositeType, parseFloat(amountIn), receipt.hash);
+      
+      return { success: true, transactionHash: receipt.hash };
     }
 
     return { success: false, error: 'Invalid trade action' };

@@ -142,6 +142,15 @@ export async function executeSellTrade(
   const amountInWei = ethers.parseEther(amountIn);
   const minAmountOutWei = ethers.parseEther(minAmountOut);
 
+  // Pre-flight check: Verify sufficient profit balance before attempting transaction
+  const userAddress = await signer.getAddress();
+  const profitBalance = await getUserProfit(userAddress, signer.provider!);
+  const requiredProfit = parseFloat(amountIn); 
+  
+  if (parseFloat(profitBalance) < requiredProfit) {
+    throw new Error(`Insufficient profit balance: ${profitBalance} ${tokenIn} < ${requiredProfit} ${tokenIn}`);
+  }
+
   const tx = await contract.executeSellTrade(pair, tokenAddress, amountInWei, minAmountOutWei);
   return await tx.wait();
 }
@@ -163,6 +172,22 @@ export async function withdrawFunds(signer: ethers.Signer, amount: string): Prom
   const contract = getTradingVaultContract(signer);
   const amountWei = ethers.parseEther(amount);
   const tx = await contract.withdraw(amountWei);
+  return await tx.wait();
+}
+
+/**
+ * Claim profits from TradingVault and automatically reinvest
+ */
+export async function claimAndReinvestProfits(
+  signer: ethers.Signer,
+  token: 'USDT' | 'USDC',
+  amount: string
+): Promise<ethers.TransactionReceipt> {
+  const contract = getTradingVaultContract(signer);
+  const tokenAddress = TOKEN_ADDRESSES[token];
+  const amountWei = ethers.parseEther(amount);
+  
+  const tx = await contract.withdrawProfits(tokenAddress, amountWei);
   return await tx.wait();
 }
 

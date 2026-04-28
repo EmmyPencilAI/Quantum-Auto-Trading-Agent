@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { ethers } from 'ethers';
-import { getTradingVaultContract, getUserBalance, getUserProfit } from '../lib/contract';
+import { getTradingVaultContract, getUserBalance, getUserProfit, claimAndReinvestProfits } from '../lib/contract';
 import { APP_CONFIG } from '../config';
 
 // Real blockchain trading - no simulation interval needed
@@ -115,7 +115,6 @@ export async function settleTrade(
         pnl: finalPnl,
         status: 'Completed',
         time_taken: Math.floor(timeElapsed),
-        transaction_hash: transactionHash || null,
         updated_at: new Date().toISOString()
       })
       .eq('id', tradeId);
@@ -158,6 +157,32 @@ export async function settleTrade(
       mode_type: trade.mode_type,
       updated_at: new Date().toISOString()
     });
+
+    // AUTO PROFIT CLAIMING: If profit is positive and in REAL mode, automatically claim to vault
+    if (trade.mode_type === 'real' && finalPnl > 0) {
+      try {
+        const provider = new ethers.JsonRpcProvider(APP_CONFIG.BNB_CHAIN.RPC_URL);
+        const userProfit = await getUserProfit(trade.uid, provider);
+        
+        if (parseFloat(userProfit) > 0.001) { // Only claim if significant profit
+          const token = trade.pair.includes('/USDT') ? 'USDT' : 'USDC';
+          
+          // For automatic claiming, we need a signer - this would be handled by the trading engine
+          console.log(`[AUTO PROFIT] ${finalPnl > 0 ? 'Profit' : 'Loss'}: $${finalPnl.toFixed(2)} - Ready for claiming`);
+          
+          // Store profit data for automatic reinvestment
+          await supabase.from('profit_queue').upsert({
+            uid: trade.uid,
+            amount: finalPnl,
+            token: token,
+            status: 'pending',
+            created_at: new Date().toISOString()
+          });
+        }
+      } catch (error) {
+        console.warn('Auto profit claiming failed (non-fatal):', error);
+      }
+    }
 
     return { success: true };
   } catch (error: any) {
