@@ -250,7 +250,11 @@ export default function App() {
         // Use verifierId if it's a social login, otherwise use address
         const safeAddress = address || '0x0000000000000000000000000000000000000000';
         // Web3Auth userInfo often has 'email' or 'verifierId' for unique identity
-        const uniqueId = (userInfo.verifierId || userInfo.email || safeAddress.toLowerCase()).replace(/[^a-zA-Z0-9]/g, '_');
+        const uniqueIdRaw = userInfo.verifierId || userInfo.email || safeAddress.toLowerCase();
+        
+        // Generate a deterministic UUID v4 format from the hash to satisfy Supabase uuid type columns
+        const hash = ethers.keccak256(ethers.toUtf8Bytes(uniqueIdRaw));
+        const uniqueId = `${hash.substring(2, 10)}-${hash.substring(10, 14)}-4${hash.substring(15, 18)}-a${hash.substring(19, 22)}-${hash.substring(22, 34)}`;
 
         console.log("Login user info:", userInfo);
 

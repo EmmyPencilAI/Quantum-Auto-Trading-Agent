@@ -25,11 +25,15 @@ export async function processRealTrade(
     if (tradeData.mode_type === 'demo') {
       console.log(`[DEMO] Simulating trade for ${userAddress}`);
 
+      // Generate valid UUID from userAddress for Supabase uid column
+      const hash = ethers.keccak256(ethers.toUtf8Bytes(userAddress.toLowerCase()));
+      const validUid = `${hash.substring(2, 10)}-${hash.substring(10, 14)}-4${hash.substring(15, 18)}-a${hash.substring(19, 22)}-${hash.substring(22, 34)}`;
+
       // Create a demo trade record
       const { data: trade, error } = await supabase
         .from('trades')
         .insert({
-          uid: userAddress,
+          uid: validUid,
           type: tradeData.type,
           pair: tradeData.pair,
           trade_mode: tradeData.trade_mode,
