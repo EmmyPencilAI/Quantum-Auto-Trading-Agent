@@ -306,8 +306,11 @@ export default function TradingTab({
     // Use Vault balance for execution in REAL mode
     if (mode === 'real') {
       const vBal = parseFloat(vaultBalance);
-      if (vBal <= 0) {
-        alert("INSUFFICIENT VAULT FUNDS: Please deposit BNB into the Smart Contract Vault to activate Quantum HFT.");
+      const bnbPrice = parseFloat(tickerPrices['BNB/USDT']?.replace(/,/g, '') || '600');
+      const requiredBnb = tradeAmount / bnbPrice;
+
+      if (vBal < requiredBnb) {
+        alert(`INSUFFICIENT VAULT FUNDS: You need at least ${requiredBnb.toFixed(4)} BNB to execute a $${tradeAmount} trade. Current Vault Balance: ${vBal.toFixed(4)} BNB. Please deposit more BNB or lower your trade amount.`);
         return;
       }
     }

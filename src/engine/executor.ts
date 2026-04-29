@@ -131,6 +131,19 @@ export async function executeTrade(
     return { success: false, error: 'Invalid trade action' };
   } catch (error: any) {
     console.error('Trade execution failed:', error);
+    
+    // Automatically fallback to virtual execution if the testnet router reverts
+    // due to insufficient liquidity, slippage, or empty pools.
+    if (
+      error.message?.includes('execution reverted') || 
+      error.message?.includes('CALL_EXCEPTION') || 
+      error.code === 'CALL_EXCEPTION' || 
+      error.message?.includes('INSUFFICIENT_OUTPUT_AMOUNT')
+    ) {
+      console.warn('[EXECUTOR] On-chain execution reverted (likely testnet liquidity issue). Falling back to virtual execution.');
+      return { success: false, error: error.message || 'Transaction reverted', fallbackToVirtual: true };
+    }
+    
     return { success: false, error: error.message || 'Transaction failed' };
   }
 }
