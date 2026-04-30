@@ -59,6 +59,7 @@ export default function App() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [realBalance, setRealBalance] = useState<string>("0.0000");
+  const [demoBalance, setDemoBalance] = useState<number>(10000);
 
   // Global Trading State persistence
   const [isTradingGlobal, setIsTradingGlobal] = useState<boolean>(false);
@@ -146,6 +147,41 @@ export default function App() {
     const interval = setInterval(fetchBal, 10000); // 10s
     return () => clearInterval(interval);
   }, [user?.wallet_address, isLoggedIn, user?.uid]);
+
+  // Sync Demo Balance
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const fetchDemoBalance = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('demo_wallets')
+          .select('demo_balance')
+          .eq('id', user.uid)
+          .single();
+        if (data) {
+          setDemoBalance(data.demo_balance);
+        }
+      } catch (e) {
+        console.warn("Failed to fetch demo balance", e);
+      }
+    };
+
+    fetchDemoBalance();
+
+    const channel = supabase
+      .channel('demo_wallet_sync')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'demo_wallets', filter: `id=eq.${user.uid}` }, (payload) => {
+        if (payload.new && payload.new.demo_balance !== undefined) {
+          setDemoBalance(payload.new.demo_balance);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   useEffect(() => {
     // Apply theme to body
@@ -597,23 +633,25 @@ export default function App() {
                 mode={mode} 
                 setMode={setMode}
                 realBalance={realBalance} 
+                demoBalance={demoBalance}
               />
             )}
             {activeTab === 'markets' && <MarketsTab />}
             {activeTab === 'trading' && (
               <TradingTab 
                 user={user} 
+                isTrading={isTradingGlobal} 
+                setIsTrading={setIsTradingGlobal}
+                selectedPair={selectedPairGlobal}
+                setSelectedPair={setSelectedPairGlobal}
+                selectedStrategy={selectedStrategyGlobal}
+                setSelectedStrategy={setSelectedStrategyGlobal}
+                tradeAmount={tradeAmountGlobal}
+                setTradeAmount={setTradeAmountGlobal}
                 mode={mode} 
                 setMode={setMode} 
                 realBalance={realBalance}
-                isTradingGlobal={isTradingGlobal}
-                setIsTradingGlobal={setIsTradingGlobal}
-                selectedPairGlobal={selectedPairGlobal}
-                setSelectedPairGlobal={setSelectedPairGlobal}
-                selectedStrategyGlobal={selectedStrategyGlobal}
-                setSelectedStrategyGlobal={setSelectedStrategyGlobal}
-                tradeAmountGlobal={tradeAmountGlobal}
-                setTradeAmountGlobal={setTradeAmountGlobal}
+                demoBalance={demoBalance}
               />
             )}
             {activeTab === 'leaderboard' && <LeaderboardTab />}

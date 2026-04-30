@@ -17,9 +17,10 @@ interface WalletTabProps {
   mode: ModeType;
   setMode: (mode: ModeType) => void;
   realBalance?: string;
+  demoBalance?: number;
 }
 
-export default function WalletTab({ user, mode, setMode, realBalance = "0.0000" }: WalletTabProps) {
+export default function WalletTab({ user, mode, setMode, realBalance = "0.0000", demoBalance = 10000 }: WalletTabProps) {
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showSend, setShowSend] = useState(false);
@@ -120,8 +121,8 @@ export default function WalletTab({ user, mode, setMode, realBalance = "0.0000" 
     {
       symbol: 'BNB',
       name: 'Binance Coin',
-      balance: parseFloat(realBalance).toFixed(4),
-      value: `$${(parseFloat(realBalance) * (tickerPrices['BNB'] || 600)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+      balance: mode === 'demo' ? (demoBalance / (tickerPrices['BNB'] || 600)).toFixed(4) : parseFloat(realBalance).toFixed(4),
+      value: mode === 'demo' ? `$${demoBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `$${(parseFloat(realBalance) * (tickerPrices['BNB'] || 600)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
       icon: getLogo('BNB')
     },
     {

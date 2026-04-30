@@ -29,6 +29,7 @@ interface TradingTabProps {
   mode: ModeType;
   setMode: (mode: ModeType) => void;
   realBalance?: string; // Deprecated: use contract balance instead
+  demoBalance?: number;
   isTradingGlobal: boolean;
   setIsTradingGlobal: (val: boolean) => void;
   selectedPairGlobal: string;
@@ -40,7 +41,7 @@ interface TradingTabProps {
 }
 
 export default function TradingTab({ 
-  user, mode, setMode, realBalance = "0.0000",
+  user, mode, setMode, realBalance = "0.0000", demoBalance = 10000,
   isTradingGlobal, setIsTradingGlobal,
   selectedPairGlobal, setSelectedPairGlobal,
   selectedStrategyGlobal, setSelectedStrategyGlobal,
@@ -63,6 +64,8 @@ export default function TradingTab({
     { msg: 'Quantum Autobot Alpha Engine Warm-up...', time: new Date().toLocaleTimeString([], { hour12: false }), type: 'info' }
   ]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const bnbPrice = parseFloat(tickerPrices['BNB/USDT']?.replace(/,/g, '') || '600');
 
   // Fetch all ticker prices (CryptoCompare primary, Binance fallback)
   useEffect(() => {
@@ -228,7 +231,7 @@ export default function TradingTab({
     isTrading, 
     tradeAmount, 
     selectedPair,
-    parseFloat(tickerPrices['BNB/USDT']?.replace(/,/g, '') || '600')
+    bnbPrice
   );
 
   const isSettling = !isTrading && liveTrades.length > 0;
@@ -306,7 +309,6 @@ export default function TradingTab({
     // Use Vault balance for execution in REAL mode
     if (mode === 'real') {
       const vBal = parseFloat(vaultBalance);
-      const bnbPrice = parseFloat(tickerPrices['BNB/USDT']?.replace(/,/g, '') || '600');
       const requiredBnb = tradeAmount / bnbPrice;
 
       if (vBal < requiredBnb) {
@@ -350,9 +352,18 @@ export default function TradingTab({
       {/* Mode Switcher & Network Status */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-[2.5rem] bg-white/[0.02] border border-white/5">
         <div className="flex items-center gap-2 p-1 bg-black rounded-2xl border border-white/5">
-          <div className="px-6 py-3 rounded-xl font-bold text-sm uppercase tracking-widest bg-orange-600 text-white shadow-[0_0_20px_rgba(249,115,22,0.3)]">
-            REAL MODE
-          </div>
+          <button 
+            onClick={() => setMode('demo')}
+            className={cn("px-6 py-3 rounded-xl font-bold text-sm uppercase tracking-widest transition-all", mode === 'demo' ? "bg-white text-black" : "text-white/40")}
+          >
+            DEMO
+          </button>
+          <button 
+            onClick={() => setMode('real')}
+            className={cn("px-6 py-3 rounded-xl font-bold text-sm uppercase tracking-widest transition-all", mode === 'real' ? "bg-orange-600 text-white shadow-[0_0_20px_rgba(249,115,22,0.3)]" : "text-white/40")}
+          >
+            REAL
+          </button>
         </div>
 
         <div className="flex items-center gap-6">
@@ -409,19 +420,19 @@ export default function TradingTab({
               <div className="text-center">
                 <p className="text-[10px] font-display text-white/40 uppercase tracking-widest mb-1">Wallet (Native)</p>
                 <h3 className="text-lg font-mono text-white/60 tracking-tight">
-                  {parseFloat(balance).toFixed(4)} BNB
+                  {mode === 'demo' ? (demoBalance / bnbPrice).toFixed(4) : parseFloat(balance).toFixed(4)} BNB
                 </h3>
               </div>
               <div className="text-center">
                 <p className="text-[10px] font-display text-green-500/70 uppercase tracking-widest mb-1">On-Chain Profit</p>
                 <h3 className="text-lg font-mono text-white tracking-tight">
-                  ${parseFloat(onChainProfit).toFixed(2)}
+                  {mode === 'demo' ? `$${(demoBalance - 10000).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : `$${parseFloat(onChainProfit).toFixed(2)}`}
                 </h3>
               </div>
               <div className="text-center">
                 <p className="text-[10px] font-display text-orange-500/70 uppercase tracking-widest mb-1">Vault Liquidity</p>
                 <h3 className="text-lg font-mono text-white tracking-tight">
-                  {parseFloat(vaultBalance).toFixed(4)} BNB
+                  {mode === 'demo' ? (demoBalance / bnbPrice).toFixed(4) : parseFloat(vaultBalance).toFixed(4)} BNB
                 </h3>
               </div>
             </div>
