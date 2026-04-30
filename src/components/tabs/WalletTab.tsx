@@ -39,17 +39,7 @@ export default function WalletTab({ user, mode, setMode, realBalance = "0.0000",
   const [tickerPrices, setTickerPrices] = useState<Record<string, number>>({ 'BNB': 600, 'BTC': 65000, 'SOL': 140, 'ETH': 3500, 'XRP': 0.6, 'ADA': 0.5, 'SUI': 1.5, 'USDC': 1, 'USDT': 1 });
   const [realTokenBalances, setRealTokenBalances] = useState<Record<string, string>>({});
   const [contractBalance, setContractBalance] = useState<string>('0');
-  const [demoBalance, setDemoBalance] = useState<number>(10000);
 
-  useEffect(() => {
-    const fetchDemoBal = async () => {
-      if (user?.uid && mode === 'demo') {
-        const { data } = await supabase.from('demo_wallets').select('demo_balance').eq('id', user.uid).single();
-        if (data) setDemoBalance(data.demo_balance);
-      }
-    };
-    fetchDemoBal();
-  }, [user, mode]);
   useEffect(() => {
     if (!user?.wallet_address) return;
 

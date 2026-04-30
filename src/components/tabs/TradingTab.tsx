@@ -157,7 +157,7 @@ export default function TradingTab({
       setIsTrading(true);
       if (user.active_strategy) setSelectedStrategy(user.active_strategy);
       if (user.active_trade_amount) setTradeAmount(user.active_trade_amount);
-      if (user.active_mode) setMode(user.active_mode);
+      // Note: Do NOT restore user.active_mode here — it would override the global mode toggle
     }
   }, [user]);
 
@@ -223,7 +223,8 @@ export default function TradingTab({
     currentLotSize,
     tradeHistory,
     liveTrades,
-    onChainProfit
+    onChainProfit,
+    dynamicTradeAmount
   } = useTradingEngine(
     user, 
     mode, 
@@ -426,7 +427,7 @@ export default function TradingTab({
               <div className="text-center">
                 <p className="text-[10px] font-display text-green-500/70 uppercase tracking-widest mb-1">On-Chain Profit</p>
                 <h3 className="text-lg font-mono text-white tracking-tight">
-                  {mode === 'demo' ? `$${(demoBalance - 10000).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : `$${parseFloat(onChainProfit).toFixed(2)}`}
+                  {mode === 'demo' ? `$${totalPnL.toFixed(2)}` : `$${parseFloat(onChainProfit).toFixed(2)}`}
                 </h3>
               </div>
               <div className="text-center">
@@ -644,7 +645,7 @@ export default function TradingTab({
                   {isTrading ? 'Active Amount' : 'Last Amount'}
                 </p>
                 <p className="text-2xl font-black">
-                  {isTrading ? `$${tradeAmount}` : (tradeHistory[0]?.size ? `$${(tradeHistory[0]?.size * 1000).toFixed(0)}` : '---')}
+                  {isTrading ? `$${dynamicTradeAmount.toFixed(0)}` : (tradeHistory[0]?.size ? `$${(tradeHistory[0]?.size * 1000).toFixed(0)}` : '---')}
                 </p>
               </div>
               <div className="p-6 rounded-3xl bg-black/40 border border-white/5 relative group">

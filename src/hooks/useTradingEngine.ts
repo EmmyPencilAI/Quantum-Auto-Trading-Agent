@@ -29,6 +29,10 @@ export function useTradingEngine(
 
   // Sync On-Chain Profit Data
   useEffect(() => {
+    if (mode === 'demo') {
+      // In demo mode, on-chain profit is just the totalPnL
+      return;
+    }
     if (mode === 'real' && user?.wallet_address) {
       const fetchProfit = async () => {
         try {
@@ -316,6 +320,9 @@ export function useTradingEngine(
             setTradesCount(prev => prev + 1);
             setCurrentPosition(null);
             
+            // Immediately allow re-entry for the next trade
+            isExecutingRef.current = false;
+            
             // 🚀 ULTRA-FAST COMPOUNDING: Aggressive profit scaling for rapid growth
             if (pnl > 0) {
               // EXPONENTIAL GROWTH: Compound profits aggressively (25-50% increases)
@@ -422,7 +429,7 @@ export function useTradingEngine(
           console.error("[QUANTUM EXECUTION ERROR]", err);
           await handleVirtualFallback();
         } finally {
-          setTimeout(() => { isExecutingRef.current = false; }, 3000); // Cool-down
+          setTimeout(() => { isExecutingRef.current = false; }, 500); // Fast re-entry cooldown
         }
       }
     };
@@ -492,5 +499,5 @@ export function useTradingEngine(
     };
   }, [user?.uid, mode]);
 
-  return { marketData, currentPosition, tradesCount, totalPnL, currentLotSize, tradeHistory, liveTrades, onChainProfit };
+  return { marketData, currentPosition, tradesCount, totalPnL, currentLotSize, tradeHistory, liveTrades, onChainProfit, dynamicTradeAmount };
 }
