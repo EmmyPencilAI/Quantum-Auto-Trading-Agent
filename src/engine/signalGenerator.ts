@@ -75,15 +75,15 @@ export function evaluateMarket(
       ? ((price - currentPosition.entryPrice) / currentPosition.entryPrice) * 100
       : ((currentPosition.entryPrice - price) / currentPosition.entryPrice) * 100;
 
-    // Take Profit logic (0.15% - 0.35%)
-    let tpThreshold = 0.25;
-    let slThreshold = -0.15;
+    // Take Profit logic (lightspeed thresholds)
+    let tpThreshold = 0.10;
+    let slThreshold = -0.05;
     
     switch (strategy) {
-      case 'Scalping': tpThreshold = 0.15; slThreshold = -0.10; break;
-      case 'Aggressive': tpThreshold = 0.35; slThreshold = -0.25; break;
-      case 'Momentum': tpThreshold = 0.30; slThreshold = -0.20; break;
-      case 'Conservative': tpThreshold = 0.20; slThreshold = -0.10; break;
+      case 'Scalping': tpThreshold = 0.05; slThreshold = -0.05; break; // 3-15 seconds profit taking
+      case 'Aggressive': tpThreshold = 0.15; slThreshold = -0.10; break;
+      case 'Momentum': tpThreshold = 0.20; slThreshold = -0.15; break;
+      case 'Conservative': tpThreshold = 0.15; slThreshold = -0.05; break;
     }
     
     if (pnlPercent >= tpThreshold) {
@@ -124,16 +124,25 @@ export function evaluateMarket(
 
   // ==== ENTRY LOGIC ====
   
-  // STRICT LONG ENTRY: EMA Aligns + RSI Confirms + Volume Spike + Breakout Structure
-  if (currentEmaFast > currentEmaSlow && currentRsi > 50 && currentRsi < 75 && hasVolumeSpike && isBullishBreakout) {
-    console.log(`[SIGNAL] ✅ STRICT LONG entry triggered! RSI=${currentRsi.toFixed(2)} Vol=${hasVolumeSpike}`);
-    return { action: 'BUY', lotSize: EngineState.currentLotSize, reason: 'BULLISH_BREAKOUT' };
+  // LIGHTSPEED ENTRY: Focus on EMA and RSI. Relax volume/breakout for rapid scalping.
+  const isStrict = strategy === 'Conservative' || strategy === 'Momentum';
+  
+  const longCondition = isStrict 
+    ? (currentEmaFast > currentEmaSlow && currentRsi > 50 && currentRsi < 75 && hasVolumeSpike && isBullishBreakout)
+    : (currentEmaFast >= currentEmaSlow && currentRsi > 45 && currentRsi < 80); // Loose for Scalping
+    
+  if (longCondition) {
+    console.log(`[SIGNAL] ✅ LONG entry triggered! RSI=${currentRsi.toFixed(2)} Vol=${hasVolumeSpike}`);
+    return { action: 'BUY', lotSize: EngineState.currentLotSize, reason: 'BULLISH_MOMENTUM' };
   }
 
-  // STRICT SHORT ENTRY: EMA Aligns + RSI Confirms + Volume Spike + Breakout Structure
-  if (currentEmaFast < currentEmaSlow && currentRsi < 50 && currentRsi > 25 && hasVolumeSpike && isBearishBreakout) {
-    console.log(`[SIGNAL] ✅ STRICT SHORT entry triggered! RSI=${currentRsi.toFixed(2)} Vol=${hasVolumeSpike}`);
-    return { action: 'SELL', lotSize: EngineState.currentLotSize, reason: 'BEARISH_BREAKDOWN' };
+  const shortCondition = isStrict
+    ? (currentEmaFast < currentEmaSlow && currentRsi < 50 && currentRsi > 25 && hasVolumeSpike && isBearishBreakout)
+    : (currentEmaFast <= currentEmaSlow && currentRsi < 55 && currentRsi > 20); // Loose for Scalping
+
+  if (shortCondition) {
+    console.log(`[SIGNAL] ✅ SHORT entry triggered! RSI=${currentRsi.toFixed(2)} Vol=${hasVolumeSpike}`);
+    return { action: 'SELL', lotSize: EngineState.currentLotSize, reason: 'BEARISH_MOMENTUM' };
   }
 
   console.log(`[SIGNAL] No entry conditions met. EMA trend=${emaTrend}, RSI=${currentRsi.toFixed(2)}`);

@@ -319,7 +319,7 @@ export default function TradingTab({
     }
 
     if (!network.isSafe) {
-      alert(`NETWORK UNSTABLE: Your current connection (Latency: ${network.rtt}ms, Speed: ${network.downlink}Mbps) is not stable enough for high-frequency real mode trading. Please find a more reliable connection to prevent execution errors.`);
+      alert(`NETWORK UNSTABLE: Your current connection (Latency: ${network.rtt}ms, Speed: ${network.downlink}Mbps) is not stable enough for high-frequency trading. Please find a more reliable connection to prevent execution errors.`);
       return;
     }
 
