@@ -595,6 +595,7 @@ export default function App() {
               <WalletTab 
                 user={user} 
                 mode={mode} 
+                setMode={setMode}
                 realBalance={realBalance} 
               />
             )}

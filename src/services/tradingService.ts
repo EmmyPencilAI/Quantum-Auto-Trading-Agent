@@ -138,7 +138,7 @@ export async function settleTrade(
         const userTake = finalPnl > 0 ? finalPnl * 0.5 : finalPnl; // 50% treasury fee for profits
 
         await supabase.from('demo_wallets').update({
-          demo_balance: currentBal + (trade.size * 1000) + userTake,
+          demo_balance: currentBal + userTake,
           updated_at: new Date().toISOString()
         }).eq('id', trade.uid);
       }

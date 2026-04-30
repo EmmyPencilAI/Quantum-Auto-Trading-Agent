@@ -73,7 +73,8 @@ export default function QuantumAgentOverlay({ user, mode }: QuantumAgentOverlayP
   }, []);
 
   const playSound = () => {
-    if (audioRef.current) {
+    const notificationsEnabled = localStorage.getItem('quantum_notifications') !== 'false';
+    if (audioRef.current && notificationsEnabled) {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(() => {});
     }

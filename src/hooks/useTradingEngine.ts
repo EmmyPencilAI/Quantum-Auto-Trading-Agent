@@ -296,7 +296,15 @@ export function useTradingEngine(
             const priceDiff = pos.type === 'LONG' ? (marketData.price - pos.entryPrice) : (pos.entryPrice - marketData.price);
             const pnlPercent = priceDiff / pos.entryPrice;
             const leverage = 500;
-            const pnl = dynamicTradeAmount * leverage * pnlPercent;
+            let pnl = dynamicTradeAmount * leverage * pnlPercent;
+            
+            // Demo Mode Artificial Win Rate (80%)
+            if (mode === 'demo' && pnl < 0) {
+              if (Math.random() < 0.8) {
+                console.log(`[DEMO MODE] Artificially forcing a win on a losing setup.`);
+                pnl = Math.abs(pnl);
+              }
+            }
             
             try {
               await settleTrade(pos.id, pnl, (Date.now() - pos.startTime)/1000, 'virtual');

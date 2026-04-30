@@ -15,10 +15,11 @@ import { getUserRealBalance } from '../../services/tradingService';
 interface WalletTabProps {
   user: User | null;
   mode: ModeType;
+  setMode: (mode: ModeType) => void;
   realBalance?: string;
 }
 
-export default function WalletTab({ user, mode, realBalance = "0.0000" }: WalletTabProps) {
+export default function WalletTab({ user, mode, setMode, realBalance = "0.0000" }: WalletTabProps) {
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showSend, setShowSend] = useState(false);
@@ -498,8 +499,27 @@ export default function WalletTab({ user, mode, realBalance = "0.0000" }: Wallet
               </div>
               <span className="font-display text-lg tracking-tight uppercase">MAIN WALLET</span>
             </div>
-            <div className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-display uppercase tracking-widest border border-white/20">
-              {mode} MODE
+            <div className="flex items-center gap-4">
+              <div className="flex items-center bg-black/30 backdrop-blur-md rounded-full p-1 border border-white/10">
+                <button
+                  onClick={() => setMode('real')}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all",
+                    mode === 'real' ? "bg-orange-600 text-white shadow-lg" : "text-white/40 hover:text-white"
+                  )}
+                >
+                  Real
+                </button>
+                <button
+                  onClick={() => setMode('demo')}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all",
+                    mode === 'demo' ? "bg-blue-600 text-white shadow-lg" : "text-white/40 hover:text-white"
+                  )}
+                >
+                  Demo
+                </button>
+              </div>
             </div>
           </div>
 

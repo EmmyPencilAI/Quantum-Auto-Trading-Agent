@@ -18,7 +18,12 @@ export default function SettingsTab({ user, setUser, mode, onLogout }: SettingsT
   const [username, setUsername] = useState('');
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    const saved = localStorage.getItem('quantum_notifications');
+    return saved !== null ? saved === 'true' : true;
+  });
+  
   const [showWeb3AuthModal, setShowWeb3AuthModal] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
@@ -168,6 +173,12 @@ export default function SettingsTab({ user, setUser, mode, onLogout }: SettingsT
 
   const handleLogout = async () => {
     onLogout();
+  };
+
+  const toggleNotifications = () => {
+    const newVal = !notificationsEnabled;
+    setNotificationsEnabled(newVal);
+    localStorage.setItem('quantum_notifications', newVal.toString());
   };
 
   const handleAddFunds = async () => {
@@ -350,7 +361,7 @@ export default function SettingsTab({ user, setUser, mode, onLogout }: SettingsT
               </div>
             </div>
             <button 
-              onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+              onClick={toggleNotifications}
               className={cn(
                 "w-12 h-6 rounded-full relative cursor-pointer transition-colors duration-300",
                 notificationsEnabled ? "bg-orange-600" : "bg-white/10"
