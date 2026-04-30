@@ -640,14 +640,14 @@ export default function App() {
             {activeTab === 'trading' && (
               <TradingTab 
                 user={user} 
-                isTrading={isTradingGlobal} 
-                setIsTrading={setIsTradingGlobal}
-                selectedPair={selectedPairGlobal}
-                setSelectedPair={setSelectedPairGlobal}
-                selectedStrategy={selectedStrategyGlobal}
-                setSelectedStrategy={setSelectedStrategyGlobal}
-                tradeAmount={tradeAmountGlobal}
-                setTradeAmount={setTradeAmountGlobal}
+                isTradingGlobal={isTradingGlobal} 
+                setIsTradingGlobal={setIsTradingGlobal}
+                selectedPairGlobal={selectedPairGlobal}
+                setSelectedPairGlobal={setSelectedPairGlobal}
+                selectedStrategyGlobal={selectedStrategyGlobal}
+                setSelectedStrategyGlobal={setSelectedStrategyGlobal}
+                tradeAmountGlobal={tradeAmountGlobal}
+                setTradeAmountGlobal={setTradeAmountGlobal}
                 mode={mode} 
                 setMode={setMode} 
                 realBalance={realBalance}
