@@ -58,6 +58,7 @@ export default function TradingTab({
   const [floatingPnl, setFloatingPnl] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
   const [isBlockchainSyncing, setIsBlockchainSyncing] = useState(false);
   const [tickerPrices, setTickerPrices] = useState<Record<string, string>>({});
   const [tradingLogs, setTradingLogs] = useState<{ msg: string, time: string, type: 'info' | 'trade' | 'profit' | 'loss' }[]>([
@@ -276,7 +277,7 @@ export default function TradingTab({
          ? (marketData.price - currentPosition.entryPrice)
          : (currentPosition.entryPrice - marketData.price);
        const pnlPercent = priceDiff / currentPosition.entryPrice;
-       const leverage = 500; // Standardize to 500x leverage
+       const leverage = 50; // Must match engine leverage (50x)
        const pnl = tradeAmount * leverage * pnlPercent;
        setFloatingPnl(pnl);
     } else {
@@ -760,6 +761,7 @@ export default function TradingTab({
                 <thead>
                   <tr className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5">
                     <th className="pb-4 font-black">Pair</th>
+                    <th className="pb-4 font-black">Type</th>
                     <th className="pb-4 font-black">Strategy</th>
                     <th className="pb-4 font-black">Amount</th>
                     <th className="pb-4 font-black">Result</th>
@@ -770,33 +772,97 @@ export default function TradingTab({
                 <tbody className="text-sm">
                   {tradeHistory.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-12 text-center text-white/20 font-medium italic">
+                      <td colSpan={7} className="py-12 text-center text-white/20 font-medium italic">
                         No trade history found.
                       </td>
                     </tr>
                   ) : (
-                    tradeHistory.map((trade) => (
-                      <tr key={trade.id} className="border-b border-white/5 group hover:bg-white/[0.02] transition-all">
-                        <td className="py-4 font-bold">{trade.pair || 'BTC/USDT'}</td>
-                        <td className="py-4">
-                          <span className="text-[10px] font-bold px-2 py-1 rounded bg-white/5 text-white/60 uppercase">
-                            {trade.trade_mode || trade.mode || 'Unknown'}
-                          </span>
-                        </td>
-                        <td className="py-4 font-mono text-xs">${trade.size * 1000}</td>
-                        <td className={cn(
-                          "py-4 font-bold",
-                          trade.pnl > 0 ? "text-green-500" : "text-red-500"
-                        )}>
-                          {trade.pnl > 0 ? '+' : ''}{trade.pnl.toFixed(2)}
-                        </td>
-                        <td className="py-4 text-white/40 text-xs">{formatTime(trade.time_taken || 0)}</td>
-                        <td className="py-4 text-right">
-                          <span className="text-[10px] font-black text-green-500 uppercase tracking-widest px-2 py-1 bg-green-500/10 rounded-full">
-                            {trade.status}
-                          </span>
-                        </td>
-                      </tr>
+                    tradeHistory.slice(0, 20).map((trade) => (
+                      <React.Fragment key={trade.id}>
+                        <tr 
+                          className="border-b border-white/5 group hover:bg-white/[0.02] transition-all cursor-pointer"
+                          onClick={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
+                        >
+                          <td className="py-4 font-bold">{trade.pair || 'BTC/USDT'}</td>
+                          <td className="py-4">
+                            <span className={cn(
+                              "text-[10px] font-black px-2 py-1 rounded uppercase",
+                              trade.type === 'LONG' ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"
+                            )}>
+                              {trade.type}
+                            </span>
+                          </td>
+                          <td className="py-4">
+                            <span className="text-[10px] font-bold px-2 py-1 rounded bg-white/5 text-white/60 uppercase">
+                              {trade.trade_mode || 'Unknown'}
+                            </span>
+                          </td>
+                          <td className="py-4 font-mono text-xs">${(trade.size * 1000).toFixed(0)}</td>
+                          <td className={cn(
+                            "py-4 font-bold",
+                            trade.pnl > 0 ? "text-green-500" : "text-red-500"
+                          )}>
+                            {trade.pnl > 0 ? '+' : ''}${trade.pnl.toFixed(2)}
+                          </td>
+                          <td className="py-4 text-white/40 text-xs">{formatTime(trade.time_taken || 0)}</td>
+                          <td className="py-4 text-right">
+                            <span className={cn(
+                              "text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full",
+                              trade.pnl > 0 ? "text-green-500 bg-green-500/10" : "text-red-500 bg-red-500/10"
+                            )}>
+                              {trade.pnl > 0 ? 'WIN' : 'LOSS'}
+                            </span>
+                          </td>
+                        </tr>
+                        {/* EXPANDABLE TRADE DETAIL ROW */}
+                        {expandedTradeId === trade.id && (
+                          <tr className="border-b border-white/5">
+                            <td colSpan={7} className="py-0">
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-white/[0.02] rounded-lg my-2">
+                                  <div>
+                                    <p className="text-[10px] text-white/30 uppercase font-bold mb-1">Entry Price</p>
+                                    <p className="text-sm font-mono text-white/80">${trade.entry_price?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || 'N/A'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-white/30 uppercase font-bold mb-1">Exit Price</p>
+                                    <p className="text-sm font-mono text-white/80">${trade.exit_price?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || 'N/A'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-white/30 uppercase font-bold mb-1">Lot Size</p>
+                                    <p className="text-sm font-mono text-white/80">{trade.size?.toFixed(4) || 'N/A'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-white/30 uppercase font-bold mb-1">Leverage</p>
+                                    <p className="text-sm font-mono text-white/80">50x</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-white/30 uppercase font-bold mb-1">Direction</p>
+                                    <p className={cn("text-sm font-bold", trade.type === 'LONG' ? 'text-green-400' : 'text-red-400')}>{trade.type}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-white/30 uppercase font-bold mb-1">Duration</p>
+                                    <p className="text-sm font-mono text-white/80">{formatTime(trade.time_taken || 0)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-white/30 uppercase font-bold mb-1">Mode</p>
+                                    <p className="text-sm font-mono text-white/80 uppercase">{trade.mode_type || 'demo'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-white/30 uppercase font-bold mb-1">Opened At</p>
+                                    <p className="text-sm font-mono text-white/80">{new Date(trade.created_at).toLocaleString()}</p>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))
                   )}
                 </tbody>
@@ -806,10 +872,10 @@ export default function TradingTab({
         </div>
       </div>
 
-      {/* FIXED TOAST NOTIFICATIONS */}
+      {/* TOAST NOTIFICATIONS - Only system alerts (circuit breaker, info), no TP/SL */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none">
         <AnimatePresence>
-          {engineEvents.map((event) => (
+          {engineEvents.filter(e => e.type === 'warning' || e.type === 'info').map((event) => (
             <motion.div
               key={event.id}
               initial={{ opacity: 0, x: 50, scale: 0.9 }}
@@ -817,15 +883,11 @@ export default function TradingTab({
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-lg shadow-xl border backdrop-blur-md max-w-sm pointer-events-auto",
-                event.type === 'success' ? "bg-green-500/10 border-green-500/20 text-green-400" :
-                event.type === 'error' ? "bg-red-500/10 border-red-500/20 text-red-400" :
                 event.type === 'warning' ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-400" :
                 "bg-blue-500/10 border-blue-500/20 text-blue-400"
               )}
             >
               <div className="shrink-0">
-                {event.type === 'success' && <CheckCircle className="w-5 h-5" />}
-                {event.type === 'error' && <AlertCircle className="w-5 h-5" />}
                 {event.type === 'warning' && <AlertCircle className="w-5 h-5" />}
                 {event.type === 'info' && <Info className="w-5 h-5" />}
               </div>

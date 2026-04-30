@@ -371,10 +371,9 @@ export function useTradingEngine(
               console.log(`🚀 [COMPOUND] Profit: $${pnl.toFixed(2)} | Growth: 5% | New Size: $${newLotSize.toFixed(2)}`);
             } else if (pnl < 0) {
               notify(`Stop Loss Triggered! -$${Math.abs(pnl).toFixed(2)}`, "error");
-              // RISK MANAGEMENT: Reduce trade size symmetrically by 5% on losses
-              const newLotSize = Math.max(baseTradeAmount * 0.5, dynamicTradeAmount * 0.95); // Floor at 50% base
-              setDynamicTradeAmount(newLotSize);
-              console.log(`⚡ [DRAWDOWN-PROTECTION] Loss: $${pnl.toFixed(2)} | Reduced to: $${newLotSize.toFixed(2)}`);
+              // RISK MANAGEMENT: Reset to base trade amount on loss (no downward compounding)
+              setDynamicTradeAmount(baseTradeAmount);
+              console.log(`⚡ [RESET] Loss: $${pnl.toFixed(2)} | Reset to base: $${baseTradeAmount.toFixed(2)}`);
             }
           }
         }
@@ -462,10 +461,9 @@ export function useTradingEngine(
                   }
                 } else if (pnl < 0) {
                   notify(`Stop Loss Triggered! -$${Math.abs(pnl).toFixed(2)}`, "error");
-                  // RISK MANAGEMENT: Reduce trade size symmetrically by 5% on losses
-                  const newLotSize = Math.max(baseTradeAmount * 0.5, dynamicTradeAmount * 0.95); // Floor at 50% base
-                  setDynamicTradeAmount(newLotSize);
-                  console.log(`⚡ [DRAWDOWN-PROTECTION] Loss: $${pnl.toFixed(2)} | Reduced to: $${newLotSize.toFixed(2)}`);
+                  // RISK MANAGEMENT: Reset to base trade amount on loss (no downward compounding)
+                  setDynamicTradeAmount(baseTradeAmount);
+                  console.log(`⚡ [RESET] Loss: $${pnl.toFixed(2)} | Reset to base: $${baseTradeAmount.toFixed(2)}`);
                 }
               }
             }

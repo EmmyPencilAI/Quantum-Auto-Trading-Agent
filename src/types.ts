@@ -27,6 +27,7 @@ export interface Trade {
   pair: string;
   trade_mode: TradingMode;
   entry_price: number;
+  exit_price?: number;
   size: number;
   pnl: number;
   mode_type: ModeType;
