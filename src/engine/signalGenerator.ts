@@ -48,24 +48,28 @@ export function evaluateMarket(
   if (rsiValues.length === 0) return null;
   const currentRsi = rsiValues[rsiValues.length - 1];
 
-  // 3. Volume Spike Detection (optional bonus, not required)
+  // 3. Volume Spike Detection (strict requirement)
   const recentVolume = volumes.slice(-10);
   const avgVolume = recentVolume.reduce((a,b)=>a+b, 0) / recentVolume.length;
   const currentVolume = volumes[volumes.length - 1];
-  const hasVolumeSpike = avgVolume === 0 || currentVolume > (avgVolume * 1.15); // 15% above average
+  const hasVolumeSpike = avgVolume === 0 || currentVolume > (avgVolume * 1.25); // 25% above average required
 
-  // 4. Spread / Sideways Check
-  const recentCloses = closes.slice(-5);
+  // 4. Spread / Sideways & Breakout Check
+  const recentCloses = closes.slice(-8); // 8 periods for breakout detection
   const maxPrice = Math.max(...recentCloses);
   const minPrice = Math.min(...recentCloses);
   const priceRangePercent = ((maxPrice - minPrice) / minPrice) * 100;
   
-  // Log signal evaluation for debugging
-  console.log(`[SIGNAL] EMA: ${emaTrend} (fast=${currentEmaFast.toFixed(2)}, slow=${currentEmaSlow.toFixed(2)}) | RSI: ${currentRsi.toFixed(2)} | VolSpike: ${hasVolumeSpike} | Range: ${priceRangePercent.toFixed(4)}%`);
+  // Breakout structure: current price is testing or breaking recent highs/lows
+  const isBullishBreakout = price >= maxPrice * 0.9995; // Near or above recent high
+  const isBearishBreakout = price <= minPrice * 1.0005; // Near or below recent low
 
-  if (priceRangePercent < 0.001) {
-    // Market is completely dead. Do not enter.
-    console.log(`[SIGNAL] Market sideways (${priceRangePercent.toFixed(4)}%), skipping`);
+  // Log signal evaluation for debugging
+  console.log(`[SIGNAL] EMA: ${emaTrend} | RSI: ${currentRsi.toFixed(2)} | VolSpike: ${hasVolumeSpike} | Range: ${priceRangePercent.toFixed(4)}% | BullBrk: ${isBullishBreakout} | BearBrk: ${isBearishBreakout}`);
+
+  // STOP TRADING: Sideways market or high spread (flat range)
+  if (priceRangePercent < 0.05) {
+    console.log(`[SIGNAL] Market sideways (${priceRangePercent.toFixed(4)}% range), skipping`);
     return null;
   }
 
@@ -75,30 +79,37 @@ export function evaluateMarket(
       ? ((price - currentPosition.entryPrice) / currentPosition.entryPrice) * 100
       : ((currentPosition.entryPrice - price) / currentPosition.entryPrice) * 100;
 
-    // Take Profit logic (dynamic based on strategy)
-    // Scalping targets very small, quick profits (e.g. 0.02% = 10% ROI at 500x leverage)
-    // Other strategies aim for larger swings (0.30% = 150% ROI at 500x leverage)
-    const tpThreshold = strategy === 'Scalping' ? 0.02 : 0.30;
+    // Take Profit logic (0.15% - 0.35%)
+    let tpThreshold = 0.25;
+    let slThreshold = -0.15;
+    
+    switch (strategy) {
+      case 'Scalping': tpThreshold = 0.15; slThreshold = -0.10; break;
+      case 'Aggressive': tpThreshold = 0.35; slThreshold = -0.25; break;
+      case 'Momentum': tpThreshold = 0.30; slThreshold = -0.20; break;
+      case 'Conservative': tpThreshold = 0.20; slThreshold = -0.10; break;
+    }
     
     if (pnlPercent >= tpThreshold) {
       handleWin();
       return { action: 'CLOSE', lotSize: currentPosition.size, reason: 'TP_HIT' };
     }
 
-    // Hard Stop Loss (-0.2% at 500x leverage = -100% ROI - PROTECTS INVESTMENT)
-    if (pnlPercent <= -0.2) {
+    // Hard Stop Loss (0.10% - 0.25%)
+    if (pnlPercent <= slThreshold) {
       handleLoss();
       return { action: 'CLOSE', lotSize: currentPosition.size, reason: 'SL_HIT' };
     }
 
     // EARLY EXIT: Momentum Reversal (EMA flips or RSI weakens)
+    // Don't wait for full stop loss if momentum completely shifts
     if (currentPosition.type === 'LONG') {
-      if (currentEmaFast < currentEmaSlow || currentRsi < 35) {
+      if (currentEmaFast < currentEmaSlow || currentRsi < 40) {
         handleLoss();
         return { action: 'CLOSE', lotSize: currentPosition.size, reason: 'MOMENTUM_REVERSAL_DOWN' };
       }
     } else { // SHORT
-      if (currentEmaFast > currentEmaSlow || currentRsi > 65) {
+      if (currentEmaFast > currentEmaSlow || currentRsi > 60) {
         handleLoss();
         return { action: 'CLOSE', lotSize: currentPosition.size, reason: 'MOMENTUM_REVERSAL_UP' };
       }
@@ -110,16 +121,16 @@ export function evaluateMarket(
 
   // ==== ENTRY LOGIC ====
   
-  // LONG ENTRY: EMA Fast > Slow, RSI between 40 and 80 (bullish)
-  if (currentEmaFast > currentEmaSlow && currentRsi > 40 && currentRsi < 80) {
-    console.log(`[SIGNAL] ✅ LONG entry triggered! RSI=${currentRsi.toFixed(2)} VolSpike=${hasVolumeSpike}`);
-    return { action: 'BUY', lotSize: EngineState.currentLotSize, reason: hasVolumeSpike ? 'BULLISH_BREAKOUT' : 'BULLISH_TREND' };
+  // STRICT LONG ENTRY: EMA Aligns + RSI Confirms + Volume Spike + Breakout Structure
+  if (currentEmaFast > currentEmaSlow && currentRsi > 50 && currentRsi < 75 && hasVolumeSpike && isBullishBreakout) {
+    console.log(`[SIGNAL] ✅ STRICT LONG entry triggered! RSI=${currentRsi.toFixed(2)} Vol=${hasVolumeSpike}`);
+    return { action: 'BUY', lotSize: EngineState.currentLotSize, reason: 'BULLISH_BREAKOUT' };
   }
 
-  // SHORT ENTRY: EMA Fast < Slow, RSI between 20 and 60 (bearish)
-  if (currentEmaFast < currentEmaSlow && currentRsi < 60 && currentRsi > 20) {
-    console.log(`[SIGNAL] ✅ SHORT entry triggered! RSI=${currentRsi.toFixed(2)} VolSpike=${hasVolumeSpike}`);
-    return { action: 'SELL', lotSize: EngineState.currentLotSize, reason: hasVolumeSpike ? 'BEARISH_BREAKDOWN' : 'BEARISH_TREND' };
+  // STRICT SHORT ENTRY: EMA Aligns + RSI Confirms + Volume Spike + Breakout Structure
+  if (currentEmaFast < currentEmaSlow && currentRsi < 50 && currentRsi > 25 && hasVolumeSpike && isBearishBreakout) {
+    console.log(`[SIGNAL] ✅ STRICT SHORT entry triggered! RSI=${currentRsi.toFixed(2)} Vol=${hasVolumeSpike}`);
+    return { action: 'SELL', lotSize: EngineState.currentLotSize, reason: 'BEARISH_BREAKDOWN' };
   }
 
   console.log(`[SIGNAL] No entry conditions met. EMA trend=${emaTrend}, RSI=${currentRsi.toFixed(2)}`);

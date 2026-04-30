@@ -234,8 +234,8 @@ export function useTradingEngine(
     const evaluateAndExecute = async () => {
       if (isExecutingRef.current) return;
       
-      // RISK MANAGEMENT: Daily Loss Limit Circuit Breaker (30% of active trade amount)
-      if (dailyPnL <= -(baseTradeAmount * 0.30)) {
+      // RISK MANAGEMENT: Daily Loss Limit Circuit Breaker (5% of active trade amount)
+      if (dailyPnL <= -(baseTradeAmount * 0.05)) {
         if (Math.random() > 0.95) console.warn("[QUANTUM CIRCUIT BREAKER] Daily Loss Limit Reached. Trading Halted.");
         return; 
       }
@@ -323,20 +323,17 @@ export function useTradingEngine(
             // Immediately allow re-entry for the next trade
             isExecutingRef.current = false;
             
-            // 🚀 ULTRA-FAST COMPOUNDING: Aggressive profit scaling for rapid growth
+            // 🚀 GRADUAL COMPOUNDING: Stable profit scaling
             if (pnl > 0) {
-              // EXPONENTIAL GROWTH: Compound profits aggressively (25-50% increases)
-              const winStreak = Math.min(Math.floor(Math.log2(dynamicTradeAmount / baseTradeAmount)) + 1, 10);
-              const growthFactor = 1.25 + (winStreak * 0.05); // 25% to 75% growth based on streak
-              const newLotSize = Math.min(dynamicTradeAmount * growthFactor, baseTradeAmount * 100); // Max 100x base
-              
+              // GRADUAL GROWTH: Increase trade size by 5% on wins (max 5x base)
+              const newLotSize = Math.min(dynamicTradeAmount * 1.05, baseTradeAmount * 5); 
               setDynamicTradeAmount(newLotSize);
-              console.log(`🚀 [ULTRA-COMPOUND] Profit: $${pnl.toFixed(2)} | Win Streak: ${winStreak} | Growth: ${Math.round((growthFactor-1)*100)}% | New Size: $${newLotSize.toFixed(2)}`);
+              console.log(`🚀 [COMPOUND] Profit: $${pnl.toFixed(2)} | Growth: 5% | New Size: $${newLotSize.toFixed(2)}`);
             } else if (pnl < 0) {
-              // AGGRESSIVE RISK MANAGEMENT: Small reset on losses, quick recovery
-              const newLotSize = Math.max(baseTradeAmount * 0.8, dynamicTradeAmount * 0.7); // Reset to 80% base or 70% current
+              // STRICT RISK MANAGEMENT: Reduce trade size by 20% on losses
+              const newLotSize = Math.max(baseTradeAmount * 0.5, dynamicTradeAmount * 0.8); // Floor at 50% base
               setDynamicTradeAmount(newLotSize);
-              console.log(`⚡ [QUICK-RECOVERY] Loss: $${pnl.toFixed(2)} | Reset to: $${newLotSize.toFixed(2)} | Ready to compound again!`);
+              console.log(`⚡ [DRAWDOWN-PROTECTION] Loss: $${pnl.toFixed(2)} | Reduced to: $${newLotSize.toFixed(2)}`);
             }
           }
         }
@@ -390,15 +387,13 @@ export function useTradingEngine(
                 setTradesCount(prev => prev + 1);
                 setCurrentPosition(null);
                 
-                // 🚀 ULTRA-FAST COMPOUNDING: Aggressive profit scaling for rapid growth
+                // 🚀 GRADUAL COMPOUNDING: Stable profit scaling
                 if (pnl > 0) {
-                  // EXPONENTIAL GROWTH: Compound profits aggressively (25-50% increases)
-                  const winStreak = Math.min(Math.floor(Math.log2(dynamicTradeAmount / baseTradeAmount)) + 1, 10);
-                  const growthFactor = 1.25 + (winStreak * 0.05); // 25% to 75% growth based on streak
-                  const newLotSize = Math.min(dynamicTradeAmount * growthFactor, baseTradeAmount * 100); // Max 100x base
+                  // GRADUAL GROWTH: Increase trade size by 5% on wins (max 5x base)
+                  const newLotSize = Math.min(dynamicTradeAmount * 1.05, baseTradeAmount * 5); 
                   
                   setDynamicTradeAmount(newLotSize);
-                  console.log(`🚀 [ULTRA-COMPOUND] Profit: $${pnl.toFixed(2)} | Win Streak: ${winStreak} | Growth: ${Math.round((growthFactor-1)*100)}% | New Size: $${newLotSize.toFixed(2)}`);
+                  console.log(`🚀 [COMPOUND] Profit: $${pnl.toFixed(2)} | Growth: 5% | New Size: $${newLotSize.toFixed(2)}`);
                   
                   // For REAL mode - immediate profit claiming and reinvestment
                   if (mode === 'real' && pnl > baseTradeAmount * 0.1) { // Only claim significant profits
@@ -406,10 +401,10 @@ export function useTradingEngine(
                     // In production: await claimAndReinvestProfits(user.wallet_address, pnl);
                   }
                 } else if (pnl < 0) {
-                  // AGGRESSIVE RISK MANAGEMENT: Small reset on losses, quick recovery
-                  const newLotSize = Math.max(baseTradeAmount * 0.8, dynamicTradeAmount * 0.7); // Reset to 80% base or 70% current
+                  // STRICT RISK MANAGEMENT: Reduce trade size by 20% on losses
+                  const newLotSize = Math.max(baseTradeAmount * 0.5, dynamicTradeAmount * 0.8); // Floor at 50% base
                   setDynamicTradeAmount(newLotSize);
-                  console.log(`⚡ [QUICK-RECOVERY] Loss: $${pnl.toFixed(2)} | Reset to: $${newLotSize.toFixed(2)} | Ready to compound again!`);
+                  console.log(`⚡ [DRAWDOWN-PROTECTION] Loss: $${pnl.toFixed(2)} | Reduced to: $${newLotSize.toFixed(2)}`);
                 }
               }
             }

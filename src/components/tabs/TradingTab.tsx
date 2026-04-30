@@ -294,6 +294,21 @@ export default function TradingTab({
     }
   }, [currentPosition, tradeAmount]);
 
+  useEffect(() => {
+    if (tradeHistory.length > 0) {
+      const latestTrade = tradeHistory[0];
+      const timestamp = new Date(latestTrade.created_at || Date.now()).toLocaleTimeString([], { hour12: false });
+      const pnl = latestTrade.pnl || 0;
+      const type = pnl >= 0 ? 'profit' : 'loss';
+      const msg = `Trade Closed | ${latestTrade.pair} ${latestTrade.type} | PnL: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`;
+      
+      setTradingLogs(prev => {
+        if (prev[0]?.msg === msg) return prev;
+        return [{ msg, time: timestamp, type }, ...prev].slice(0, 10);
+      });
+    }
+  }, [tradeHistory]);
+
   const startTrading = async () => {
     if (!user) return;
     
@@ -425,7 +440,9 @@ export default function TradingTab({
                 </h3>
               </div>
               <div className="text-center">
-                <p className="text-[10px] font-display text-green-500/70 uppercase tracking-widest mb-1">On-Chain Profit</p>
+                <p className={cn("text-[10px] font-display uppercase tracking-widest mb-1", mode === 'demo' ? "text-blue-400" : "text-green-500/70")}>
+                  {mode === 'demo' ? 'Session PnL' : 'On-Chain Profit'}
+                </p>
                 <h3 className="text-lg font-mono text-white tracking-tight">
                   {mode === 'demo' ? `$${totalPnL.toFixed(2)}` : `$${parseFloat(onChainProfit).toFixed(2)}`}
                 </h3>
