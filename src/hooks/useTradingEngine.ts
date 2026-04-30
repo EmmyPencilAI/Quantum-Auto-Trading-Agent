@@ -240,7 +240,7 @@ export function useTradingEngine(
         return; 
       }
       
-      const signal = evaluateMarket(marketData, currentPositionRef.current, 1000);
+      const signal = evaluateMarket(marketData, currentPositionRef.current, 1000, strategy);
       
       const handleVirtualFallback = async () => {
         if (signal.action === 'BUY' || signal.action === 'SELL') {

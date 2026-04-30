@@ -12,7 +12,8 @@ export const EngineState = {
 export function evaluateMarket(
   marketData: MarketData,
   currentPosition: Position | null,
-  walletBalance: number
+  walletBalance: number,
+  strategy: string = 'Aggressive'
 ): TradeSignal | null {
 
   if (EngineState.killSwitch) return null;
@@ -74,8 +75,12 @@ export function evaluateMarket(
       ? ((price - currentPosition.entryPrice) / currentPosition.entryPrice) * 100
       : ((currentPosition.entryPrice - price) / currentPosition.entryPrice) * 100;
 
-    // Take Profit (0.30% target for 500x leverage = 150% ROI)
-    if (pnlPercent >= 0.30) {
+    // Take Profit logic (dynamic based on strategy)
+    // Scalping targets very small, quick profits (e.g. 0.02% = 10% ROI at 500x leverage)
+    // Other strategies aim for larger swings (0.30% = 150% ROI at 500x leverage)
+    const tpThreshold = strategy === 'Scalping' ? 0.02 : 0.30;
+    
+    if (pnlPercent >= tpThreshold) {
       handleWin();
       return { action: 'CLOSE', lotSize: currentPosition.size, reason: 'TP_HIT' };
     }
