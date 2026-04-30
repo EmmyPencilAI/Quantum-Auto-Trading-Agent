@@ -49,10 +49,11 @@ export function evaluateMarket(
   const currentRsi = rsiValues[rsiValues.length - 1];
 
   // 3. Volume Spike Detection (strict requirement)
-  const recentVolume = volumes.slice(-10);
-  const avgVolume = recentVolume.reduce((a,b)=>a+b, 0) / recentVolume.length;
-  const currentVolume = volumes[volumes.length - 1];
-  const hasVolumeSpike = avgVolume === 0 || currentVolume > (avgVolume * 1.25); // 25% above average required
+  const recentVolume = volumes.slice(-10, -1); // Exclude the current incomplete candle
+  const avgVolume = recentVolume.reduce((a,b)=>a+b, 0) / (recentVolume.length || 1);
+  const lastCompletedVolume = volumes[volumes.length - 2] || volumes[0];
+  // More forgiving: 10% above average on the last completed candle, or just high momentum
+  const hasVolumeSpike = avgVolume === 0 || lastCompletedVolume > (avgVolume * 1.10); 
 
   // 4. Spread / Sideways & Breakout Check
   const recentCloses = closes.slice(-8); // 8 periods for breakout detection
@@ -61,14 +62,15 @@ export function evaluateMarket(
   const priceRangePercent = ((maxPrice - minPrice) / minPrice) * 100;
   
   // Breakout structure: current price is testing or breaking recent highs/lows
-  const isBullishBreakout = price >= maxPrice * 0.9995; // Near or above recent high
-  const isBearishBreakout = price <= minPrice * 1.0005; // Near or below recent low
+  // Loosened slightly to 0.9990 so it triggers right before or right at the breakout
+  const isBullishBreakout = price >= maxPrice * 0.9990; 
+  const isBearishBreakout = price <= minPrice * 1.0010; 
 
   // Log signal evaluation for debugging
   console.log(`[SIGNAL] EMA: ${emaTrend} | RSI: ${currentRsi.toFixed(2)} | VolSpike: ${hasVolumeSpike} | Range: ${priceRangePercent.toFixed(4)}% | BullBrk: ${isBullishBreakout} | BearBrk: ${isBearishBreakout}`);
 
   // STOP TRADING: Sideways market or high spread (flat range)
-  if (priceRangePercent < 0.05) {
+  if (priceRangePercent < 0.02) { // Lowered to 0.02% to allow more action
     console.log(`[SIGNAL] Market sideways (${priceRangePercent.toFixed(4)}% range), skipping`);
     return null;
   }
