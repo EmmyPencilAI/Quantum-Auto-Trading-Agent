@@ -23,7 +23,7 @@ export interface Candle {
 
 export interface TradeSignal {
   action: Action;
-  confidence: number;
+  confidence?: number;
   lotSize: number;
   entryPrice?: number;
   stopLoss?: number;

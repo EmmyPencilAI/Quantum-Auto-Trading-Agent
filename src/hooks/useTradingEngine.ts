@@ -7,6 +7,12 @@ import { evaluateMarket } from '../engine/signalGenerator';
 import { executeTrade } from '../engine/executor';
 import { settleTrade, getUserRealProfit } from '../services/tradingService';
 
+export interface EngineEvent {
+  id: number;
+  msg: string;
+  type: 'success' | 'error' | 'warning' | 'info';
+}
+
 export function useTradingEngine(
   user: any, 
   mode: ModeType, 
@@ -26,6 +32,11 @@ export function useTradingEngine(
   const [liveTrades, setLiveTrades] = useState<Trade[]>([]);
   const [dynamicTradeAmount, setDynamicTradeAmount] = useState(baseTradeAmount);
   const [onChainProfit, setOnChainProfit] = useState<string>('0');
+  const [engineEvents, setEngineEvents] = useState<EngineEvent[]>([]);
+
+  const notify = (msg: string, type: 'success' | 'error' | 'warning' | 'info') => {
+    setEngineEvents(prev => [...prev, { id: Date.now(), msg, type }].slice(-5));
+  };
 
   // Sync On-Chain Profit Data
   useEffect(() => {
@@ -234,13 +245,24 @@ export function useTradingEngine(
     const evaluateAndExecute = async () => {
       if (isExecutingRef.current) return;
       
-      // RISK MANAGEMENT: Daily Loss Limit Circuit Breaker (5% of active trade amount)
-      if (dailyPnL <= -(baseTradeAmount * 0.05)) {
-        if (Math.random() > 0.95) console.warn("[QUANTUM CIRCUIT BREAKER] Daily Loss Limit Reached. Trading Halted.");
+      // RISK MANAGEMENT: Daily Loss Limit Circuit Breaker (25% of active trade amount)
+      if (dailyPnL <= -(baseTradeAmount * 0.25)) {
+        if (Math.random() > 0.95) {
+          console.warn("[QUANTUM CIRCUIT BREAKER] Daily Loss Limit Reached. Trading Halted.");
+          notify("Circuit Breaker Activated: Daily Loss Limit Reached. Trading Halted.", "error");
+        }
         return; 
       }
       
       const signal = evaluateMarket(marketData, currentPositionRef.current, 1000, strategy);
+
+      if (signal === null && !currentPositionRef.current && Math.random() > 0.98) {
+         // Occasional notification if market is sideways
+         const spread = ((marketData.candles[marketData.candles.length-1]?.high || 0) - (marketData.candles[marketData.candles.length-1]?.low || 0));
+         if (spread < marketData.price * 0.0005) {
+           notify("Market is currently sideways. Waiting for volatility...", "warning");
+         }
+      }
       
       const handleVirtualFallback = async () => {
         if (signal.action === 'BUY' || signal.action === 'SELL') {
@@ -299,7 +321,7 @@ export function useTradingEngine(
             const pos = currentPositionRef.current;
             const priceDiff = pos.type === 'LONG' ? (marketData.price - pos.entryPrice) : (pos.entryPrice - marketData.price);
             const pnlPercent = priceDiff / pos.entryPrice;
-            const leverage = 500;
+            const leverage = 50; // Industry standard leverage
             let pnl = dynamicTradeAmount * leverage * pnlPercent;
             
             // Demo Mode Artificial Win Rate (80%)
@@ -325,11 +347,13 @@ export function useTradingEngine(
             
             // 🚀 GRADUAL COMPOUNDING: Stable profit scaling
             if (pnl > 0) {
+              notify(`Take Profit Hit! +$${pnl.toFixed(2)}`, "success");
               // GRADUAL GROWTH: Increase trade size by 5% on wins (max 5x base)
               const newLotSize = Math.min(dynamicTradeAmount * 1.05, baseTradeAmount * 5); 
               setDynamicTradeAmount(newLotSize);
               console.log(`🚀 [COMPOUND] Profit: $${pnl.toFixed(2)} | Growth: 5% | New Size: $${newLotSize.toFixed(2)}`);
             } else if (pnl < 0) {
+              notify(`Stop Loss Triggered! -$${Math.abs(pnl).toFixed(2)}`, "error");
               // STRICT RISK MANAGEMENT: Reduce trade size by 20% on losses
               const newLotSize = Math.max(baseTradeAmount * 0.5, dynamicTradeAmount * 0.8); // Floor at 50% base
               setDynamicTradeAmount(newLotSize);
@@ -374,7 +398,7 @@ export function useTradingEngine(
                 const pos = currentPositionRef.current;
                 const priceDiff = pos.type === 'LONG' ? (marketData.price - pos.entryPrice) : (pos.entryPrice - marketData.price);
                 const pnlPercent = priceDiff / pos.entryPrice;
-                const leverage = 500; // Standardize to 500x leverage
+                const leverage = 50; // Standardize to 50x leverage
                 const pnl = dynamicTradeAmount * leverage * pnlPercent;
                 
                 try {
@@ -389,6 +413,7 @@ export function useTradingEngine(
                 
                 // 🚀 GRADUAL COMPOUNDING: Stable profit scaling
                 if (pnl > 0) {
+                  notify(`Take Profit Hit! +$${pnl.toFixed(2)}`, "success");
                   // GRADUAL GROWTH: Increase trade size by 5% on wins (max 5x base)
                   const newLotSize = Math.min(dynamicTradeAmount * 1.05, baseTradeAmount * 5); 
                   
@@ -398,9 +423,11 @@ export function useTradingEngine(
                   // For REAL mode - immediate profit claiming and reinvestment
                   if (mode === 'real' && pnl > baseTradeAmount * 0.1) { // Only claim significant profits
                     console.log(`💰 [AUTO-CLAIM] $${pnl.toFixed(2)} claimed to vault → Ready for next trade!`);
+                    notify(`$${pnl.toFixed(2)} automatically claimed to vault!`, "info");
                     // In production: await claimAndReinvestProfits(user.wallet_address, pnl);
                   }
                 } else if (pnl < 0) {
+                  notify(`Stop Loss Triggered! -$${Math.abs(pnl).toFixed(2)}`, "error");
                   // STRICT RISK MANAGEMENT: Reduce trade size by 20% on losses
                   const newLotSize = Math.max(baseTradeAmount * 0.5, dynamicTradeAmount * 0.8); // Floor at 50% base
                   setDynamicTradeAmount(newLotSize);
@@ -494,5 +521,5 @@ export function useTradingEngine(
     };
   }, [user?.uid, mode]);
 
-  return { marketData, currentPosition, tradesCount, totalPnL, currentLotSize, tradeHistory, liveTrades, onChainProfit, dynamicTradeAmount };
+  return { marketData, currentPosition, tradesCount, totalPnL, currentLotSize, tradeHistory, liveTrades, onChainProfit, dynamicTradeAmount, engineEvents };
 }

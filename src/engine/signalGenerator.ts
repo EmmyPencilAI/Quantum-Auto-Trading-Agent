@@ -69,12 +69,6 @@ export function evaluateMarket(
   // Log signal evaluation for debugging
   console.log(`[SIGNAL] EMA: ${emaTrend} | RSI: ${currentRsi.toFixed(2)} | VolSpike: ${hasVolumeSpike} | Range: ${priceRangePercent.toFixed(4)}% | BullBrk: ${isBullishBreakout} | BearBrk: ${isBearishBreakout}`);
 
-  // STOP TRADING: Sideways market or high spread (flat range)
-  if (priceRangePercent < 0.02) { // Lowered to 0.02% to allow more action
-    console.log(`[SIGNAL] Market sideways (${priceRangePercent.toFixed(4)}% range), skipping`);
-    return null;
-  }
-
   // ==== POSITION MANAGEMENT & EARLY EXITS ====
   if (currentPosition) {
     const pnlPercent = currentPosition.type === 'LONG' 
@@ -118,6 +112,13 @@ export function evaluateMarket(
     }
     
     // No exit condition met, hold position.
+    return null;
+  }
+
+  // STOP TRADING: Sideways market or high spread (flat range)
+  // This must be checked AFTER position management so active trades aren't trapped!
+  if (priceRangePercent < 0.02) { // Lowered to 0.02% to allow more action
+    console.log(`[SIGNAL] Market sideways (${priceRangePercent.toFixed(4)}% range), skipping`);
     return null;
   }
 
