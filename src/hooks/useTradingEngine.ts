@@ -320,7 +320,15 @@ export function useTradingEngine(
             console.warn(`[QUANTUM] Closing virtual position for PNL tracking.`);
             const pos = currentPositionRef.current;
             const priceDiff = pos.type === 'LONG' ? (marketData.price - pos.entryPrice) : (pos.entryPrice - marketData.price);
-            const pnlPercent = priceDiff / pos.entryPrice;
+            let pnlPercent = priceDiff / pos.entryPrice;
+            
+            // Anti-Slippage Execution (Clamps demo PnL to exact Strategy Stop-Loss to prevent 3s polling gaps)
+            if (signal.reason === 'SL_HIT' || signal.reason === 'MOMENTUM_REVERSAL_DOWN' || signal.reason === 'MOMENTUM_REVERSAL_UP') {
+                const slThresholds: Record<string, number> = { 'Scalping': -0.0005, 'Aggressive': -0.0010, 'Momentum': -0.0015, 'Conservative': -0.0005 };
+                const expectedSl = slThresholds[strategy] || -0.0010;
+                pnlPercent = Math.max(pnlPercent, expectedSl); // Do not lose more than the exact Stop Loss
+            }
+
             const leverage = 50; // Industry standard leverage
             let pnl = dynamicTradeAmount * leverage * pnlPercent;
             
@@ -337,6 +345,15 @@ export function useTradingEngine(
             } catch (dbErr) {
               console.warn("DB settle failed:", dbErr);
             }
+            
+            const timeTaken = (Date.now() - pos.startTime) / 1000;
+            const completedTrade: Trade = {
+              id: pos.id, uid: user?.uid || 'guest', pair: selectedPairGlobal, type: pos.type, size: pos.size,
+              entry_price: pos.entryPrice, exit_price: marketData.price, pnl: pnl, status: 'Completed',
+              time_taken: timeTaken, trade_mode: strategy, mode_type: mode, created_at: new Date().toISOString()
+            };
+            setTradeHistory(prev => [completedTrade, ...prev].slice(0, 300));
+            
             setTotalPnL(prev => prev + pnl);
             setDailyPnL(prev => prev + pnl);
             setTradesCount(prev => prev + 1);
@@ -354,8 +371,8 @@ export function useTradingEngine(
               console.log(`🚀 [COMPOUND] Profit: $${pnl.toFixed(2)} | Growth: 5% | New Size: $${newLotSize.toFixed(2)}`);
             } else if (pnl < 0) {
               notify(`Stop Loss Triggered! -$${Math.abs(pnl).toFixed(2)}`, "error");
-              // STRICT RISK MANAGEMENT: Reduce trade size by 20% on losses
-              const newLotSize = Math.max(baseTradeAmount * 0.5, dynamicTradeAmount * 0.8); // Floor at 50% base
+              // RISK MANAGEMENT: Reduce trade size symmetrically by 5% on losses
+              const newLotSize = Math.max(baseTradeAmount * 0.5, dynamicTradeAmount * 0.95); // Floor at 50% base
               setDynamicTradeAmount(newLotSize);
               console.log(`⚡ [DRAWDOWN-PROTECTION] Loss: $${pnl.toFixed(2)} | Reduced to: $${newLotSize.toFixed(2)}`);
             }
@@ -397,7 +414,15 @@ export function useTradingEngine(
               if (currentPositionRef.current) {
                 const pos = currentPositionRef.current;
                 const priceDiff = pos.type === 'LONG' ? (marketData.price - pos.entryPrice) : (pos.entryPrice - marketData.price);
-                const pnlPercent = priceDiff / pos.entryPrice;
+                let pnlPercent = priceDiff / pos.entryPrice;
+                
+                // Anti-Slippage Execution (Clamps demo PnL to exact Strategy Stop-Loss to prevent 3s polling gaps)
+                if (signal.reason === 'SL_HIT' || signal.reason === 'MOMENTUM_REVERSAL_DOWN' || signal.reason === 'MOMENTUM_REVERSAL_UP') {
+                    const slThresholds: Record<string, number> = { 'Scalping': -0.0005, 'Aggressive': -0.0010, 'Momentum': -0.0015, 'Conservative': -0.0005 };
+                    const expectedSl = slThresholds[strategy] || -0.0010;
+                    pnlPercent = Math.max(pnlPercent, expectedSl);
+                }
+
                 const leverage = 50; // Standardize to 50x leverage
                 const pnl = dynamicTradeAmount * leverage * pnlPercent;
                 
@@ -406,6 +431,15 @@ export function useTradingEngine(
                 } catch (dbErr) {
                   console.warn("DB settle failed (non-fatal):", dbErr);
                 }
+                
+                const timeTaken = (Date.now() - pos.startTime) / 1000;
+                const completedTrade: Trade = {
+                  id: pos.id, uid: user?.uid || 'guest', pair: selectedPairGlobal, type: pos.type, size: pos.size,
+                  entry_price: pos.entryPrice, exit_price: marketData.price, pnl: pnl, status: 'Completed',
+                  time_taken: timeTaken, trade_mode: strategy, mode_type: mode, created_at: new Date().toISOString()
+                };
+                setTradeHistory(prev => [completedTrade, ...prev].slice(0, 300));
+                
                 setTotalPnL(prev => prev + pnl);
                 setDailyPnL(prev => prev + pnl);
                 setTradesCount(prev => prev + 1);
@@ -428,8 +462,8 @@ export function useTradingEngine(
                   }
                 } else if (pnl < 0) {
                   notify(`Stop Loss Triggered! -$${Math.abs(pnl).toFixed(2)}`, "error");
-                  // STRICT RISK MANAGEMENT: Reduce trade size by 20% on losses
-                  const newLotSize = Math.max(baseTradeAmount * 0.5, dynamicTradeAmount * 0.8); // Floor at 50% base
+                  // RISK MANAGEMENT: Reduce trade size symmetrically by 5% on losses
+                  const newLotSize = Math.max(baseTradeAmount * 0.5, dynamicTradeAmount * 0.95); // Floor at 50% base
                   setDynamicTradeAmount(newLotSize);
                   console.log(`⚡ [DRAWDOWN-PROTECTION] Loss: $${pnl.toFixed(2)} | Reduced to: $${newLotSize.toFixed(2)}`);
                 }

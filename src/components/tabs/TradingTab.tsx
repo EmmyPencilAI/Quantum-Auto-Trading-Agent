@@ -780,7 +780,7 @@ export default function TradingTab({
                         <td className="py-4 font-bold">{trade.pair || 'BTC/USDT'}</td>
                         <td className="py-4">
                           <span className="text-[10px] font-bold px-2 py-1 rounded bg-white/5 text-white/60 uppercase">
-                            {trade.mode}
+                            {trade.trade_mode || trade.mode || 'Unknown'}
                           </span>
                         </td>
                         <td className="py-4 font-mono text-xs">${trade.size * 1000}</td>
