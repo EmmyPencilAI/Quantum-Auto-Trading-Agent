@@ -9,6 +9,15 @@ export const EngineState = {
   killSwitch: false,
 };
 
+// Call this every time the engine starts to clear stuck states
+export function resetEngineState() {
+  EngineState.killSwitch = false;
+  EngineState.dailyLossPercent = 0;
+  EngineState.consecutiveWins = 0;
+  EngineState.currentLotSize = 0.05;
+  console.log('[ENGINE STATE] Reset: killSwitch cleared, ready for new session.');
+}
+
 export function evaluateMarket(
   marketData: MarketData,
   currentPosition: Position | null,
@@ -80,10 +89,10 @@ export function evaluateMarket(
     let slThreshold = -0.05;
     
     switch (strategy) {
-      case 'Scalping': tpThreshold = 0.05; slThreshold = -0.05; break; // 3-15 seconds profit taking
-      case 'Aggressive': tpThreshold = 0.15; slThreshold = -0.10; break;
-      case 'Momentum': tpThreshold = 0.20; slThreshold = -0.15; break;
-      case 'Conservative': tpThreshold = 0.15; slThreshold = -0.05; break;
+      case 'Scalping':     tpThreshold = 0.04;  slThreshold = -0.04;  break; // TP=$400, SL=$400 at $5k/200x
+      case 'Aggressive':  tpThreshold = 0.15;  slThreshold = -0.10;  break;
+      case 'Momentum':    tpThreshold = 0.20;  slThreshold = -0.15;  break;
+      case 'Conservative': tpThreshold = 0.15; slThreshold = -0.05;  break;
     }
     
     if (pnlPercent >= tpThreshold) {

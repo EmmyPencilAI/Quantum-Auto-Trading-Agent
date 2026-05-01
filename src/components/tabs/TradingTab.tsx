@@ -275,7 +275,7 @@ export default function TradingTab({
          ? (marketData.price - currentPosition.entryPrice)
          : (currentPosition.entryPrice - marketData.price);
        const pnlPercent = priceDiff / currentPosition.entryPrice;
-       const leverage = 200; // Must match engine leverage (200x)
+       const leverage = 100; // Must match engine leverage (100x)
        const pnl = tradeAmount * leverage * pnlPercent;
        setFloatingPnl(pnl);
     } else {
@@ -842,7 +842,7 @@ export default function TradingTab({
                                   </div>
                                   <div>
                                     <p className="text-[10px] text-white/30 uppercase font-bold mb-1">Leverage</p>
-                                    <p className="text-sm font-mono text-white/80">200x</p>
+                                    <p className="text-sm font-mono text-white/80">100x</p>
                                   </div>
                                   <div>
                                     <p className="text-[10px] text-white/30 uppercase font-bold mb-1">Direction</p>

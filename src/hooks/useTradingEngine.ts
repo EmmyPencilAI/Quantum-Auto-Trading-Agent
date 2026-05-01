@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { APP_CONFIG } from '../config';
 import { Position, MarketData, ModeType, Trade, Candle } from '../engine/types';
 import { TradingMode } from '../types';
-import { evaluateMarket } from '../engine/signalGenerator';
+import { evaluateMarket, resetEngineState } from '../engine/signalGenerator';
 import { executeTrade } from '../engine/executor';
 import { settleTrade, getUserRealProfit } from '../services/tradingService';
 
@@ -234,7 +234,7 @@ export function useTradingEngine(
     };
 
     fetchMarketData();
-    const interval = setInterval(fetchMarketData, 3000); // Poll every 3 seconds
+    const interval = setInterval(fetchMarketData, 1000); // Poll every 1s — needed for 200x precision
     return () => clearInterval(interval);
   }, [selectedPairGlobal]);
 
@@ -242,16 +242,20 @@ export function useTradingEngine(
   useEffect(() => {
     if (!isTrading || !marketData || !user?.wallet_address) return;
 
+    // ✅ Reset killSwitch & engine state every new session start
+    resetEngineState();
+
     const evaluateAndExecute = async () => {
       if (isExecutingRef.current) return;
       
-      // RISK MANAGEMENT: Daily Loss Limit Circuit Breaker (25% of active trade amount)
-      if (dailyPnL <= -(baseTradeAmount * 0.25)) {
+      // RISK MANAGEMENT: Circuit breaker only on catastrophic session loss (> 3x trade amount)
+      // Removed 25% threshold — it was firing after just 2-3 normal losses
+      if (dailyPnL <= -(baseTradeAmount * 3)) {
         if (Math.random() > 0.95) {
-          console.warn("[QUANTUM CIRCUIT BREAKER] Daily Loss Limit Reached. Trading Halted.");
-          notify("Circuit Breaker Activated: Daily Loss Limit Reached. Trading Halted.", "error");
+          console.warn("[QUANTUM CIRCUIT BREAKER] Catastrophic loss limit reached. Trading Halted.");
+          notify("Circuit Breaker: Catastrophic loss limit hit. Please review and restart.", "warning");
         }
-        return; 
+        return;
       }
       
       const signal = evaluateMarket(marketData, currentPositionRef.current, 1000, strategy);
@@ -322,20 +326,25 @@ export function useTradingEngine(
             const priceDiff = pos.type === 'LONG' ? (marketData.price - pos.entryPrice) : (pos.entryPrice - marketData.price);
             let pnlPercent = priceDiff / pos.entryPrice;
             
-            // Anti-Slippage Execution (Clamps demo PnL to exact Strategy Stop-Loss to prevent 3s polling gaps)
+            // Anti-Slippage: Clamp loss to exact SL threshold (stops polling gaps from over-penalizing)
             if (signal.reason === 'SL_HIT' || signal.reason === 'MOMENTUM_REVERSAL_DOWN' || signal.reason === 'MOMENTUM_REVERSAL_UP') {
-                const slThresholds: Record<string, number> = { 'Scalping': -0.0005, 'Aggressive': -0.0010, 'Momentum': -0.0015, 'Conservative': -0.0005 };
+                const slThresholds: Record<string, number> = {
+                  'Scalping': -0.0004,    // -0.04% → matches signalGenerator
+                  'Aggressive': -0.0010,  // -0.10%
+                  'Momentum': -0.0015,    // -0.15%
+                  'Conservative': -0.0005 // -0.05%
+                };
                 const expectedSl = slThresholds[strategy] || -0.0010;
-                pnlPercent = Math.max(pnlPercent, expectedSl); // Do not lose more than the exact Stop Loss
+                pnlPercent = Math.max(pnlPercent, expectedSl);
             }
 
-            const leverage = 200; // 200x leverage
+            const leverage = 100; // 100x leverage
             let pnl = dynamicTradeAmount * leverage * pnlPercent;
-            
-            // Demo Mode Artificial Win Rate (80%)
+
+            // Demo Mode: 80% Artificial Win Rate — applied on BOTH settlement paths
             if (mode === 'demo' && pnl < 0) {
               if (Math.random() < 0.8) {
-                console.log(`[DEMO MODE] Artificially forcing a win on a losing setup.`);
+                console.log(`[DEMO WIN RATE] Flipping loss to win: $${pnl.toFixed(2)} → +$${Math.abs(pnl).toFixed(2)}`);
                 pnl = Math.abs(pnl);
               }
             }
@@ -415,15 +424,28 @@ export function useTradingEngine(
                 const priceDiff = pos.type === 'LONG' ? (marketData.price - pos.entryPrice) : (pos.entryPrice - marketData.price);
                 let pnlPercent = priceDiff / pos.entryPrice;
                 
-                // Anti-Slippage Execution (Clamps demo PnL to exact Strategy Stop-Loss to prevent 3s polling gaps)
+                // Anti-Slippage: Clamp loss to exact SL threshold (stops polling gaps from over-penalizing)
                 if (signal.reason === 'SL_HIT' || signal.reason === 'MOMENTUM_REVERSAL_DOWN' || signal.reason === 'MOMENTUM_REVERSAL_UP') {
-                    const slThresholds: Record<string, number> = { 'Scalping': -0.0005, 'Aggressive': -0.0010, 'Momentum': -0.0015, 'Conservative': -0.0005 };
+                    const slThresholds: Record<string, number> = {
+                      'Scalping': -0.0004,    // -0.04%
+                      'Aggressive': -0.0010,  // -0.10%
+                      'Momentum': -0.0015,    // -0.15%
+                      'Conservative': -0.0005 // -0.05%
+                    };
                     const expectedSl = slThresholds[strategy] || -0.0010;
                     pnlPercent = Math.max(pnlPercent, expectedSl);
                 }
 
-                const leverage = 200; // 200x leverage
-                const pnl = dynamicTradeAmount * leverage * pnlPercent;
+                const leverage = 100; // 100x leverage
+                let pnl = dynamicTradeAmount * leverage * pnlPercent;
+
+                // Demo Mode: 80% Artificial Win Rate — applied on BOTH settlement paths
+                if (mode === 'demo' && pnl < 0) {
+                  if (Math.random() < 0.8) {
+                    console.log(`[DEMO WIN RATE] Flipping loss to win: $${pnl.toFixed(2)} → +$${Math.abs(pnl).toFixed(2)}`);
+                    pnl = Math.abs(pnl);
+                  }
+                }
                 
                 try {
                   await settleTrade(pos.id, pnl, (Date.now() - pos.startTime)/1000, txHash);
