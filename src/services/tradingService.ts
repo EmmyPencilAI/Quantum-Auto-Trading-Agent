@@ -231,3 +231,21 @@ export async function getUserRealProfit(userAddress: string): Promise<string> {
     return '0';
   }
 }
+
+/**
+ * Get user's Demo balance from Supabase
+ */
+export async function getDemoBalance(uid: string): Promise<number> {
+  try {
+    const { data, error } = await supabase
+      .from('demo_wallets')
+      .select('demo_balance')
+      .eq('id', uid)
+      .single();
+    if (error) throw error;
+    return data?.demo_balance || 10000;
+  } catch (error) {
+    console.warn('Error fetching demo balance:', error);
+    return 10000;
+  }
+}

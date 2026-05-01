@@ -62,10 +62,21 @@ export default function App() {
   const [demoBalance, setDemoBalance] = useState<number>(10000);
 
   // Global Trading State persistence
-  const [isTradingGlobal, setIsTradingGlobal] = useState<boolean>(false);
-  const [selectedPairGlobal, setSelectedPairGlobal] = useState<string>(APP_CONFIG.SUPPORTED_PAIRS[0]);
-  const [selectedStrategyGlobal, setSelectedStrategyGlobal] = useState<TradingMode>("Aggressive");
-  const [tradeAmountGlobal, setTradeAmountGlobal] = useState<number>(100);
+  const [isTradingGlobal, setIsTradingGlobal] = useState<boolean>(() => localStorage.getItem('quantum_is_trading') === 'true');
+  const [selectedPairGlobal, setSelectedPairGlobal] = useState<string>(() => localStorage.getItem('quantum_pair') || APP_CONFIG.SUPPORTED_PAIRS[0]);
+  const [selectedStrategyGlobal, setSelectedStrategyGlobal] = useState<TradingMode>(() => (localStorage.getItem('quantum_strategy') as TradingMode) || "Aggressive");
+  const [tradeAmountGlobal, setTradeAmountGlobal] = useState<number>(() => {
+    const saved = localStorage.getItem('quantum_trade_amount');
+    return saved ? parseFloat(saved) : 100;
+  });
+
+  // Sync Global state to localStorage
+  useEffect(() => {
+    localStorage.setItem('quantum_is_trading', String(isTradingGlobal));
+    localStorage.setItem('quantum_pair', selectedPairGlobal);
+    localStorage.setItem('quantum_strategy', selectedStrategyGlobal);
+    localStorage.setItem('quantum_trade_amount', String(tradeAmountGlobal));
+  }, [isTradingGlobal, selectedPairGlobal, selectedStrategyGlobal, tradeAmountGlobal]);
 
   // Poll for real balance and reconcile with history
   const isReconcilingRef = useRef<boolean>(false);

@@ -9,7 +9,7 @@ import { ethers } from 'ethers';
 import HFTTradingView from '../HFTTradingView';
 import { useTradingEngine } from '../../hooks/useTradingEngine';
 import { useNetworkQuality } from '../../hooks/useNetworkQuality';
-import { getUserRealBalance, getVaultBalance } from '../../services/tradingService';
+import { getUserRealBalance, getVaultBalance, getDemoBalance } from '../../services/tradingService';
 import { web3auth } from '../../lib/web3auth';
 import { depositFunds, withdrawFunds } from '../../lib/contract';
 import { getDirectSigner } from '../../lib/blockchain';
@@ -152,25 +152,22 @@ export default function TradingTab({
     };
   }, []);
 
-  // Restore persistent trading state
+  // Fetch real contract balance, vault balance, and demo balance
   useEffect(() => {
-    if (user?.is_trading) {
-      setIsTrading(true);
-      if (user.active_strategy) setSelectedStrategy(user.active_strategy);
-      if (user.active_trade_amount) setTradeAmount(user.active_trade_amount);
-      // Note: Do NOT restore user.active_mode here — it would override the global mode toggle
-    }
-  }, [user]);
-
-  // Fetch real contract balance and vault balance
-  useEffect(() => {
-    if (!user?.wallet_address) return;
+    if (!user) return;
     const fetchBalances = async () => {
       try {
-        const bal = await getUserRealBalance(user.wallet_address);
-        setBalance(bal);
-        const vaultBal = await getVaultBalance(user.wallet_address);
-        setVaultBalance(vaultBal);
+        if (mode === 'demo') {
+          const demoBal = await getDemoBalance(user.uid);
+          setBalance(demoBal.toFixed(4));
+        } else {
+          if (user.wallet_address) {
+            const bal = await getUserRealBalance(user.wallet_address);
+            setBalance(bal);
+            const vaultBal = await getVaultBalance(user.wallet_address);
+            setVaultBalance(vaultBal);
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch balances:', error);
       }
@@ -178,7 +175,7 @@ export default function TradingTab({
     fetchBalances();
     const interval = setInterval(fetchBalances, 15000); // 15s
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, mode]);
 
   const handleDeposit = async () => {
     if (!depositAmount || isNaN(Number(depositAmount))) return;
@@ -220,7 +217,8 @@ export default function TradingTab({
     marketData, 
     currentPosition, 
     tradesCount, 
-    totalPnL, 
+    totalPnL,
+    dailyPnL,
     currentLotSize,
     tradeHistory,
     liveTrades,
@@ -277,7 +275,7 @@ export default function TradingTab({
          ? (marketData.price - currentPosition.entryPrice)
          : (currentPosition.entryPrice - marketData.price);
        const pnlPercent = priceDiff / currentPosition.entryPrice;
-       const leverage = 50; // Must match engine leverage (50x)
+       const leverage = 200; // Must match engine leverage (200x)
        const pnl = tradeAmount * leverage * pnlPercent;
        setFloatingPnl(pnl);
     } else {
@@ -445,8 +443,13 @@ export default function TradingTab({
                 <p className={cn("text-[10px] font-display uppercase tracking-widest mb-1", mode === 'demo' ? "text-blue-400" : "text-green-500/70")}>
                   {mode === 'demo' ? 'Session PnL' : 'On-Chain Profit'}
                 </p>
-                <h3 className="text-lg font-mono text-white tracking-tight">
-                  {mode === 'demo' ? `$${totalPnL.toFixed(2)}` : `$${parseFloat(onChainProfit).toFixed(2)}`}
+                <h3 className={cn("text-lg font-mono tracking-tight", 
+                  (mode === 'demo' ? dailyPnL : parseFloat(onChainProfit)) > 0 ? "text-green-400" : 
+                  (mode === 'demo' ? dailyPnL : parseFloat(onChainProfit)) < 0 ? "text-red-400" : "text-white"
+                )}>
+                  {mode === 'demo' 
+                    ? `${dailyPnL >= 0 ? '+' : ''}$${dailyPnL.toFixed(2)}`
+                    : `$${parseFloat(onChainProfit).toFixed(2)}`}
                 </h3>
               </div>
               <div className="text-center">
@@ -675,11 +678,11 @@ export default function TradingTab({
                   "text-2xl font-black",
                   isTrading ? 
                     (floatingPnl > 0 ? "text-green-500" : floatingPnl < 0 ? "text-red-500" : "text-white") :
-                    (totalPnL > 0 ? "text-green-500" : totalPnL < 0 ? "text-red-500" : "text-white/40")
+                    (dailyPnL > 0 ? "text-green-500" : dailyPnL < 0 ? "text-red-500" : "text-white/40")
                 )}>
                   {isTrading ? 
                     `${floatingPnl > 0 ? '+' : ''}${floatingPnl.toFixed(2)} USDT` : 
-                    `${totalPnL > 0 ? '+' : ''}${totalPnL.toFixed(2)} USDT`
+                    `${dailyPnL > 0 ? '+' : ''}${dailyPnL.toFixed(2)} USDT`
                   }
                 </p>
                 {!isTrading && (
@@ -839,7 +842,7 @@ export default function TradingTab({
                                   </div>
                                   <div>
                                     <p className="text-[10px] text-white/30 uppercase font-bold mb-1">Leverage</p>
-                                    <p className="text-sm font-mono text-white/80">50x</p>
+                                    <p className="text-sm font-mono text-white/80">200x</p>
                                   </div>
                                   <div>
                                     <p className="text-[10px] text-white/30 uppercase font-bold mb-1">Direction</p>

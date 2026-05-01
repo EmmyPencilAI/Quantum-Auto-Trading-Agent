@@ -329,7 +329,7 @@ export function useTradingEngine(
                 pnlPercent = Math.max(pnlPercent, expectedSl); // Do not lose more than the exact Stop Loss
             }
 
-            const leverage = 50; // Industry standard leverage
+            const leverage = 200; // 200x leverage
             let pnl = dynamicTradeAmount * leverage * pnlPercent;
             
             // Demo Mode Artificial Win Rate (80%)
@@ -422,7 +422,7 @@ export function useTradingEngine(
                     pnlPercent = Math.max(pnlPercent, expectedSl);
                 }
 
-                const leverage = 50; // Standardize to 50x leverage
+                const leverage = 200; // 200x leverage
                 const pnl = dynamicTradeAmount * leverage * pnlPercent;
                 
                 try {
@@ -541,9 +541,11 @@ export function useTradingEngine(
 
     fetchAllTradingData();
 
+    // ✅ FIXED: Supabase Realtime only supports ONE filter column.
+    // We filter by uid only, then filter mode_type in JS inside fetchAllTradingData.
     const channel = supabase
-      .channel(`engine_sync_${user.uid}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'trades', filter: `uid=eq.${user.uid} AND mode_type=eq.${mode}` }, () => {
+      .channel(`engine_sync_${user.uid}_${mode}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'trades', filter: `uid=eq.${user.uid}` }, () => {
         fetchAllTradingData();
       })
       .subscribe();
@@ -553,5 +555,5 @@ export function useTradingEngine(
     };
   }, [user?.uid, mode]);
 
-  return { marketData, currentPosition, tradesCount, totalPnL, currentLotSize, tradeHistory, liveTrades, onChainProfit, dynamicTradeAmount, engineEvents };
+  return { marketData, currentPosition, tradesCount, totalPnL, dailyPnL, currentLotSize, tradeHistory, liveTrades, onChainProfit, dynamicTradeAmount, engineEvents };
 }
