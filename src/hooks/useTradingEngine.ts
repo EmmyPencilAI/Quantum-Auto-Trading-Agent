@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { APP_CONFIG } from '../config';
-import { Position, MarketData, ModeType, Trade, Candle } from '../engine/types';
-import { TradingMode } from '../types';
+import { Position, MarketData, ModeType, Candle } from '../engine/types';
+import { TradingMode, Trade } from '../types';
 import { evaluateMarket, resetEngineState } from '../engine/signalGenerator';
 import { executeTrade } from '../engine/executor';
 import { settleTrade, getUserRealProfit } from '../services/tradingService';
@@ -18,7 +18,7 @@ export function useTradingEngine(
   mode: ModeType, 
   strategy: TradingMode, 
   isTrading: boolean, 
-  baseTradeAmount: number = 100,
+  baseTradeAmount: number = 5000,
   selectedPairGlobal: string = 'BNB/USDT',
   bnbPrice: number = 600
 ) {
@@ -30,7 +30,8 @@ export function useTradingEngine(
   const [dailyPnL, setDailyPnL] = useState(0);
   const [tradeHistory, setTradeHistory] = useState<Trade[]>([]);
   const [liveTrades, setLiveTrades] = useState<Trade[]>([]);
-  const [dynamicTradeAmount, setDynamicTradeAmount] = useState(baseTradeAmount);
+  // Option B: trade amount = lot size × user capital. No separate state needed.
+  const dynamicTradeAmount = currentLotSize * baseTradeAmount;
   const [onChainProfit, setOnChainProfit] = useState<string>('0');
   const [engineEvents, setEngineEvents] = useState<EngineEvent[]>([]);
 
@@ -61,10 +62,7 @@ export function useTradingEngine(
   
 
   
-  // Reset dynamic scaling if user manually changes base input
-  useEffect(() => {
-    setDynamicTradeAmount(baseTradeAmount);
-  }, [baseTradeAmount]);
+  // dynamicTradeAmount is now computed (currentLotSize × baseTradeAmount) — no reset effect needed
   
   const isExecutingRef = useRef(false);
   const currentPositionRef = useRef<Position | null>(null);
@@ -327,19 +325,20 @@ export function useTradingEngine(
             let pnlPercent = priceDiff / pos.entryPrice;
             
             // Anti-Slippage: Clamp loss to exact SL threshold (stops polling gaps from over-penalizing)
-            if (signal.reason === 'SL_HIT' || signal.reason === 'MOMENTUM_REVERSAL_DOWN' || signal.reason === 'MOMENTUM_REVERSAL_UP') {
+            if (signal.reason === 'SL_HIT' || signal.reason === 'SCALP_TIMEOUT' || signal.reason === 'MOMENTUM_REVERSAL_DOWN' || signal.reason === 'MOMENTUM_REVERSAL_UP') {
                 const slThresholds: Record<string, number> = {
-                  'Scalping': -0.0004,    // -0.04% → matches signalGenerator
-                  'Aggressive': -0.0010,  // -0.10%
-                  'Momentum': -0.0015,    // -0.15%
-                  'Conservative': -0.0005 // -0.05%
+                  'Scalping': -0.0010,    // -0.10% (matches new SL: 2:1 R:R)
+                  'Aggressive': -0.0020,  // -0.20% (matches new SL: 2.5:1 R:R)
+                  'Momentum': -0.0050,    // -0.50% (matches new SL: 3:1 R:R)
+                  'Conservative': -0.0030 // -0.30% (matches new SL: 3.3:1 R:R)
                 };
                 const expectedSl = slThresholds[strategy] || -0.0010;
                 pnlPercent = Math.max(pnlPercent, expectedSl);
             }
 
-            const leverage = 100; // 100x leverage
-            let pnl = dynamicTradeAmount * leverage * pnlPercent;
+            // Honest PnL: lot size × user capital × price movement (no artificial leverage)
+            const tradeAmt = pos.size * baseTradeAmount;
+            let pnl = tradeAmt * pnlPercent;
 
             // Demo Mode: 80% Artificial Win Rate — applied on BOTH settlement paths
             if (mode === 'demo' && pnl < 0) {
@@ -374,15 +373,10 @@ export function useTradingEngine(
             // 🚀 GRADUAL COMPOUNDING: Stable profit scaling
             if (pnl > 0) {
               notify(`Take Profit Hit! +$${pnl.toFixed(2)}`, "success");
-              // GRADUAL GROWTH: Increase trade size by 5% on wins (max 5x base)
-              const newLotSize = Math.min(dynamicTradeAmount * 1.05, baseTradeAmount * 5); 
-              setDynamicTradeAmount(newLotSize);
-              console.log(`🚀 [COMPOUND] Profit: $${pnl.toFixed(2)} | Growth: 5% | New Size: $${newLotSize.toFixed(2)}`);
+              console.log(`🚀 [COMPOUND] Profit: $${pnl.toFixed(2)} | Lot size scales automatically on next signal.`);
             } else if (pnl < 0) {
               notify(`Stop Loss Triggered! -$${Math.abs(pnl).toFixed(2)}`, "error");
-              // RISK MANAGEMENT: Reset to base trade amount on loss (no downward compounding)
-              setDynamicTradeAmount(baseTradeAmount);
-              console.log(`⚡ [RESET] Loss: $${pnl.toFixed(2)} | Reset to base: $${baseTradeAmount.toFixed(2)}`);
+              console.log(`⚡ [RESET] Loss: $${pnl.toFixed(2)} | Lot size reset to 0.05 baseline.`);
             }
           }
         }
@@ -397,7 +391,7 @@ export function useTradingEngine(
             userAddress: user.wallet_address,
             modeType: mode,
             pair: selectedPairGlobal,
-            tradeAmountUsdt: dynamicTradeAmount,
+            tradeAmountUsdt: signal.lotSize * baseTradeAmount,
             bnbPrice: bnbPrice,
             onOpen: async (type, size, txHash) => {
               const tradeId = `${mode}_${Date.now()}_${user.uid}`;
@@ -425,19 +419,20 @@ export function useTradingEngine(
                 let pnlPercent = priceDiff / pos.entryPrice;
                 
                 // Anti-Slippage: Clamp loss to exact SL threshold (stops polling gaps from over-penalizing)
-                if (signal.reason === 'SL_HIT' || signal.reason === 'MOMENTUM_REVERSAL_DOWN' || signal.reason === 'MOMENTUM_REVERSAL_UP') {
+                if (signal.reason === 'SL_HIT' || signal.reason === 'SCALP_TIMEOUT' || signal.reason === 'MOMENTUM_REVERSAL_DOWN' || signal.reason === 'MOMENTUM_REVERSAL_UP') {
                     const slThresholds: Record<string, number> = {
-                      'Scalping': -0.0004,    // -0.04%
-                      'Aggressive': -0.0010,  // -0.10%
-                      'Momentum': -0.0015,    // -0.15%
-                      'Conservative': -0.0005 // -0.05%
+                      'Scalping': -0.0010,    // -0.10% (2:1 R:R)
+                      'Aggressive': -0.0020,  // -0.20% (2.5:1 R:R)
+                      'Momentum': -0.0050,    // -0.50% (3:1 R:R)
+                      'Conservative': -0.0030 // -0.30% (3.3:1 R:R)
                     };
                     const expectedSl = slThresholds[strategy] || -0.0010;
                     pnlPercent = Math.max(pnlPercent, expectedSl);
                 }
 
-                const leverage = 100; // 100x leverage
-                let pnl = dynamicTradeAmount * leverage * pnlPercent;
+                // Honest PnL: lot size × user capital × price movement (no artificial leverage)
+                const tradeAmt = pos.size * baseTradeAmount;
+                let pnl = tradeAmt * pnlPercent;
 
                 // Demo Mode: 80% Artificial Win Rate — applied on BOTH settlement paths
                 if (mode === 'demo' && pnl < 0) {
@@ -469,23 +464,16 @@ export function useTradingEngine(
                 // 🚀 GRADUAL COMPOUNDING: Stable profit scaling
                 if (pnl > 0) {
                   notify(`Take Profit Hit! +$${pnl.toFixed(2)}`, "success");
-                  // GRADUAL GROWTH: Increase trade size by 5% on wins (max 5x base)
-                  const newLotSize = Math.min(dynamicTradeAmount * 1.05, baseTradeAmount * 5); 
-                  
-                  setDynamicTradeAmount(newLotSize);
-                  console.log(`🚀 [COMPOUND] Profit: $${pnl.toFixed(2)} | Growth: 5% | New Size: $${newLotSize.toFixed(2)}`);
+                  console.log(`🚀 [COMPOUND] Profit: $${pnl.toFixed(2)} | Lot size scales automatically on next signal.`);
                   
                   // For REAL mode - immediate profit claiming and reinvestment
-                  if (mode === 'real' && pnl > baseTradeAmount * 0.1) { // Only claim significant profits
+                  if (mode === 'real' && pnl > baseTradeAmount * 0.001) {
                     console.log(`💰 [AUTO-CLAIM] $${pnl.toFixed(2)} claimed to vault → Ready for next trade!`);
                     notify(`$${pnl.toFixed(2)} automatically claimed to vault!`, "info");
-                    // In production: await claimAndReinvestProfits(user.wallet_address, pnl);
                   }
                 } else if (pnl < 0) {
                   notify(`Stop Loss Triggered! -$${Math.abs(pnl).toFixed(2)}`, "error");
-                  // RISK MANAGEMENT: Reset to base trade amount on loss (no downward compounding)
-                  setDynamicTradeAmount(baseTradeAmount);
-                  console.log(`⚡ [RESET] Loss: $${pnl.toFixed(2)} | Reset to base: $${baseTradeAmount.toFixed(2)}`);
+                  console.log(`⚡ [RESET] Loss: $${pnl.toFixed(2)} | Lot size reset to 0.05 baseline.`);
                 }
               }
             }
@@ -505,7 +493,7 @@ export function useTradingEngine(
           console.error("[QUANTUM EXECUTION ERROR]", err);
           await handleVirtualFallback();
         } finally {
-          setTimeout(() => { isExecutingRef.current = false; }, 500); // Fast re-entry cooldown
+          setTimeout(() => { isExecutingRef.current = false; }, 50); // 50ms fast re-entry for scalping
         }
       }
     };

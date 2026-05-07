@@ -84,15 +84,19 @@ export function evaluateMarket(
       ? ((price - currentPosition.entryPrice) / currentPosition.entryPrice) * 100
       : ((currentPosition.entryPrice - price) / currentPosition.entryPrice) * 100;
 
-    // Take Profit logic (lightspeed thresholds)
-    let tpThreshold = 0.10;
-    let slThreshold = -0.05;
-    
+    // Take Profit logic — real spot trading thresholds (no leverage, proper 2:1+ R:R)
+    let tpThreshold = 0.50;   // default TP: 0.50%
+    let slThreshold = -0.20;  // default SL: 0.20%
+
     switch (strategy) {
-      case 'Scalping':     tpThreshold = 0.04;  slThreshold = -0.04;  break; // TP=$400, SL=$400 at $5k/200x
-      case 'Aggressive':  tpThreshold = 0.15;  slThreshold = -0.10;  break;
-      case 'Momentum':    tpThreshold = 0.20;  slThreshold = -0.15;  break;
-      case 'Conservative': tpThreshold = 0.15; slThreshold = -0.05;  break;
+      // Scalping: TP 0.20% / SL 0.10% → 2:1 R:R (break-even at 33% win rate)
+      case 'Scalping':      tpThreshold = 0.20;  slThreshold = -0.10;  break;
+      // Aggressive: TP 0.50% / SL 0.20% → 2.5:1 R:R (break-even at 29% win rate)
+      case 'Aggressive':    tpThreshold = 0.50;  slThreshold = -0.20;  break;
+      // Momentum: TP 1.50% / SL 0.50% → 3:1 R:R (break-even at 25% win rate)
+      case 'Momentum':      tpThreshold = 1.50;  slThreshold = -0.50;  break;
+      // Conservative: TP 1.00% / SL 0.30% → 3.3:1 R:R (break-even at 23% win rate)
+      case 'Conservative':  tpThreshold = 1.00;  slThreshold = -0.30;  break;
     }
     
     if (pnlPercent >= tpThreshold) {
@@ -104,6 +108,32 @@ export function evaluateMarket(
     if (pnlPercent <= slThreshold) {
       handleLoss();
       return { action: 'CLOSE', lotSize: currentPosition.size, reason: 'SL_HIT' };
+    }
+
+    // SCALPING: Smart timeout — only close early if in profit
+    // If in loss, hold up to 3 minutes for recovery before cutting
+    if (strategy === 'Scalping' && currentPosition.startTime) {
+      const heldMs = Date.now() - currentPosition.startTime;
+      const heldSec = heldMs / 1000;
+
+      if (heldMs > 60000 && pnlPercent >= 0) {
+        // ✅ In profit after 60s → take it and re-enter
+        console.log(`[SCALP EXIT] ${heldSec.toFixed(0)}s | In profit (${pnlPercent.toFixed(4)}%) → closing to lock gains.`);
+        handleWin();
+        return { action: 'CLOSE', lotSize: currentPosition.size, reason: 'SCALP_TIMEOUT' };
+      }
+
+      if (heldMs > 180000) {
+        // ⛔ 3 min hard cap — cut loss to protect capital, don't hold forever
+        console.log(`[SCALP HARD CAP] ${heldSec.toFixed(0)}s | Max hold time reached → cutting loss to protect capital.`);
+        handleLoss();
+        return { action: 'CLOSE', lotSize: currentPosition.size, reason: 'SCALP_TIMEOUT' };
+      }
+
+      // Still in loss under 3 min → hold and wait for recovery
+      if (heldMs > 60000 && pnlPercent < 0) {
+        console.log(`[SCALP HOLDING] ${heldSec.toFixed(0)}s | In loss (${pnlPercent.toFixed(4)}%) → waiting for recovery...`);
+      }
     }
 
     // EARLY EXIT: Momentum Reversal (EMA flips or RSI weakens)

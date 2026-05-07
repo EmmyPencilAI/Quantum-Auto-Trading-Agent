@@ -328,9 +328,8 @@ export default function WalletTab({ user, mode, setMode, realBalance = "0.0000",
         try {
           // Use direct signer to bypass Web3Auth bundler/paymaster
           const directSigner = await getDirectSigner();
-          const provider = directSigner.provider as ethers.JsonRpcProvider;
           const tx = await executeRealSwap(
-             provider,
+             directSigner,
              convertFrom,
              convertTo,
              convertAmount,

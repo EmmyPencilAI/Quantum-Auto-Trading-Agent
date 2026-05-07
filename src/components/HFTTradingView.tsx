@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
 import { ArrowUp, ArrowDown, Zap } from 'lucide-react';
-import { MarketData, Candle, Position, TradeSignal, Trade } from '../engine/types';
+import { MarketData, Candle, Position, TradeSignal } from '../engine/types';
+import { Trade } from '../types';
 import { cn } from '../lib/utils';
 
 interface HFTTradingViewProps {

@@ -45,7 +45,7 @@ export const ERC20_ABI = [
 ];
 
 export async function executeRealSwap(
-  provider: ethers.BrowserProvider,
+  signer: ethers.Signer,
   fromSymbol: string,
   toSymbol: string,
   amount: string,
@@ -54,8 +54,6 @@ export async function executeRealSwap(
   const chainId = APP_CONFIG.BNB_CHAIN.CHAIN_ID;
   const routerAddress = ROUTERS[chainId] || ROUTERS['0x38'];
   const tokens = TOKEN_MAP[chainId] || TOKEN_MAP['0x38'];
-
-  const signer = await provider.getSigner();
   const router = new ethers.Contract(routerAddress, ROUTER_ABI, signer);
   const deadline = Math.floor(Date.now() / 1000) + 60 * 20; 
   
