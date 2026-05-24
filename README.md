@@ -85,6 +85,8 @@ Storage:
 
 🔗 [https://quantum-auto-bot.vercel.app/](https://quantum-trading-agent.vercel.app/)
 
+## Whitepaper
+https://quantumfinance.mintlify.app/
 ---
 
 ## 📦 Installation
